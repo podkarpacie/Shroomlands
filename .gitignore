@@ -14,6 +14,11 @@ tests/_net_*.log
 tests/_capture*.png
 tests/_capture*.png.import
 
+# --- Documentation screenshots -----------------------------------------------
+# Committed as images only; nothing in the game references them, so Godot
+# regenerates their import descriptors locally and they would only churn.
+docs/screenshots/*.import
+
 # --- Scratch files -----------------------------------------------------------
 *.tmp
 
