@@ -209,6 +209,82 @@ addons/godot_ai/         editor-only MCP plugin; never exported
 build/                   export output (gitignored)
 ```
 
+## 3D models
+
+Four glTF 2.0 models live in `assets/models/`. Godot has imported all four without errors, but
+**no scene references them yet** — the game still renders primitives (see
+[known gaps](#known-gaps)). Each `.gltf` is self-contained: its buffer and texture are embedded
+as base64, and the sidecar `<name>_0.png` plus the generated `.import` files sit next to it.
+
+| File | Height | Geometry | Contents |
+| --- | --- | --- | --- |
+| `assets/models/player.gltf` | 1.80 m | 15 boxes, 180 triangles | mushroom humanoid: crimson domed cap, cream stem body, arms/hands, dark eyes |
+| `assets/models/blightling.gltf` | 1.50 m | 15 boxes, 180 triangles | hostile fungal creature: squat olive body, violet thorned cap, glowing orange eyes, claws |
+| `assets/models/glowcap.gltf` | 0.57 m | 10 boxes, 120 triangles | small teal-capped glowing mushroom, cream stem |
+| `assets/models/emberstem.gltf` | 0.74 m | 8 boxes, 96 triangles | orange conical cap, cream stem, small skirt ring |
+
+Heights are metres: Blockbench works in 16-unit blocks, so 16 units = 1 m and the glTF needs no
+scaling on import.
+
+### How they were produced
+
+Blockbench **5.2.2** (`C:\Users\Acer\Tools\Blockbench\Blockbench_5.2.2_portable.exe`) driven by
+the `blockbench-mcp` bridge on `127.0.0.1:8787` — keep the Blockbench window open while it runs.
+Each model is a `free`-format project built from cubes, then textured and exported entirely
+through the bridge: `pack_uv` (one UV island per cube) → `create_texture` (a single 16 px-wide
+texture, auto-grown by the pack) → `detail_cubes` (per-cube colour map plus glow regex, so no
+face is left untextured) → `export_model` with the `gltf` codec (embedded buffer and texture).
+
+### Regeneration recipe
+
+`<name>` is `player`, `blightling`, `glowcap` or `emberstem`; cube coordinates are Blockbench
+units, so 16 = 1 m. Every call is a `blockbench-mcp` tool:
+
+```
+new_project({ format: "free", name: "<name>" })
+
+# Shape: add_cubes({ cubes: [...] }) for the masses, add_mesh / add_hollow_volume for domed caps,
+# thorns and claws. Keep the total height from the table above (16 units = 1 m).
+
+pack_uv({ cubes: "all", padding: 1, auto_resize: true })      # REQUIRED before texturing
+create_texture({ name: "<name>_0", fill: "<base colour>" })   # project size, grown by pack_uv
+detail_cubes({                                                # smooth per-cube colour, no gaps
+  cubes: "all",
+  texture: "<name>_0",
+  base: "<base colour>",
+  colors: [
+    { match: "stem|body", color: "<light colour>" },
+    { match: "cap|thorns", color: "<accent colour>" }
+  ],
+  glow_regex: "glow_[abc]$"                                   # emissive cells (glowcap)
+})
+check_model()                                                 # untextured faces, bad UVs, z-fighting
+
+export_model({
+  path: "C:/Users/Acer/Desktop/AI/Shroomlands/assets/models/<name>.gltf",
+  codec: "gltf"                                               # embeds buffer + texture
+})
+```
+
+Re-import and check the log for errors:
+
+```powershell
+& ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe" --headless --editor --quit --path "."
+```
+
+Commit the four files together: `<name>.gltf`, `<name>.gltf.import`, `<name>_0.png` and
+`<name>_0.png.import`.
+
+### Wiring them in
+
+Nothing calls these files yet. Import each glTF as a scene (`player.gltf` → `player.tscn`,
+`glowcap.gltf` and `emberstem.gltf` → `mushroom_prop.tscn` / `mushroom_node.tscn`,
+`blightling.gltf` → `enemy.tscn`) and replace the primitive mesh children: the `Model` node
+(`Body`, `Cap`, and `EyeL` / `EyeR` in the enemy) in `player.tscn` and `enemy.tscn`, plus the
+`Stem` / `Cap` `MeshInstance3D` nodes in the mushroom scenes. Keep the existing
+`CollisionShape3D`, `MultiplayerSynchronizer` and script nodes untouched — hitboxes, authority
+and vitals depend on them — then re-run all 15 suites (see [Tests](#tests)).
+
 ## Known gaps
 
 1. **One transport per server instance.** A server listens with ENet/UDP **or**
@@ -231,8 +307,9 @@ build/                   export output (gitignored)
    spec's "Forward+ and a working web export" cannot both be literally true on this
    engine version.
 5. **One biome.** Verdant Bloom is built; the other four biomes exist as lore data only.
-6. **Placeholder art.** Characters, mushrooms and creatures are procedural primitives;
-   no imported glTF/Blockbench models yet. One ground mound still z-fights slightly.
+6. **Placeholder art in the scenes.** Four glTF models ship in `assets/models/` (see
+   [3D models](#3d-models)), but no scene references them yet, so characters, mushrooms and
+   creatures still render procedural primitives. One ground mound still z-fights slightly.
 7. **No voice chat**, full skill trees, advanced crafting, raids/endgame, factions or the
    full Great Blight story. Vocation choice exists, but the trees behind it do not.
 8. **No server browser or accounts.** Direct host/port only; no authentication, no

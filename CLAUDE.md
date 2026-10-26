@@ -53,9 +53,21 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
 
 ## Two explicit notes
 
-- **No 3D models yet.** All art is placeholder primitives (`BoxMesh` / `CapsuleMesh` /
-  `CylinderMesh`) defined inline in the `.tscn` scenes. There are no glTF, `.glb` or Blockbench
-  files here, and `docs/screenshots/` shows exactly that.
+- **Models exist, but nothing references them yet.** `assets/models/` holds four glTF models
+  authored in Blockbench 5.2.2 and exported through `blockbench-mcp`, already imported by Godot
+  without errors:
+
+  | File | Height | Contents |
+  | --- | --- | --- |
+  | `assets/models/player.gltf` | 1.80 m | mushroom humanoid: crimson domed cap, cream stem body, arms/hands, dark eyes |
+  | `assets/models/blightling.gltf` | 1.50 m | hostile fungal creature: squat olive body, violet thorned cap, glowing orange eyes, claws |
+  | `assets/models/glowcap.gltf` | 0.57 m | small teal-capped glowing mushroom, cream stem |
+  | `assets/models/emberstem.gltf` | 0.74 m | orange conical cap, cream stem, small skirt ring |
+
+  **No scene instantiates them**: every `.tscn` still draws `BoxMesh` / `CapsuleMesh` /
+  `CylinderMesh` primitives inline, which is why `docs/screenshots/` shows primitives. Blockbench
+  exports in metres (16 units = 1 m), so they need no scaling on import. Regeneration recipe and
+  wiring notes: `README.md` → *3D models*.
 - **Verification rules.** Never trust an OS screenshot on Windows at 150 % DPI scaling — a Win32
   capture is a top-left *crop* of the real frame; use `tests/capture_frame.gd` (in-engine
   viewport, windowed, never `--headless`). Every suite must exit `0`; see `README.md` → *Tests*.
