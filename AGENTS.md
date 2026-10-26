@@ -1,0 +1,111 @@
+# AGENTS.md — Shroomlands
+
+Godot 4.7.2 multiplayer survival RPG. GDScript only. This file is the source of truth for
+tooling, commands and architecture. Game design lives in `docs/MVP_SPEC.md`.
+
+## Engine
+
+| What | Where |
+| --- | --- |
+| Godot 4.7.2 (console) | `Godot Engine Latest/Godot_v4.7.2-stable_win64_console.exe` |
+| Godot 4.7.2 (GUI) | `Godot Engine Latest/Godot_v4.7.2-stable_win64.exe` |
+| Version | `4.7.2.stable.official.ed1daf0bf` |
+| Renderer | Forward+ (desktop) · Compatibility/WebGL2 (web) |
+
+## Commands
+
+```powershell
+$g = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
+
+# Import / validate (run after adding assets)
+& $g --headless --editor --quit --path "."
+
+# Run the game (windowed)
+& ".\Godot Engine Latest\Godot_v4.7.2-stable_win64.exe" --path "."
+
+# Open the editor GUI  (NOTE: -e is required; --path alone RUNS the game)
+& ".\Godot Engine Latest\Godot_v4.7.2-stable_win64.exe" -e --path "."
+
+# Smoke run (headless, N frames)
+& $g --headless --path "." --quit-after 400
+
+# All 15 test suites
+Get-ChildItem tests/test_*.gd | ForEach-Object {
+  $n = $_.BaseName
+  $o = & $g --headless --path "." --script "res://tests/$n.gd" 2>&1
+  "{0,-20} EXIT={1} PASS={2}" -f $n, $LASTEXITCODE, ($o | Select-String '^PASS ').Count
+}
+```
+
+Tests are `extends SceneTree` scripts run with `--script`. They must all exit 0.
+Current state: **15 suites, 695 assertions, 0 failures.**
+
+Each suite redirects the save file via `tests/test_env.gd`, so runs never touch the
+player's real save. `SaveSystem` resolves its path from `SHROOMLANDS_SAVE_PATH` or
+`--save-path=<path>`, defaulting to `user://player_save.json`.
+
+## Multiplayer tests (real processes, not mocks)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\run_network_test.ps1     # ENet/UDP, 2 processes
+powershell -ExecutionPolicy Bypass -File tests\run_websocket_test.ps1   # WebSocket/TCP, 3 processes
+```
+
+Both assert: `players=2`, walked position synced, 4 enemies on both peers, chat relayed,
+client took enemy damage (`HP_DROP`), client inventory reached the server (`INV_RECV`).
+
+## Architecture
+
+```
+scenes/   lobby.tscn (entry) · main.tscn · player/ · world/ · ui/ · multiplayer/
+scripts/  core/{Game,EventBus,Lore,SaveSystem,Main}  multiplayer/Network
+          player/{PlayerController,PlayerStats}      systems/{Inventory,Gathering,Combat,Plot}
+          world/{MushroomNode,Enemy,PlotSign,VerdantBloom}  ui/{HUD,InventoryUI,ChatUI,LobbyUI,VocationUI,BuildMode}
+tools/    dedicated_server.gd/.tscn · run_server.ps1 · serve_web.ps1 · export_all.ps1 · run_two_clients.ps1
+docs/     MVP_SPEC.md · HOSTING.md
+tests/    test_*.gd · run_network_test.ps1 · run_websocket_test.ps1 · capture_frame.gd
+```
+
+Autoloads: `Lore`, `EventBus`, `Game`, `SaveSystem`, `Network` (+ Godot AI's `_mcp_game_helper`,
+editor-only and stripped from exports).
+
+## Rules that matter
+
+- **Never trust an OS screenshot on this machine.** Windows runs at **150 % DPI scaling**, so a
+  Win32 capture is a top-left *crop* of the real frame and will show the player in the corner or
+  missing. Use `tests/capture_frame.gd` (in-engine viewport capture, windowed run).
+- **Items are dictionary-defined** in `Lore.gd` and referenced by `StringName` id. Do not create
+  hundreds of `.tres` item files.
+- **Inventory** = 48 slots (6x8) of `{id, count}`, stacks of 64; hotbar = first 8 slots.
+- **Physics layers:** 1 = world, 2 = decoration (ignored by the camera spring arm), 3 = harvestable
+  mushrooms, 4 = plots, 5 = players, 6 (16) = enemies. The interact ray mask is `5`
+  (world + harvestables) — changing it breaks `test_gathering`.
+- **UI blocking:** `PlayerController.set_ui_blocking(true)` stops movement, camera and attack while
+  a panel or text field is open. Build mode uses a separate flag so the player can still walk.
+- **Multiplayer authority:** each peer owns its transform and vitals; the server relays. Enemy
+  damage to a remote player is routed to the owner's body (`apply_damage_rpc`). Player, gold,
+  inventory and discoveries are *reported*, not validated — there is no anti-cheat.
+- **One transport per server instance.** `--transport=enet` (UDP, desktop) or
+  `--transport=websocket` (TCP, browsers + desktop). Mixed sessions are unsupported.
+- **Exports:** use `tools/export_all.ps1`, not raw `--export-release`. It strips the editor-only
+  plugin setting and the MCP autoload for the duration of the export, then restores them.
+
+## Art pipeline (verified)
+
+Blockbench 5.2.2 + `blockbench-mcp` (71 tools) → glTF 2.0 → Godot import.
+Grabber: `C:\Users\Acer\Tools\Blockbench\Blockbench_5.2.2_portable.exe`,
+bridge `C:\Users\Acer\Tools\blockbench-mcp\dist\index.js`, HTTP on `127.0.0.1:8787`.
+Keep the Blockbench window open while using it; restart it if the bridge is unreachable.
+`export_model` takes ~30 s (glTF progress is frame-driven) and can exceed the 61 s MCP timeout —
+check the file before retrying, or POST the bridge directly:
+`POST http://127.0.0.1:8787/command {"action":"export_model","params":{...},"id":1}`
+
+## MCP tooling live in this workspace
+
+- `godot-ai` (47 tools) — drives the **running** Godot editor: scenes, nodes, scripts, playtests,
+  screenshots, input simulation, LSP diagnostics. Needs the editor open on this project.
+- `blockbench` (71 tools) — 3D authoring, texturing, rigging, animation, glTF export.
+
+Known limitation: in multiplayer, `Game.get_local_player()` can fall back to a client body on a
+dedicated server, so server logs show extra `INV_RECV peer=1` lines. Harmless, but do not build
+server-side logic that assumes it returns the host's own body.

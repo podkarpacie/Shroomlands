@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "godot-ai": {
+      "type": "stdio",
+      "command": "C:\\Users\\Acer\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\uvx.exe",
+      "args": [
+        "--isolated",
+        "--no-config",
+        "--no-env-file",
+        "--no-sources",
+        "--no-build",
+        "--index-strategy",
+        "first-index",
+        "--keyring-provider",
+        "disabled",
+        "--link-mode",
+        "copy",
+        "--from",
+        "godot-ai==4.3.1",
+        "godot-ai",
+        "attach",
+        "--port",
+        "8000",
+        "--ws-port",
+        "9500"
+      ]
+    }
+  }
+}

@@ -1,0 +1,226 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/LobbyUI.gd" id="1_lobby"]
+
+[sub_resource type="Gradient" id="Gradient_glow"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(0.28, 0.55, 0.25, 0.5, 0.05, 0.12, 0.06, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_glow"]
+gradient = SubResource("Gradient_glow")
+width = 512
+height = 512
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 1)
+
+[node name="Lobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lobby")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.045, 0.07, 0.04, 1)
+
+[node name="Glow" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_glow")
+expand_mode = 1
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 28
+
+[node name="Content" type="VBoxContainer" parent="Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(560, 64)
+layout_mode = 2
+text = "SHROOMLANDS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(560, 20)
+layout_mode = 2
+text = "A world grown entirely from fungi and mycelium."
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="Center/Panel/Margin/Content"]
+visible = false
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Continue"
+
+[node name="NewGameButton" type="Button" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "New Game"
+
+[node name="HostButton" type="Button" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Host"
+
+[node name="JoinRow" type="HBoxContainer" parent="Center/Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="IPField" type="LineEdit" parent="Center/Panel/Margin/Content/JoinRow"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "127.0.0.1"
+text = "127.0.0.1"
+caret_blink = true
+
+[node name="PortField" type="LineEdit" parent="Center/Panel/Margin/Content/JoinRow"]
+custom_minimum_size = Vector2(88, 40)
+layout_mode = 2
+tooltip_text = "Server port (1024-65535)"
+placeholder_text = "7777"
+text = "7777"
+alignment = 1
+max_length = 5
+caret_blink = true
+
+[node name="JoinButton" type="Button" parent="Center/Panel/Margin/Content/JoinRow"]
+custom_minimum_size = Vector2(110, 40)
+layout_mode = 2
+text = "Join"
+
+[node name="TransportHint" type="Label" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(560, 18)
+layout_mode = 2
+text = "Desktop: ENet/UDP · Browser: WebSocket/TCP"
+horizontal_alignment = 1
+
+[node name="SettingsButton" type="Button" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Settings"
+
+[node name="QuitButton" type="Button" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Quit"
+
+[node name="StatusLabel" type="Label" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(560, 22)
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="VersionLabel" type="Label" parent="Center/Panel/Margin/Content"]
+custom_minimum_size = Vector2(560, 18)
+layout_mode = 2
+text = "v0.1.0"
+horizontal_alignment = 1
+
+[node name="SettingsLayer" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="SettingsLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="SettingsLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SettingsPanel" type="PanelContainer" parent="SettingsLayer/Center"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="SettingsLayer/Center/SettingsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 22
+
+[node name="Content" type="VBoxContainer" parent="SettingsLayer/Center/SettingsPanel/Margin"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SettingsTitle" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+text = "Settings"
+horizontal_alignment = 1
+
+[node name="SensitivityHeader" type="HBoxContainer" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="SensitivityLabel" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content/SensitivityHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Mouse sensitivity"
+
+[node name="SensitivityValue" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content/SensitivityHeader"]
+layout_mode = 2
+text = "0.0025"
+horizontal_alignment = 2
+
+[node name="SensitivitySlider" type="HSlider" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+min_value = 0.0005
+max_value = 0.01
+step = 0.0001
+value = 0.0025
+
+[node name="FullscreenToggle" type="CheckButton" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="SettingsCloseButton" type="Button" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+text = "Back"
