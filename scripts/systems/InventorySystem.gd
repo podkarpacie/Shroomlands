@@ -229,6 +229,44 @@ func swap_slots(a: int, b: int) -> void:
 		EventBus.hotbar_changed.emit()
 
 
+## Reorders every occupied stack by rarity and then name, compacting the gaps.
+## Called by the satchel's Sort button; the hotbar follows the first eight slots.
+func sort_slots() -> void:
+	_ensure_slots()
+	var entries: Array[Dictionary] = []
+	for slot: Dictionary in slots:
+		if not slot.is_empty():
+			entries.append(slot.duplicate())
+	entries.sort_custom(_sort_entry)
+	for index: int in SLOT_COUNT:
+		slots[index] = entries[index].duplicate() if index < entries.size() else {}
+	EventBus.inventory_changed.emit()
+	EventBus.hotbar_changed.emit()
+
+
+func _sort_entry(a: Dictionary, b: Dictionary) -> bool:
+	var id_a := StringName(a.get("id", &""))
+	var id_b := StringName(b.get("id", &""))
+	var rank_a := _sort_rank(id_a)
+	var rank_b := _sort_rank(id_b)
+	if rank_a != rank_b:
+		return rank_a < rank_b
+	var name_a := Lore.item_display_name(str(id_a)).to_lower()
+	var name_b := Lore.item_display_name(str(id_b)).to_lower()
+	if name_a != name_b:
+		return name_a < name_b
+	return String(id_a) < String(id_b)
+
+
+func _sort_rank(id: StringName) -> int:
+	var mushroom := Lore.get_mushroom(str(id))
+	if not mushroom.is_empty():
+		return Lore.rarity_rank(str(mushroom.get("rarity", "")))
+	if Lore.RESOURCES.has(str(id)):
+		return 20
+	return 40
+
+
 ## First `Game.HOTBAR_SLOTS` slot ids in order, `&""` for gaps.
 func hotbar_ids() -> Array[StringName]:
 	_ensure_slots()

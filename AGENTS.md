@@ -29,7 +29,7 @@ $g = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 # Smoke run (headless, N frames)
 & $g --headless --path "." --quit-after 400
 
-# All 15 test suites
+# All 17 test suites
 Get-ChildItem tests/test_*.gd | ForEach-Object {
   $n = $_.BaseName
   $o = & $g --headless --path "." --script "res://tests/$n.gd" 2>&1
@@ -38,7 +38,7 @@ Get-ChildItem tests/test_*.gd | ForEach-Object {
 ```
 
 Tests are `extends SceneTree` scripts run with `--script`. They must all exit 0.
-Current state: **15 suites, 695 assertions, 0 failures.**
+Current state: **17 suites, 778 assertions, 0 failures.**
 
 Each suite redirects the save file via `tests/test_env.gd`, so runs never touch the
 player's real save. `SaveSystem` resolves its path from `SHROOMLANDS_SAVE_PATH` or
@@ -59,9 +59,10 @@ client took enemy damage (`HP_DROP`), client inventory reached the server (`INV_
 ```
 scenes/   lobby.tscn (entry) · main.tscn · player/ · world/ · ui/ · multiplayer/
 scripts/  core/{Game,EventBus,Lore,SaveSystem,Main}  multiplayer/Network
-          player/{PlayerController,PlayerStats}      systems/{Inventory,Gathering,Combat,Plot}
-          world/{MushroomNode,Enemy,PlotSign,VerdantBloom}  ui/{HUD,InventoryUI,ChatUI,LobbyUI,VocationUI,BuildMode}
-tools/    dedicated_server.gd/.tscn · run_server.ps1 · serve_web.ps1 · export_all.ps1 · run_two_clients.ps1
+          player/{PlayerController,PlayerStats,SwingWeapon}  systems/{Inventory,Gathering,Combat,Plot}
+          world/{MushroomNode,Enemy,PlotSign,VerdantBloom,LimbAnimator,ModelGlow}
+          ui/{HUD,InventoryUI,ChatUI,LobbyUI,VocationUI,BuildMode,UITheme,ItemVisuals,ItemPreview,Crosshair}
+tools/    dedicated_server.gd/.tscn · render_item_icons.gd · run_server.ps1 · serve_web.ps1 · export_all.ps1 · run_two_clients.ps1
 docs/     MVP_SPEC.md · HOSTING.md
 tests/    test_*.gd · run_network_test.ps1 · run_websocket_test.ps1 · capture_frame.gd
 ```
@@ -78,8 +79,9 @@ editor-only and stripped from exports).
   hundreds of `.tres` item files.
 - **Inventory** = 48 slots (6x8) of `{id, count}`, stacks of 64; hotbar = first 8 slots.
 - **Physics layers:** 1 = world, 2 = decoration (ignored by the camera spring arm), 3 = harvestable
-  mushrooms, 4 = plots, 5 = players, 6 (16) = enemies. The interact ray mask is `5`
-  (world + harvestables) — changing it breaks `test_gathering`.
+  mushrooms, 4 = plots, 5 = players, 6 (16) = enemies, 7 (32) = enemy hurtboxes. The player's
+  `AttackHitbox` queries `16 | 32`; the interact ray mask is `5` (world + harvestables) — changing
+  it breaks `test_gathering`.
 - **UI blocking:** `PlayerController.set_ui_blocking(true)` stops movement, camera and attack while
   a panel or text field is open. Build mode uses a separate flag so the player can still walk.
 - **Multiplayer authority:** each peer owns its transform and vitals; the server relays. Enemy

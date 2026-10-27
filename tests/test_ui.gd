@@ -77,6 +77,9 @@ func _run() -> void:
 				grid_first.custom_minimum_size == Vector2(56, 56)
 			)
 	_check("inventory panel starts hidden", not inventory_ui.visible)
+	_check("inventory has an item detail panel", inventory_ui.find_child("Detail", true, false) != null)
+	_check("inventory has a live 3D preview", inventory_ui.find_child("Preview", true, false) != null)
+	_check("inventory has a sort button", inventory_ui.find_child("SortButton", true, false) != null)
 
 	var player := get_first_node_in_group(&"player")
 	_check("a player was spawned", player != null)
@@ -104,8 +107,13 @@ func _run() -> void:
 	if hud_slot != null:
 		var name_label := hud_slot.find_child("NameLabel", true, false) as Label
 		var count_label := hud_slot.find_child("CountLabel", true, false) as Label
+		var hotbar_icon := hud_slot.find_child("Icon", true, false) as TextureRect
 		_check("hotbar slot 0 has a name label", name_label != null)
 		_check("hotbar slot 0 has a count label", count_label != null)
+		_check(
+			"hotbar slot 0 has an item icon",
+			hotbar_icon != null and hotbar_icon.texture != null
+		)
 		if name_label != null:
 			_check(
 				"hotbar slot 0 shows the item name (%s)" % name_label.text,
@@ -132,6 +140,13 @@ func _run() -> void:
 			_check("inventory slot 0 shows the stack count (%s)" % grid_count.text, grid_count.text == "5")
 		else:
 			_check("inventory slot 0 has a count label", false)
+		var grid_icon: TextureRect = null
+		if grid_slot != null:
+			grid_icon = grid_slot.find_child("Icon", true, false) as TextureRect
+		_check(
+			"inventory slot 0 has an item icon",
+			grid_icon != null and grid_icon.texture != null
+		)
 
 	# --- vitals / gold signals ---------------------------------------------
 	bus.emit_signal(&"hp_changed", 50.0, 100.0)

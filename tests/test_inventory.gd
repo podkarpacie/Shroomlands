@@ -136,6 +136,28 @@ func _run() -> void:
 	odd.call(&"from_dict", {"slots": {"nonsense": ["x", 1], "9000": ["y", 1]}})
 	_check("from_dict ignores malformed slots", int(odd.call(&"count_item", &"mystery_fungus")) == 0)
 
+	# --- sorting ------------------------------------------------------------
+	var sortable: Variant = _new_inventory(script)
+	sortable.call(&"add_item", &"sunheart", 1)
+	sortable.call(&"add_item", &"glowcap", 2)
+	sortable.call(&"add_item", &"emberstem", 3)
+	sortable.call(&"sort_slots")
+	var sorted_first: Dictionary = sortable.call(&"get_slot", 0)
+	var sorted_second: Dictionary = sortable.call(&"get_slot", 1)
+	var sorted_third: Dictionary = sortable.call(&"get_slot", 2)
+	_check(
+		"sort_slots orders common mushrooms before a very rare one",
+		StringName(sorted_first.get("id", &"")) == &"emberstem"
+		and StringName(sorted_second.get("id", &"")) == &"glowcap"
+		and StringName(sorted_third.get("id", &"")) == &"sunheart"
+	)
+	_check(
+		"sort_slots compacts the stacks into the first slots",
+		not sorted_first.is_empty() and not sorted_second.is_empty()
+		and not sorted_third.is_empty()
+		and (sortable.call(&"get_slot", 3) as Dictionary).is_empty()
+	)
+
 	_finish()
 
 

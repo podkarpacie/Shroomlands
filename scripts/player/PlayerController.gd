@@ -9,11 +9,35 @@ extends CharacterBody3D
 
 const PlayerStatsScript := preload("res://scripts/player/PlayerStats.gd")
 
+signal jumped
+## Emitted on touchdown with the downward speed at impact (m/s), for the landing
+## squash and anything else that wants to react.
+signal landed(impact_speed: float)
+
 @export var walk_speed := 4.5
 @export var sprint_speed := 7.5
-@export var jump_velocity := 5.5
-@export var acceleration := 12.0
-@export var air_control := 0.25
+@export var jump_velocity := 6.0
+## Ground acceleration toward the target velocity (m/s^2). High on purpose: the
+## character reaches walking speed in about a tenth of a second, so input feels
+## direct instead of floaty.
+@export var acceleration := 40.0
+## Ground deceleration when no direction is held.
+@export var friction := 50.0
+## Share of `acceleration` available in the air.
+@export var air_control := 0.35
+## Drag while airborne with no input; low, so a jump keeps its momentum.
+@export var air_friction := 1.5
+## Reversing direction on the ground accelerates this much harder, so turning
+## around is snappy instead of a slow slide through zero.
+@export var turn_boost := 1.6
+## A jump still works this long after walking off a ledge.
+@export var coyote_time := 0.12
+## A jump pressed this long before landing still fires on touchdown.
+@export var jump_buffer_time := 0.14
+## Falling gravity multiplier: a heavier fall makes jumps feel crisp, not floaty.
+@export var fall_gravity_scale := 1.6
+## Releasing jump while rising multiplies the upward speed by this (hold = high jump).
+@export var jump_cut_scale := 0.5
 @export var mouse_sensitivity := 0.0025
 @export var min_pitch := -75.0
 @export var max_pitch := 60.0
@@ -21,15 +45,18 @@ const PlayerStatsScript := preload("res://scripts/player/PlayerStats.gd")
 ## so a 3.5 m ray would stop at the player's own head and never reach a ground
 ## mushroom inside GatheringSystem's 3.5 m gather range. 8 m covers the camera
 ## offset plus one mushroom-height target in front of the player.
-## The ray starts at the camera, which sits `camera_distance` behind the player,
-## so a 3.5 m ray would stop at the player's own head and never reach a ground
-## mushroom inside GatheringSystem's 3.5 m gather range. 8 m covers the camera
-## offset plus one mushroom-height target in front of the player.
 @export var interact_range := 8.0
-@export var turn_rate := 12.0
+@export var turn_rate := 14.0
 ## Distance the third-person camera sits behind the pivot. One knob for the
 ## scene's `SpringArm3D.spring_length`, applied on ready.
 @export var camera_distance := 4.0
+@export var base_fov := 75.0
+## Extra field of view while sprinting; sells the speed without touching gameplay.
+@export var sprint_fov_kick := 7.0
+## Mouse-wheel zoom range and step for the third-person camera.
+@export var zoom_min := 2.2
+@export var zoom_max := 8.0
+@export var zoom_step := 0.6
 
 var is_sprinting: bool:
 	get:
@@ -65,6 +92,14 @@ var xp: int:
 @onready var _interact_ray: RayCast3D = $InteractRay
 
 var _pitch := 0.0
+var _zoom := 4.0
+var _shake_left := 0.0
+var _shake_duration := 0.0
+var _shake_strength := 0.0
+var _shake_rng := RandomNumberGenerator.new()
+var _coyote_left := 0.0
+var _jump_buffer_left := 0.0
+var _jump_cut_ready := false
 var _is_sprinting := false
 var _sprint_blocked := false
 ## Set by GatheringSystem while a gather runs; sprint is the only lock.
@@ -96,7 +131,13 @@ func _ready() -> void:
 	if is_instance_valid(_spring_arm):
 		_spring_arm.add_excluded_object(get_rid())
 		_spring_arm.spring_length = camera_distance
+	_zoom = camera_distance
+	_camera.fov = base_fov
+	# Stay glued to slopes and small steps instead of skipping off them.
+	floor_snap_length = 0.35
+	floor_constant_speed = true
 	_interact_ray.add_exception(self)
+	_shake_rng.randomize()
 	if not is_multiplayer_authority():
 		# A replicated copy: MultiplayerSynchronizer drives its transform, so it
 		# must neither read local input nor steal the camera from the owner.
@@ -127,6 +168,51 @@ func _unhandled_input(event: InputEvent) -> void:
 		var button := event as InputEventMouseButton
 		if button.pressed and button.button_index == MOUSE_BUTTON_LEFT:
 			_capture_mouse()
+		elif button.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			if button.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_zoom = clampf(_zoom - zoom_step, zoom_min, zoom_max)
+			elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom = clampf(_zoom + zoom_step, zoom_min, zoom_max)
+
+
+## Camera easing runs per rendered frame: the arm glides to the zoom target and
+## the field of view widens while sprinting.
+func _process(delta: float) -> void:
+	if not is_multiplayer_authority() or not is_instance_valid(_spring_arm):
+		return
+	var ease_zoom := 1.0 - exp(-12.0 * delta)
+	_spring_arm.spring_length = lerpf(_spring_arm.spring_length, _zoom, ease_zoom)
+	var fov_target := base_fov + (sprint_fov_kick if _is_sprinting else 0.0)
+	_camera.fov = lerpf(_camera.fov, fov_target, 1.0 - exp(-8.0 * delta))
+	_update_shake(delta)
+
+
+## A short, deterministic-decay camera kick on a connected hit. This is the
+## local player's read-side feedback; it never touches the body transform.
+func add_camera_shake(strength: float, duration := 0.18) -> void:
+	if strength <= 0.0:
+		return
+	_shake_strength = maxf(_shake_strength, strength)
+	_shake_duration = maxf(_shake_duration, duration)
+	_shake_left = maxf(_shake_left, duration)
+
+
+func _update_shake(delta: float) -> void:
+	if _shake_left <= 0.0:
+		if _camera.h_offset != 0.0 or _camera.v_offset != 0.0 or _camera.rotation.z != 0.0:
+			_camera.h_offset = 0.0
+			_camera.v_offset = 0.0
+			_camera.rotation.z = 0.0
+		return
+	_shake_left = maxf(_shake_left - delta, 0.0)
+	var falloff := clampf(_shake_left / maxf(_shake_duration, 0.0001), 0.0, 1.0)
+	var amount := _shake_strength * falloff * falloff
+	_camera.h_offset = _shake_rng.randf_range(-amount, amount)
+	_camera.v_offset = _shake_rng.randf_range(-amount, amount)
+	_camera.rotation.z = _shake_rng.randf_range(-amount, amount) * 0.18
+	if _shake_left <= 0.0:
+		_shake_strength = 0.0
+		_shake_duration = 0.0
 
 
 func _physics_process(delta: float) -> void:
@@ -156,6 +242,7 @@ func _move(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 	var direction := _camera_relative(input)
+	var on_floor := is_on_floor()
 	if not Input.is_action_pressed(&"sprint"):
 		_sprint_blocked = false
 	elif _stats.stamina <= 0.0:
@@ -171,22 +258,64 @@ func _move(delta: float) -> void:
 	)
 	_stats.set_sprinting(_is_sprinting)
 
+	# --- horizontal: accelerate toward the target, brake with friction ---------
 	var speed := sprint_speed if _is_sprinting else walk_speed
 	var target := direction * speed
-	var accel := acceleration if is_on_floor() else acceleration * air_control
-	var horizontal := Vector3(velocity.x, 0.0, velocity.z).move_toward(target, accel * delta)
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	if direction != Vector3.ZERO:
+		var accel := acceleration
+		if horizontal.dot(target) < 0.0:
+			accel *= turn_boost
+		if not on_floor:
+			accel *= air_control
+		horizontal = horizontal.move_toward(target, accel * delta)
+	else:
+		horizontal = horizontal.move_toward(
+			Vector3.ZERO, (friction if on_floor else air_friction) * delta
+		)
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
-	if is_on_floor():
-		if not blocked and Input.is_action_just_pressed(&"jump"):
-			velocity.y = jump_velocity
-		elif velocity.y < 0.0:
+	# --- vertical: coyote time, jump buffer, variable height, heavy fall -------
+	if on_floor:
+		_coyote_left = coyote_time
+	else:
+		_coyote_left = maxf(_coyote_left - delta, 0.0)
+	if not blocked and Input.is_action_just_pressed(&"jump"):
+		_jump_buffer_left = jump_buffer_time
+	else:
+		_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
+	if blocked:
+		_jump_buffer_left = 0.0
+
+	var jumped_now := false
+	if _jump_buffer_left > 0.0 and _coyote_left > 0.0:
+		velocity.y = jump_velocity
+		_jump_buffer_left = 0.0
+		_coyote_left = 0.0
+		# A jump buffered before touchdown may already be released: that is a full
+		# jump. The cut only applies when the key is let go *after* takeoff.
+		_jump_cut_ready = Input.is_action_pressed(&"jump")
+		jumped_now = true
+		jumped.emit()
+
+	if jumped_now:
+		pass
+	elif on_floor:
+		_jump_cut_ready = false
+		if velocity.y < 0.0:
 			velocity.y = 0.0
 	else:
-		velocity += _gravity * delta
+		if velocity.y > 0.0 and _jump_cut_ready and not Input.is_action_pressed(&"jump"):
+			velocity.y *= jump_cut_scale
+			_jump_cut_ready = false
+		var gravity_scale := fall_gravity_scale if velocity.y < 0.0 else 1.0
+		velocity += _gravity * gravity_scale * delta
 
+	var fall_speed := -velocity.y
 	move_and_slide()
+	if not on_floor and is_on_floor() and fall_speed > 0.5:
+		landed.emit(fall_speed)
 	_face_direction(direction, delta)
 
 
@@ -201,11 +330,15 @@ func _camera_relative(input: Vector2) -> Vector3:
 	return (right * input.x - forward * input.y).normalized()
 
 
+## Sprint can only be *started* on the ground, but a sprint jump stays a sprint
+## until touchdown: dropping to walk speed mid-air made every running jump stall.
 func _wants_sprint(input: Vector2) -> bool:
 	if not Input.is_action_pressed(&"sprint"):
 		return false
-	if input.is_zero_approx() or not is_on_floor():
+	if input.is_zero_approx():
 		return false
+	if not is_on_floor():
+		return _is_sprinting
 	return true
 
 

@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/InventoryUI.gd" id="1_inventory"]
+[ext_resource type="Script" path="res://scripts/ui/ItemPreview.gd" id="2_preview"]
 
 [node name="InventoryUI" type="CanvasLayer"]
 layer = 20
@@ -15,6 +16,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Dim" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.01, 0.018, 0.012, 0.58)
+
 [node name="Center" type="CenterContainer" parent="Root"]
 layout_mode = 1
 anchors_preset = 15
@@ -28,21 +39,115 @@ layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="Root/Center/Panel"]
 layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 16
 
 [node name="Content" type="VBoxContainer" parent="Root/Center/Panel/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Root/Center/Panel/Margin/Content"]
+[node name="Header" type="HBoxContainer" parent="Root/Center/Panel/Margin/Content"]
 layout_mode = 2
-text = "Inventory"
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Root/Center/Panel/Margin/Content/Header"]
+layout_mode = 2
+text = "Satchel"
+
+[node name="HeaderSpacer" type="Control" parent="Root/Center/Panel/Margin/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Capacity" type="Label" parent="Root/Center/Panel/Margin/Content/Header"]
+layout_mode = 2
+text = "0 / 48 slots"
+vertical_alignment = 1
+
+[node name="SortButton" type="Button" parent="Root/Center/Panel/Margin/Content/Header"]
+custom_minimum_size = Vector2(78, 34)
+layout_mode = 2
+text = "Sort"
+
+[node name="CloseButton" type="Button" parent="Root/Center/Panel/Margin/Content/Header"]
+custom_minimum_size = Vector2(78, 34)
+layout_mode = 2
+text = "Close"
 
 [node name="Hint" type="Label" parent="Root/Center/Panel/Margin/Content"]
 layout_mode = 2
-text = "Tab to close · drag to move · right-click to drop"
+text = "Drag to move  ·  right-click to drop  ·  Tab to close"
 
-[node name="Grid" type="GridContainer" parent="Root/Center/Panel/Margin/Content"]
+[node name="Body" type="HBoxContainer" parent="Root/Center/Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Grid" type="GridContainer" parent="Root/Center/Panel/Margin/Content/Body"]
 layout_mode = 2
 columns = 6
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
+
+[node name="Detail" type="PanelContainer" parent="Root/Center/Panel/Margin/Content/Body"]
+custom_minimum_size = Vector2(276, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Root/Center/Panel/Margin/Content/Body/Detail"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="DetailContent" type="VBoxContainer" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Preview" type="Control" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+custom_minimum_size = Vector2(248, 188)
+layout_mode = 2
+script = ExtResource("2_preview")
+
+[node name="DetailName" type="Label" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+layout_mode = 2
+text = "Nothing selected"
+autowrap_mode = 2
+
+[node name="DetailKind" type="Label" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+layout_mode = 2
+text = "—"
+
+[node name="RarityBar" type="ColorRect" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+custom_minimum_size = Vector2(0, 3)
+layout_mode = 2
+color = Color(0.4, 0.55, 0.31, 1)
+
+[node name="DetailDesc" type="Label" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+custom_minimum_size = Vector2(0, 74)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="DetailUses" type="Label" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="DetailToxicity" type="Label" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+layout_mode = 2
+
+[node name="DetailCount" type="Label" parent="Root/Center/Panel/Margin/Content/Body/Detail/Margin/DetailContent"]
+layout_mode = 2
+
+[node name="Footer" type="HBoxContainer" parent="Root/Center/Panel/Margin/Content"]
+layout_mode = 2
+
+[node name="FooterHint" type="Label" parent="Root/Center/Panel/Margin/Content/Footer"]
+layout_mode = 2
+text = "The Mycelium remembers what you carry."
+size_flags_horizontal = 3
+
+[node name="GoldLabel" type="Label" parent="Root/Center/Panel/Margin/Content/Footer"]
+layout_mode = 2
+text = "Gold 50"
+horizontal_alignment = 2

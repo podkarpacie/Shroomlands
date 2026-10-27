@@ -21,6 +21,9 @@ docs/screenshots/*.import
 
 # --- Scratch files -----------------------------------------------------------
 *.tmp
+# Claude/input bundles: applied to the tree, never source.
+/files.zip
+/files(1).zip
 
 # --- OS junk -----------------------------------------------------------------
 Thumbs.db

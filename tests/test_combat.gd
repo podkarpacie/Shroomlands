@@ -49,6 +49,17 @@ func _run() -> void:
 		return
 	_combat = _player.get_node_or_null("CombatSystem")
 	_check("Player/CombatSystem exists", _combat != null)
+	var attack_hitbox: Area3D = null
+	var attack_shape: Shape3D = null
+	if _combat != null:
+		attack_hitbox = _combat.find_child("AttackHitbox", true, false) as Area3D
+		var shape_node := (
+			attack_hitbox.get_node_or_null("Shape") as CollisionShape3D
+			if attack_hitbox != null else null
+		)
+		attack_shape = shape_node.shape if shape_node != null else null
+	_check("CombatSystem authors an AttackHitbox", attack_hitbox != null)
+	_check("the attack hitbox is a BoxShape3D", attack_shape is BoxShape3D)
 	_stats = _player.get_node_or_null("Stats")
 	_check("player has a Stats component", _stats != null)
 	if _combat == null or _stats == null:
@@ -75,6 +86,12 @@ func _run() -> void:
 
 	# --- one swing, in range -----------------------------------------------
 	var target := enemies[0] as Node3D
+	var hurtbox := target.get_node_or_null("Hurtbox") as Area3D
+	_check("the creature has a Hurtbox", hurtbox != null)
+	_check(
+		"the creature hurtbox sits on layer 32 (0x%x)" % (hurtbox.collision_layer if hurtbox != null else 0),
+		hurtbox != null and hurtbox.collision_layer == 32
+	)
 	_stand_in_front_of(target)
 	await _wait_physics(3)
 
@@ -91,6 +108,15 @@ func _run() -> void:
 		drop, decrease, hp_before, hp_after
 	])
 	_check("try_attack() returns true when an enemy is in range", swung)
+	_check(
+		"the swing reports exactly one hit (%d)" % int(_combat.get("last_hit_count")),
+		int(_combat.get("last_hit_count")) == 1
+	)
+	var animator := _player.get_node_or_null("Animator")
+	_check(
+		"the swing drives a procedural attack pose",
+		animator != null and int(animator.get("_attack_kind")) == 1
+	)
 	_check(
 		"the swing costs attack_stamina_cost (%.1f of %.1f)" % [decrease, stamina_cost],
 		is_equal_approx(decrease, stamina_cost)

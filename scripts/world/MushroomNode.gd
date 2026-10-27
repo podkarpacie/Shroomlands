@@ -8,6 +8,13 @@ extends StaticBody3D
 ## it, so a mushroom can never collapse the third-person camera. The player
 ## walks through mushrooms instead of snagging on them.
 
+## Drop `res://assets/models/<mushroom_id>.gltf` in and that species uses the
+## model automatically; a species without one keeps the primitive stem + cap.
+const MODEL_DIR := "res://assets/models/"
+const ModelGlow := preload("res://scripts/world/ModelGlow.gd")
+## How strongly a species' cap glows (see ModelGlow).
+const GLOW_ENERGY := 1.6
+
 ## Species placed by this node; unknown ids still harvest (they just have no
 ## Lore name, colour or regrow entry).
 @export var mushroom_id: StringName = &"glowcap"
@@ -23,6 +30,7 @@ extends StaticBody3D
 var last_yield := 0
 
 var _depleted := false
+var _model: Node3D = null
 var _rng := RandomNumberGenerator.new()
 
 @onready var _collision: CollisionShape3D = $CollisionShape3D
@@ -34,6 +42,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	add_to_group(&"interactable")
 	_rng.seed = yield_seed if yield_seed != 0 else hash("%s:%s" % [mushroom_id, name])
+	_install_model()
 	_apply_visuals()
 	_regrow_timer.timeout.connect(_on_regrow_timeout)
 
@@ -81,13 +90,40 @@ func _set_depleted(value: bool) -> void:
 	if value == _depleted:
 		return
 	_depleted = value
-	_stem.visible = not value
-	_cap.visible = not value
+	_show_visuals(not value)
 	_collision.disabled = value
 	if value:
 		_regrow_timer.start(regrow_seconds())
 	else:
 		_regrow_timer.stop()
+
+
+## Swaps the primitive stem + cap for the species' glTF when one exists.
+func _install_model() -> void:
+	var path := "%s%s.gltf" % [MODEL_DIR, mushroom_id]
+	if not ResourceLoader.exists(path):
+		return
+	var scene := load(path) as PackedScene
+	if scene == null:
+		return
+	_model = scene.instantiate() as Node3D
+	if _model == null:
+		return
+	_model.name = "Model"
+	# A stable per-node turn, so a patch of one species is not a row of clones.
+	_model.rotation.y = float(hash(str(name)) % 628) / 100.0
+	add_child(_model)
+	ModelGlow.apply(_model, GLOW_ENERGY)
+	_stem.visible = false
+	_cap.visible = false
+
+
+func _show_visuals(shown: bool) -> void:
+	if _model != null:
+		_model.visible = shown
+		return
+	_stem.visible = shown
+	_cap.visible = shown
 
 
 ## Cap colour comes from the species rarity, so a sunheart reads at a glance.

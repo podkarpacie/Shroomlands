@@ -58,6 +58,7 @@ var _dismissed_level := 0
 
 
 func _ready() -> void:
+	UITheme.install(get_tree().root)
 	visible = false
 	_build_cards()
 	_style()
@@ -252,7 +253,9 @@ func _build_card(id: String, vocation: Dictionary) -> Button:
 	body.add_theme_constant_override("separation", 6)
 	card.add_child(body)
 
-	body.add_child(_label(str(vocation.get("name", id)), accent, 19, "Name"))
+	var name_label := _label(str(vocation.get("name", id)), accent, 19, "Name")
+	name_label.add_theme_font_override("font", UITheme.bold_font())
+	body.add_child(name_label)
 	body.add_child(_label(str(vocation.get("polish", "")), PALETTE["dim"], 14, "Polish"))
 	body.add_child(_label(str(vocation.get("role", "")), PALETTE["text"], 12, "Role"))
 	var description := _label(
@@ -280,6 +283,7 @@ func _label(text: String, color: Color, size: int, node_name := "") -> Label:
 		label.name = node_name
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_override("font", UITheme.regular_font())
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", PALETTE["shadow"])
@@ -326,24 +330,14 @@ func _style_card(id: String, selected: bool) -> void:
 
 func _style() -> void:
 	var panel := $Root/Center/Panel as PanelContainer
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = PALETTE["panel"]
-	panel_style.border_color = PALETTE["border"]
-	panel_style.set_border_width_all(2)
-	panel_style.set_corner_radius_all(12)
-	panel_style.shadow_color = Color(0.0, 0.0, 0.0, 0.45)
-	panel_style.shadow_size = 16
-	panel.add_theme_stylebox_override("panel", panel_style)
+	panel.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(UITheme.PANEL, UITheme.BORDER, 16, 2, 20)
+	)
 
 	_title.text = "Choose your vocation"
-	_title.add_theme_font_size_override("font_size", 26)
-	_title.add_theme_color_override("font_color", PALETTE["text"])
-	_title.add_theme_color_override("font_outline_color", PALETTE["shadow"])
-	_title.add_theme_constant_override("outline_size", 5)
-	_hint.add_theme_font_size_override("font_size", 13)
-	_hint.add_theme_color_override("font_color", PALETTE["dim"])
-	_status.add_theme_font_size_override("font_size", 12)
-	_status.add_theme_color_override("font_color", PALETTE["dim"])
+	UITheme.style_heading(_title, 28, UITheme.TEXT)
+	UITheme.style_label(_hint, 13, UITheme.DIM, 0)
+	UITheme.style_label(_status, 12, UITheme.DIM, 0)
 	_style_button(_confirm_button, true)
 	_style_button(_later_button, false)
 
@@ -364,6 +358,7 @@ func _style_button(button: Button, accent: bool) -> void:
 		elif state == "disabled":
 			style.bg_color = base.darkened(0.4)
 		button.add_theme_stylebox_override(state, style)
+	button.add_theme_font_override("font", UITheme.bold_font())
 	button.add_theme_color_override("font_color", PALETTE["text"])
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_font_size_override("font_size", 15)

@@ -10,7 +10,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 
 ## Status
 
-- 15 headless test suites, **695 assertions**, all green — including a run with a
+- 17 headless test suites, **778 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -27,13 +27,13 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 
 | Spec §10 | Status | What is there |
 | --- | --- | --- |
-| **A. PlayerController** | Done | `CharacterBody3D`, WASD + mouse, sprint, jump, interact (E), HP/stamina/XP/level, third-person spring arm |
+| **A. PlayerController** | Done | `CharacterBody3D`, WASD + mouse, sprint, jump, interact (E), HP/stamina/XP/level, third-person spring arm with wheel zoom; tight acceleration, coyote time, jump buffer, variable jump height, sprint-jump keeps speed |
 | **B. GatheringSystem** | Done | Six mushroom species, gather time, regrow timer (45 s), species discovery/catalogue |
-| **C. InventorySystem** | Done | 6×8 grid, stacking, use/equip/drop, 8-slot hotbar, server-synced mirror |
-| **D. CombatSystem** | Done | Melee raycast/Area3D hitbox, damage, crit, death, respawn, four fungal creatures |
+| **C. InventorySystem** | Done | 6×8 satchel with 3D-rendered item icons, rotating model preview, sorting, drag/drop, 8-slot hotbar, server-synced mirror |
+| **D. CombatSystem** | Done | Box hitbox + enemy hurtboxes, knockback/stagger, crits, hit sparks, camera shake, procedural swing/bite/flinch |
 | **E. PlotSystem** | Done | Six 12 m plots, buy with gold, daily fee settled from wall-clock time (offline included), 3-day expiry, 1 m grid building (hut/farm/workshop/chest), server-authoritative, `user://plots.json` |
 | **F. MultiplayerManager** | Done (ENet + WebSocket) | Host/join, player position sync, vitals sync, inventory sync, roster, global/local chat, server-side validation. ENet for desktop, WebSocket for browsers; one transport per server instance |
-| **G. UI** | Done | HUD (HP, stamina, level, gold, hotbar), inventory, chat, vocation picker, lobby with Host/Join/Port/Settings/Continue |
+| **G. UI** | Done | Themed HUD (vitals, biome, progression, icon hotbar, damage numbers), satchel, chat, build palette, vocation picker, lobby |
 | **H. World** | Done (one biome) | Verdant Bloom placeholder terrain, mushroom nodes, decorative props, plot row, four enemy spawns |
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, position, HP/stamina, inventory. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
@@ -76,7 +76,7 @@ $godot = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 $suites = @(
   'test_lore','test_player','test_inventory','test_gathering','test_ui','test_network',
   'test_chat','test_lobby','test_combat','test_movement_block','test_plots','test_vocation',
-  'test_save','test_sync','test_isolation'
+  'test_save','test_sync','test_isolation','test_models','test_movement'
 )
 foreach ($suite in $suites) {
   & $godot --headless --path . --script "res://tests/$suite.gd"
@@ -84,10 +84,10 @@ foreach ($suite in $suites) {
 }
 ```
 
-Current counts: `test_lore` 65, `test_player` 20, `test_inventory` 29,
-`test_gathering` 38, `test_ui` 46, `test_network` 41, `test_chat` 24, `test_lobby` 81,
-`test_combat` 32, `test_movement_block` 15, `test_plots` 86, `test_vocation` 70,
-`test_save` 58, `test_sync` 68, `test_isolation` 22 — **695 assertions**.
+Current counts: `test_lore` 65, `test_player` 20, `test_inventory` 31,
+`test_gathering` 38, `test_ui` 51, `test_network` 41, `test_chat` 24, `test_lobby` 81,
+`test_combat` 38, `test_movement_block` 15, `test_plots` 86, `test_vocation` 70,
+`test_save` 58, `test_sync` 68, `test_isolation` 22, `test_models` 40, `test_movement` 30 - **778 assertions**.
 
 ### Test isolation
 
@@ -202,7 +202,7 @@ scripts/
   ui/                    HUD, InventoryUI, ChatUI, VocationUI, LobbyUI, BuildMode
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom
 resources/               MultiplayerSynchronizer replication configs
-tests/                   14 headless suites, net_harness, capture_frame, network proofs
+tests/                   17 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
 addons/godot_ai/         editor-only MCP plugin; never exported
@@ -211,9 +211,9 @@ build/                   export output (gitignored)
 
 ## 3D models
 
-Four glTF 2.0 models live in `assets/models/`. Godot has imported all four without errors, but
-**no scene references them yet** — the game still renders primitives (see
-[known gaps](#known-gaps)). Each `.gltf` is self-contained: its buffer and texture are embedded
+Four glTF 2.0 models live in `assets/models/` and the scenes use them (see
+[Wiring them in](#wiring-them-in)). Their Blockbench sources are in `assets/models/source/`
+(`.gdignore`d, so Godot does not import them). Each `.gltf` is self-contained: its buffer and texture are embedded
 as base64, and the sidecar `<name>_0.png` plus the generated `.import` files sit next to it.
 
 | File | Height | Geometry | Contents |
@@ -277,13 +277,56 @@ Commit the four files together: `<name>.gltf`, `<name>.gltf.import`, `<name>_0.p
 
 ### Wiring them in
 
-Nothing calls these files yet. Import each glTF as a scene (`player.gltf` → `player.tscn`,
-`glowcap.gltf` and `emberstem.gltf` → `mushroom_prop.tscn` / `mushroom_node.tscn`,
-`blightling.gltf` → `enemy.tscn`) and replace the primitive mesh children: the `Model` node
-(`Body`, `Cap`, and `EyeL` / `EyeR` in the enemy) in `player.tscn` and `enemy.tscn`, plus the
-`Stem` / `Cap` `MeshInstance3D` nodes in the mushroom scenes. Keep the existing
-`CollisionShape3D`, `MultiplayerSynchronizer` and script nodes untouched — hitboxes, authority
-and vitals depend on them — then re-run all 15 suites (see [Tests](#tests)).
+- **Player** (`player.tscn`) and **blightling** (`enemy.tscn`): the glTF is instanced as
+  `Model/Visual`. `Model` stays the node the controller turns and the enemy shrinks on death.
+  The models face -Z, the game's forward, and stand on the collision capsule.
+- **Enemy hit flash** (`Enemy.gd`): one private material copy per creature, flashed through
+  emission (an albedo tint is invisible on a texture).
+- **Gatherable mushrooms** (`MushroomNode.gd`): a species uses `assets/models/<mushroom_id>.gltf`
+  when that file exists, so a new species only needs its model dropped in. A species without
+  one keeps the primitive stem + cap, tinted by rarity.
+- **Scenery** (`VerdantBloom.gd`): groves of giant glowcap / emberstem plus a ring of far
+  landmarks, drawn as a few `MultiMeshInstance3D` (each model merged into one mesh by
+  `ModelGlow.merge`), so ~125 mushrooms cost a handful of draw calls. No collision, as before.
+- **Glow** (`ModelGlow.gd`): the models have no emissive channel, so the cap pieces (nodes
+  named `cap*` / `glow*`) get a material copy that uses the albedo as emission. Name a cap
+  piece that way in Blockbench and it glows; the environment's bloom does the rest.
+- **Animation** (`LimbAnimator.gd`): the models are rigid cubes, so limbs swing about hip and
+  shoulder pivots taken from each mesh's bounds: walk/run, idle breathing, jump tuck, landing
+  squash, forward lean and a lagging cap. It also overlays transient swing, bite and flinch
+  poses triggered by `CombatSystem` / `Enemy`. It reads movement from position, so remote
+  players and creatures animate too. Name limbs `leg_l`, `leg_r`, `arm_l`, `arm_r`, `hand_l`, `hand_r`.
+- **Club** (`SwingWeapon.gd`): a procedural mycelium club, parented beside the model and
+  following `hand_r` every frame, so it swings with the procedural arm without joining the
+  glTF mesh count.
+
+### UI and item presentation
+
+- `UITheme.gd` installs one runtime theme (Inter, palette, panels, bars, buttons, tooltips) on
+  the root Window. The HUD, satchel, chat, build palette, vocation picker and lobby all read
+  from it, so they cannot drift apart. Inter is SIL Open Font Licensed; the licence text ships
+  in `assets/fonts/OFL.txt`.
+- `ItemVisuals.gd` owns the presentation of every item: a procedural 3D model for resources
+  and the species without a glTF, plus the icon lookup. `tools/render_item_icons.gd` renders
+  those same models into `assets/ui/items/*.png` and `assets/ui/build/*.png`; the satchel's
+  `ItemPreview.gd` rotates the live model in a SubViewport (icons on headless runs).
+- Combat exposes a real `AttackHitbox` (`BoxShape3D`, mask `16 | 32`) and every creature has a
+  `Hurtbox` Area3D on layer 32. Hits apply knockback, stagger, a particle/light burst, camera
+  shake and floating damage numbers.
+
+### Look and feel
+
+- **Lighting** (`verdant_bloom.tscn`): ACES tonemapping, bloom, SSAO and light-shaft volumetric
+  fog on Forward+, a 3/4 sun with soft shadows. SSAO and volumetric fog are Forward+ only; on
+  Compatibility the scene still renders, a little brighter and flatter.
+- **Ground** (`assets/shaders/ground.gdshader`): world-space moss, spore patches and mycelium
+  threads from two noise textures, shared by the plain and the mounds so there are no seams.
+- **Spores**: slow motes in a box that follows the local player.
+
+`tests/test_movement.gd` pins the movement feel: acceleration and braking, the sprint-jump fix,
+coyote time, jump buffer, variable jump height, camera zoom/FOV, limb animation.
+
+`tests/test_models.gd` checks all of the above, including model height, foot position and facing.
 
 ## Known gaps
 
@@ -307,9 +350,8 @@ and vitals depend on them — then re-run all 15 suites (see [Tests](#tests)).
    spec's "Forward+ and a working web export" cannot both be literally true on this
    engine version.
 5. **One biome.** Verdant Bloom is built; the other four biomes exist as lore data only.
-6. **Placeholder art in the scenes.** Four glTF models ship in `assets/models/` (see
-   [3D models](#3d-models)), but no scene references them yet, so characters, mushrooms and
-   creatures still render procedural primitives. One ground mound still z-fights slightly.
+6. **Temporary art.** The four glTF models are stopgaps (see [3D models](#3d-models)); species
+   without a model still render primitives. One ground mound still z-fights slightly.
 7. **No voice chat**, full skill trees, advanced crafting, raids/endgame, factions or the
    full Great Blight story. Vocation choice exists, but the trees behind it do not.
 8. **No server browser or accounts.** Direct host/port only; no authentication, no

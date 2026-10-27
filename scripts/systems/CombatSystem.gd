@@ -1,20 +1,25 @@
 class_name CombatSystem
 extends Node
-## Melee swing for one player: cooldown, stamina cost, a forward sphere cast that
-## only sees enemy bodies, then a crit roll and the damage hand-off.
+## Melee swing for one player: cooldown, stamina cost, a real hitbox query that
+## only sees enemy bodies and enemy hurtboxes, then a crit roll and the damage
+## hand-off.
 ##
 ## Lives under the player body (`Player/CombatSystem`) and reads the body's aim
-## instead of keeping a transform of its own. The cast shape is built in `_ready`
-## from the exports, so `attack_range` stays a single knob.
+## instead of keeping a transform of its own. The `AttackHitbox` Area3D is the
+## authored shape: a box in front of the chest, sized from the exports, queried
+## synchronously on the swing so the hit lands on the same frame the animation
+## starts.
 ##
 ## Multiplayer: the attacking peer evaluates the swing (the server does not
 ## re-simulate it for MVP) and asks the creature for damage; `Enemy.take_damage`
 ## forwards to the enemy's own authority when this peer does not own the body.
 
-## Enemy bodies sit alone on physics layer 5 so a swing can never hit the
-## swinger, another player or a world prop.
+## Enemy bodies sit on layer 5 (bit 16); their hurtboxes on the next free layer
+## (bit 32). The swing query sees both: a body without an authored hurtbox still
+## works, while an enemy with one gets a more forgiving silhouette.
 const ENEMY_LAYER := 16
-const SWING_SPHERE_RADIUS := 0.45
+const HURTBOX_LAYER := 32
+const HIT_LIMIT := 16
 
 @export var attack_range := 2.6
 @export var attack_cooldown := 0.55
@@ -24,15 +29,25 @@ const SWING_SPHERE_RADIUS := 0.45
 @export var crit_chance := 0.15
 @export var crit_multiplier := 2.0
 @export var attack_stamina_cost := 12.0
-## Height above the body origin the swing travels at. The origin sits on the
-## floor (the capsule's half-height is below it) and the placeholder creatures
-## are squat, so the sphere sweeps at waist height and still overlaps them.
-@export var chest_height := 0.5
+## Height above the body origin the hitbox travels at. The origin sits at the
+## capsule centre, so this puts the box across the creature's torso.
+@export var chest_height := 0.60
+## Box hitbox dimensions. Depth is always `attack_range`, so the range knob stays
+## the single source of truth. Heavy swings grow the box slightly.
+@export var hitbox_width := 1.45
+@export var hitbox_height := 1.55
+@export var heavy_hitbox_scale := 1.16
+@export var light_knockback := 2.0
+@export var heavy_knockback := 4.8
+
+## Number of enemies damaged by the last swing, for tests and tooling.
+var last_hit_count := 0
 
 var _body: CharacterBody3D = null
 var _stats: Node = null
 var _aim: Node3D = null
-var _cast: ShapeCast3D = null
+var _hitbox: Area3D = null
+var _hitbox_shape: BoxShape3D = null
 var _cooldown_left := 0.0
 var _rng := RandomNumberGenerator.new()
 
@@ -43,7 +58,7 @@ func _ready() -> void:
 		_stats = _body.get_node_or_null("Stats")
 		_aim = _body.get_node_or_null("CameraPivot") as Node3D
 	_rng.randomize()
-	_build_cast()
+	_build_hitbox()
 
 
 func _physics_process(delta: float) -> void:
@@ -58,7 +73,7 @@ func cooldown_left() -> float:
 ## One swing. False while a cooldown runs, while a modal UI owns the keyboard,
 ## when the player is dead, or when stamina cannot pay for it.
 func try_attack(heavy := false) -> bool:
-	if _cast == null or _body == null or _stats == null:
+	if _hitbox == null or _body == null or _stats == null:
 		return false
 	if _cooldown_left > 0.0:
 		return false
@@ -71,44 +86,92 @@ func try_attack(heavy := false) -> bool:
 	return true
 
 
-func _build_cast() -> void:
-	var sphere := SphereShape3D.new()
-	sphere.radius = SWING_SPHERE_RADIUS
-	_cast = ShapeCast3D.new()
-	_cast.name = "SwingCast"
-	_cast.shape = sphere
-	_cast.collision_mask = ENEMY_LAYER
-	_cast.collide_with_bodies = true
-	_cast.collide_with_areas = false
-	_cast.exclude_parent = false
-	_cast.max_results = 8
-	# Driven by `force_shapecast_update()` on each swing instead of every frame.
-	_cast.enabled = false
-	add_child(_cast)
+func _build_hitbox() -> void:
+	_hitbox_shape = BoxShape3D.new()
+	_hitbox_shape.size = Vector3(hitbox_width, hitbox_height, attack_range)
+	_hitbox = Area3D.new()
+	_hitbox.name = "AttackHitbox"
+	_hitbox.collision_layer = 0
+	_hitbox.collision_mask = ENEMY_LAYER | HURTBOX_LAYER
+	_hitbox.monitoring = false
+	_hitbox.monitorable = false
+	var collision := CollisionShape3D.new()
+	collision.name = "Shape"
+	collision.shape = _hitbox_shape
+	_hitbox.add_child(collision)
+	add_child(_hitbox)
 
 
 func _swing(heavy: bool) -> void:
-	var origin := _body.global_position + Vector3(0.0, chest_height, 0.0)
-	_cast.global_transform = Transform3D(Basis.IDENTITY, origin)
-	_cast.target_position = _facing() * attack_range
-	_cast.force_shapecast_update()
+	last_hit_count = 0
+	var forward := _facing()
+	var scale := heavy_hitbox_scale if heavy else 1.0
+	var depth := attack_range * scale
+	_hitbox_shape.size = Vector3(hitbox_width * scale, hitbox_height * scale, depth)
+	var centre := (
+		_body.global_position
+		+ Vector3.UP * chest_height
+		+ forward * (depth * 0.5)
+	)
+	_hitbox.global_transform = Transform3D(Basis.looking_at(forward, Vector3.UP), centre)
 
-	var base_damage := heavy_damage if heavy else light_damage
+	# The swing animation starts even on a miss; damage is resolved immediately
+	# so the HP bar and the arm never lie about what happened.
+	var animator := _body.get_node_or_null("Animator")
+	if animator != null and animator.has_method(&"play_attack"):
+		animator.call(&"play_attack", heavy)
+
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _hitbox_shape
+	query.transform = _hitbox.global_transform
+	query.collision_mask = ENEMY_LAYER | HURTBOX_LAYER
+	query.collide_with_bodies = true
+	query.collide_with_areas = true
+	query.exclude = [_body.get_rid()]
+	var results: Array[Dictionary] = []
+	if _body.is_inside_tree():
+		results = _body.get_world_3d().direct_space_state.intersect_shape(query, HIT_LIMIT)
+
 	var struck := {}
-	for index in _cast.get_collision_count():
-		var enemy := _cast.get_collider(index) as Node
-		if enemy == null or not enemy.is_in_group(&"enemy"):
+	for result: Dictionary in results:
+		var enemy := _enemy_from(result.get("collider") as Object)
+		if enemy == null or bool(enemy.get("dead")):
 			continue
 		var id := enemy.get_instance_id()
 		if struck.has(id):
 			continue
 		struck[id] = true
 		var is_crit := _rng.randf() < crit_chance
-		var amount := base_damage * (crit_multiplier if is_crit else 1.0)
+		var amount := (heavy_damage if heavy else light_damage) * (
+			crit_multiplier if is_crit else 1.0
+		)
 		if enemy.has_method(&"take_damage"):
 			# The creature emits `EventBus.enemy_hit` when it applies the loss,
 			# so a hit is reported exactly once whichever system caused it.
-			enemy.call(&"take_damage", amount, is_crit, _body)
+			enemy.call(
+				&"take_damage",
+				amount,
+				is_crit,
+				_body,
+				forward,
+				heavy
+			)
+		_spawn_hit_spark(enemy as Node3D, is_crit)
+		last_hit_count += 1
+
+	if last_hit_count > 0:
+		if _body.has_method(&"add_camera_shake"):
+			_body.call(&"add_camera_shake", 0.16 if heavy else 0.09)
+
+
+## Walks up from a body or Area3D collider to the creature that owns it.
+func _enemy_from(collider: Object) -> Node:
+	var node := collider as Node
+	while node != null:
+		if node.is_in_group(&"enemy"):
+			return node
+		node = node.get_parent()
+	return null
 
 
 ## The body root never yaws (only `Model` turns), so the camera pivot is the
@@ -125,3 +188,60 @@ func _facing() -> Vector3:
 func _ui_blocked() -> bool:
 	# The controller owns the flag; a body without one is never blocked.
 	return "ui_blocking" in _body and bool(_body.get(&"ui_blocking"))
+
+
+## A short additive burst at the wound. CPUParticles (rather than GPU) keeps it
+## working on the Compatibility/WebGL2 web build too.
+func _spawn_hit_spark(enemy: Node3D, is_crit: bool) -> void:
+	if enemy == null or not enemy.is_inside_tree():
+		return
+	var world := _body.get_parent()
+	if world == null:
+		return
+	var tint := Color(1.0, 0.58, 0.18) if is_crit else Color(0.98, 0.86, 0.42)
+	var spark := CPUParticles3D.new()
+	spark.name = "HitSpark"
+	spark.one_shot = true
+	spark.amount = 14 if is_crit else 9
+	spark.lifetime = 0.34
+	spark.explosiveness = 0.92
+	spark.direction = Vector3.UP
+	spark.spread = 180.0
+	spark.initial_velocity_min = 1.3
+	spark.initial_velocity_max = 3.4
+	spark.gravity = Vector3(0.0, -5.0, 0.0)
+	spark.scale_amount_min = 0.5
+	spark.scale_amount_max = 1.25
+	var fleck := SphereMesh.new()
+	fleck.radius = 0.035
+	fleck.height = 0.07
+	fleck.radial_segments = 6
+	fleck.rings = 3
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.albedo_color = tint
+	material.emission_enabled = true
+	material.emission = tint
+	material.emission_energy_multiplier = 2.0
+	fleck.material = material
+	spark.mesh = fleck
+	world.add_child(spark)
+	spark.global_position = enemy.global_position + Vector3.UP * 0.78
+	spark.emitting = true
+
+	var flash := OmniLight3D.new()
+	flash.name = "Flash"
+	flash.light_color = tint
+	flash.light_energy = 2.2
+	flash.omni_range = 2.4
+	spark.add_child(flash)
+	var fade := spark.create_tween()
+	fade.tween_property(flash, "light_energy", 0.0, 0.22)
+
+	var timer := get_tree().create_timer(0.9)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(spark):
+			spark.queue_free()
+	)

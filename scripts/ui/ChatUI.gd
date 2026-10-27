@@ -35,6 +35,7 @@ var _subscriptions: Array[Dictionary] = []
 
 
 func _ready() -> void:
+	UITheme.install(get_tree().root)
 	_style()
 	_log_panel.visible = false
 	_input_panel.visible = false
@@ -249,12 +250,17 @@ func _set_mouse_captured(value: bool) -> void:
 
 
 func _style() -> void:
-	for panel: PanelContainer in [_log_panel, _input_panel]:
-		var style := StyleBoxFlat.new()
-		style.bg_color = PALETTE["panel"]
-		style.set_corner_radius_all(6)
-		style.set_content_margin_all(8)
-		panel.add_theme_stylebox_override("panel", style)
-	_log.add_theme_font_size_override("normal_font_size", 12)
-	_log.add_theme_color_override("default_color", PALETTE["text"])
-	_input.add_theme_font_size_override("font_size", 12)
+	_log_panel.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(UITheme.PANEL_DEEP, UITheme.BORDER_DIM, 10, 1, 10)
+	)
+	_input_panel.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(UITheme.PANEL, UITheme.BORDER, 10, 1, 8)
+	)
+	_log.add_theme_font_override("normal_font", UITheme.regular_font())
+	_log.add_theme_font_size_override("normal_font_size", 13)
+	_log.add_theme_constant_override("line_separation", 3)
+	_log.add_theme_color_override("default_color", UITheme.TEXT)
+	_input.add_theme_font_override("font", UITheme.regular_font())
+	_input.add_theme_font_size_override("font_size", 13)
+	_input.add_theme_color_override("font_color", UITheme.TEXT)
+	_input.add_theme_color_override("font_placeholder_color", UITheme.FAINT)

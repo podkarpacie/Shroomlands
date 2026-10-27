@@ -43,9 +43,10 @@ var _target_ok := false
 
 
 func _ready() -> void:
+	UITheme.install(get_tree().root)
 	_palette.visible = false
-	_style()
 	_build_palette()
+	_style()
 	_build_ghost()
 
 
@@ -111,7 +112,14 @@ func _build_palette() -> void:
 		button.button_group = _button_group
 		button.button_pressed = item == _selected
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.text = "%s · %d g" % [String(item).capitalize(), _cost(item)]
+		button.custom_minimum_size = Vector2(0.0, 46.0)
+		button.icon = ItemVisuals.icon(item)
+		button.expand_icon = false
+		button.add_theme_constant_override("icon_max_width", 32)
+		button.add_theme_constant_override("h_separation", 10)
+		button.text = "%s    %d g" % [
+			ItemVisuals.display_name(String(item)), _cost(item)
+		]
 		button.pressed.connect(_select_item.bind(item))
 		_items.add_child(button)
 
@@ -247,17 +255,14 @@ func _box(size: Vector3) -> BoxMesh:
 
 
 func _style() -> void:
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = PALETTE["panel"]
-	panel.border_color = PALETTE["border"]
-	panel.set_border_width_all(2)
-	panel.set_corner_radius_all(8)
-	panel.content_margin_left = 12.0
-	panel.content_margin_right = 12.0
-	panel.content_margin_top = 10.0
-	panel.content_margin_bottom = 10.0
-	_palette.add_theme_stylebox_override("panel", panel)
-	_title.add_theme_color_override("font_color", PALETTE["text"])
-	_title.add_theme_font_size_override("font_size", 16)
-	_hint.add_theme_color_override("font_color", PALETTE["dim"])
-	_hint.add_theme_font_size_override("font_size", 11)
+	_palette.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(UITheme.PANEL, UITheme.BORDER, 12, 2, 14)
+	)
+	UITheme.style_heading(_title, 20, UITheme.ACCENT)
+	UITheme.style_label(_hint, 11, UITheme.DIM, 0)
+	for child in _items.get_children():
+		if child is Button:
+			UITheme.style_button(child as Button, false)
+			var button := child as Button
+			button.add_theme_font_size_override("font_size", 13)
+			button.add_theme_constant_override("icon_max_width", 32)

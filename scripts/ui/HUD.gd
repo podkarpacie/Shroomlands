@@ -6,14 +6,10 @@ extends CanvasLayer
 ## frame is seeded from the live player components so it is already correct
 ## before any signal fires. Gameplay never references this node.
 
-const HOTBAR_NAME_CHARS := 7
+const HOTBAR_NAME_CHARS := 18
 const SLOT_SIZE := 48
-## Inner margin for slot labels so text never touches the slot border.
-const SLOT_LABEL_MARGIN := 3
-## Red edge frame that fades out after a hit. Edge-only on purpose: a
-## screen-wide wash hurts readability, so the middle stays clear.
 const DAMAGE_FLASH_SECONDS := 0.35
-const DAMAGE_FLASH_ALPHA := 0.35
+const DAMAGE_FLASH_ALPHA := 0.38
 ## Vignette texture: a small frame stretched over the screen. Transparent up to
 ## VIGNETTE_INNER of each half-extent — the middle 70 % of the frame — and
 ## opaque on the border, where the modulate alpha above sets the real strength.
@@ -21,47 +17,34 @@ const VIGNETTE_SIZE := Vector2i(256, 144)
 const VIGNETTE_INNER := 0.70
 ## How long the "You died" screen holds before the body respawns.
 const DEATH_OVERLAY_SECONDS := 2.5
-## Crosshair tint after a landed hit, back to normal within this window.
-const HIT_FLASH_SECONDS := 0.22
 ## How often the plot status line re-reads the player's position.
 const PLOT_STATUS_INTERVAL := 0.25
 ## How long a toast stays on screen.
 const TOAST_SECONDS := 2.6
 const SECONDS_PER_HOUR := 3600.0
 
-const PALETTE := {
-	"text": Color(0.92, 0.94, 0.88),
-	"text_dim": Color(0.66, 0.71, 0.60),
-	"gold": Color(0.96, 0.80, 0.30),
-	"plot": Color(0.70, 0.86, 0.46),
-	"hp_fill": Color(0.80, 0.17, 0.18),
-	"stamina_fill": Color(0.72, 0.84, 0.22),
-	"xp_fill": Color(0.38, 0.70, 1.00),
-	"bar_track": Color(0.06, 0.07, 0.05, 0.85),
-	"slot": Color(0.07, 0.08, 0.06, 0.88),
-	"slot_border": Color(0.30, 0.36, 0.24, 0.90),
-	"slot_active": Color(0.98, 0.83, 0.32),
-	"crosshair": Color(0.97, 0.98, 0.92, 0.85),
-	"prompt": Color(0.97, 0.98, 0.92),
-	"shadow": Color(0.0, 0.0, 0.0, 0.75),
-	"damage": Color(0.85, 0.06, 0.05),
-	"hit": Color(0.98, 0.86, 0.36),
-	"crit": Color(1.0, 0.55, 0.16),
-	"death": Color(0.14, 0.02, 0.03, 0.72),
-}
-
+@onready var _vitals_backdrop: Panel = $Root/VitalsBackdrop
+@onready var _progression_backdrop: Panel = $Root/ProgressionBackdrop
+@onready var _hotbar_backdrop: Panel = $Root/HotbarBackdrop
+@onready var _prompt_backdrop: Panel = $Root/PromptBackdrop
+@onready var _gather_backdrop: Panel = $Root/GatherBackdrop
+@onready var _plot_backdrop: Panel = $Root/PlotBackdrop
 @onready var _hp_label: Label = $Root/Vitals/HPLabel
 @onready var _hp_bar: ProgressBar = $Root/Vitals/HPBar
 @onready var _stamina_bar: ProgressBar = $Root/Vitals/StaminaBar
+@onready var _stamina_value: Label = $Root/Vitals/StaminaValue
 @onready var _level_label: Label = $Root/Progression/LevelLabel
+@onready var _biome_label: Label = $Root/Progression/BiomeLabel
 @onready var _xp_bar: ProgressBar = $Root/Progression/XPBar
+@onready var _xp_value: Label = $Root/Progression/XPValue
 @onready var _gold_label: Label = $Root/Progression/GoldLabel
 @onready var _vocation_button: Button = $Root/Progression/VocationButton
-@onready var _crosshair: ColorRect = $Root/Crosshair
+@onready var _crosshair: Control = $Root/Crosshair
 @onready var _prompt_label: Label = $Root/InteractionPrompt
 @onready var _gather_box: VBoxContainer = $Root/GatherBox
 @onready var _gather_label: Label = $Root/GatherBox/GatherLabel
 @onready var _gather_bar: ProgressBar = $Root/GatherBox/GatherBar
+@onready var _selected_item: Label = $Root/SelectedItem
 @onready var _hotbar: HBoxContainer = $Root/Hotbar
 @onready var _plot_status: Label = $Root/PlotStatus
 
@@ -71,19 +54,23 @@ var _selected := 0
 var _subscriptions: Array[Dictionary] = []
 var _slot_panels: Array[PanelContainer] = []
 var _slot_styles: Array[StyleBoxFlat] = []
+var _slot_icons: Array[TextureRect] = []
 var _slot_names: Array[Label] = []
 var _slot_counts: Array[Label] = []
+var _slot_keys: Array[Label] = []
+var _slot_rarity: Array[ColorRect] = []
+var _selection_tween: Tween = null
 
 ## Last HP seen, so only a *drop* flashes the screen.
 var _last_hp := -1.0
 ## Last level seen, so the vocation suffix can be rebuilt from either signal.
 var _level := 1
 var _damage_flash: TextureRect = null
+var _damage_layer: Control = null
 var _death_overlay: ColorRect = null
 var _death_timer: Timer = null
 var _damage_flash_left := 0.0
-var _hit_flash_left := 0.0
-var _hit_flash_color := Color.WHITE
+var _toast_panel: PanelContainer = null
 var _toast_label: Label = null
 var _toast_timer: Timer = null
 var _plot_system_ref: Node = null
@@ -91,6 +78,7 @@ var _plot_status_left := 0.0
 
 
 func _ready() -> void:
+	UITheme.install(get_tree().root)
 	_build_hotbar()
 	_style_static_nodes()
 	_build_feedback_nodes()
@@ -105,14 +93,20 @@ func _process(delta: float) -> void:
 		var tint := _damage_flash.modulate
 		tint.a = DAMAGE_FLASH_ALPHA * (_damage_flash_left / DAMAGE_FLASH_SECONDS)
 		_damage_flash.modulate = tint
-	if _hit_flash_left > 0.0:
-		_hit_flash_left = maxf(_hit_flash_left - delta, 0.0)
-		var base: Color = PALETTE["crosshair"]
-		_crosshair.color = base.lerp(_hit_flash_color, _hit_flash_left / HIT_FLASH_SECONDS)
 	_plot_status_left = maxf(_plot_status_left - delta, 0.0)
 	if _plot_status_left <= 0.0:
 		_plot_status_left = PLOT_STATUS_INTERVAL
 		_refresh_plot_status()
+	# A low-HP heartbeat on the vitality card: subtle, no number flicker.
+	var ratio := 1.0
+	if _last_hp >= 0.0 and _hp_bar.max_value > 0.0:
+		ratio = _last_hp / _hp_bar.max_value
+	var pulse := 0.0
+	if ratio < 0.30 and ratio > 0.0 and _vitals_backdrop != null:
+		pulse = (sin(Time.get_ticks_msec() * 0.012) * 0.5 + 0.5) * 0.35
+		_vitals_backdrop.modulate = Color(1.0, 1.0 - pulse * 0.10, 1.0 - pulse * 0.10, 1.0)
+	else:
+		_vitals_backdrop.modulate = Color.WHITE
 
 
 func _exit_tree() -> void:
@@ -152,127 +146,186 @@ func _set_selected(index: int) -> void:
 	if _slot_styles.is_empty():
 		return
 	_selected = clampi(index, 0, _slot_styles.size() - 1)
+	if _selection_tween != null and _selection_tween.is_valid():
+		_selection_tween.kill()
+	_selection_tween = create_tween().set_parallel(true)
 	for slot_index in _slot_styles.size():
 		var style := _slot_styles[slot_index]
-		style.border_color = (
-			PALETTE["slot_active"] if slot_index == _selected else PALETTE["slot_border"]
+		var filled := _slot_item_id(slot_index) != &""
+		var rarity := ItemVisuals.color(String(_slot_item_id(slot_index))) if filled else UITheme.BORDER_DIM
+		style.bg_color = (
+			Color(0.15, 0.20, 0.11, 0.98) if slot_index == _selected
+			else Color(0.065, 0.085, 0.060, 0.94)
 		)
-		style.bg_color = PALETTE["slot"]
+		style.border_color = UITheme.ACCENT if slot_index == _selected else (rarity if filled else UITheme.BORDER_DIM)
+		style.set_border_width_all(2 if slot_index == _selected else 1)
+		style.shadow_color = Color(UITheme.ACCENT, 0.32) if slot_index == _selected else Color(0, 0, 0, 0)
+		style.shadow_size = 8 if slot_index == _selected else 0
+		_selection_tween.tween_property(
+			_slot_panels[slot_index],
+			"scale",
+			Vector2.ONE * (1.075 if slot_index == _selected else 1.0),
+			0.12
+		).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_update_selected_label()
 
 
-## Hotbar slots are built in code: eight identical cells with a name, a stack
-## count and a border that lights up on the selected slot.
+## Eight cells with an item icon, a key number, a stack badge and a rarity bar.
+## The NameLabel is kept (and kept current) for accessibility and the UI contract,
+## but the icon is what carries the slot at 48 px.
 func _build_hotbar() -> void:
 	for index in Game.HOTBAR_SLOTS:
 		var slot := PanelContainer.new()
 		slot.name = "Slot%d" % index
 		slot.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var style := StyleBoxFlat.new()
-		style.bg_color = PALETTE["slot"]
-		style.border_color = PALETTE["slot_border"]
-		style.set_border_width_all(2)
-		style.set_corner_radius_all(6)
+		slot.pivot_offset = Vector2(SLOT_SIZE, SLOT_SIZE) * 0.5
+		var style := UITheme.slot_style()
 		slot.add_theme_stylebox_override("panel", style)
 
+		# PanelContainer lays out every direct child to fill the cell. All the
+		# layered slot art therefore lives in one free-positioned overlay.
 		var overlay := Control.new()
-		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.name = "Overlay"
 		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(overlay)
 
-		var name_margin := MarginContainer.new()
-		name_margin.name = "NameMargin"
-		name_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		name_margin.offset_bottom = -12.0
-		name_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		name_margin.add_theme_constant_override("margin_left", SLOT_LABEL_MARGIN)
-		name_margin.add_theme_constant_override("margin_right", SLOT_LABEL_MARGIN)
-		name_margin.add_theme_constant_override("margin_top", 2)
-		overlay.add_child(name_margin)
+		var icon := TextureRect.new()
+		icon.name = "Icon"
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = 7.0
+		icon.offset_top = 5.0
+		icon.offset_right = -7.0
+		icon.offset_bottom = -11.0
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(icon)
 
-		# `clip_text` stays off: a centered name one pixel wider than its box
-		# would otherwise lose part of its first glyph on the left (Venomveil
-		# rendered as "/enomve…"). The margin keeps the text off the border.
+		var key := Label.new()
+		key.name = "KeyLabel"
+		key.text = str(index + 1)
+		key.position = Vector2(4.0, 1.0)
+		key.size = Vector2(14.0, 12.0)
+		key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		key.add_theme_font_override("font", UITheme.regular_font())
+		key.add_theme_font_size_override("font_size", 9)
+		key.add_theme_color_override("font_color", UITheme.FAINT)
+		key.add_theme_color_override("font_outline_color", UITheme.SHADOW)
+		key.add_theme_constant_override("outline_size", 2)
+		overlay.add_child(key)
+
+		var count := Label.new()
+		count.name = "CountLabel"
+		count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		count.offset_left = 12.0
+		count.offset_top = 25.0
+		count.offset_right = -4.0
+		count.offset_bottom = -2.0
+		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		count.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		count.add_theme_font_override("font", UITheme.bold_font())
+		count.add_theme_font_size_override("font_size", 11)
+		count.add_theme_color_override("font_color", UITheme.TEXT)
+		count.add_theme_color_override("font_outline_color", UITheme.SHADOW)
+		count.add_theme_constant_override("outline_size", 3)
+		overlay.add_child(count)
+
 		var name_label := Label.new()
 		name_label.name = "NameLabel"
+		name_label.visible = false
+		name_label.position = Vector2(2.0, 2.0)
+		name_label.size = Vector2(SLOT_SIZE - 4.0, 44.0)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_label.clip_text = false
 		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		name_label.add_theme_font_size_override("font_size", 9)
-		name_label.add_theme_color_override("font_color", PALETTE["text"])
-		name_margin.add_child(name_label)
+		name_label.add_theme_font_size_override("font_size", 8)
+		overlay.add_child(name_label)
 
-		var count_label := Label.new()
-		count_label.name = "CountLabel"
-		count_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		count_label.offset_left = 12.0
-		count_label.offset_top = 20.0
-		count_label.offset_right = -4.0
-		count_label.offset_bottom = -2.0
-		count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		count_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-		count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		count_label.add_theme_font_size_override("font_size", 10)
-		count_label.add_theme_color_override("font_color", PALETTE["text_dim"])
-		overlay.add_child(count_label)
+		var rarity := ColorRect.new()
+		rarity.name = "RarityBar"
+		rarity.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		rarity.offset_left = 5.0
+		rarity.offset_top = -3.0
+		rarity.offset_right = -5.0
+		rarity.offset_bottom = -1.0
+		rarity.color = Color(0, 0, 0, 0)
+		rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(rarity)
+		overlay.move_child(rarity, 0)
 
 		_hotbar.add_child(slot)
 		_slot_panels.append(slot)
 		_slot_styles.append(style)
+		_slot_icons.append(icon)
 		_slot_names.append(name_label)
-		_slot_counts.append(count_label)
+		_slot_counts.append(count)
+		_slot_keys.append(key)
+		_slot_rarity.append(rarity)
 	_set_selected(0)
 
 
 func _style_static_nodes() -> void:
-	_style_bar(_hp_bar, PALETTE["hp_fill"], 8)
-	_style_bar(_stamina_bar, PALETTE["stamina_fill"], 5)
-	_style_bar(_xp_bar, PALETTE["xp_fill"], 3)
-	_style_bar(_gather_bar, PALETTE["stamina_fill"], 6)
-	_style_outlined_label(_hp_label, PALETTE["text"], 14)
-	_style_outlined_label(_level_label, PALETTE["text"], 18)
-	_style_outlined_label(_gold_label, PALETTE["gold"], 15)
-	_style_outlined_label(_prompt_label, PALETTE["prompt"], 16)
-	_style_outlined_label(_gather_label, PALETTE["text_dim"], 12)
-	_style_outlined_label(_plot_status, PALETTE["plot"], 14)
-	_style_vocation_button()
-	_crosshair.color = PALETTE["crosshair"]
+	_vitals_backdrop.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(UITheme.PANEL, UITheme.BORDER_DIM, 14, 1, 12)
+	)
+	_progression_backdrop.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(UITheme.PANEL, UITheme.BORDER_DIM, 14, 1, 12)
+	)
+	_hotbar_backdrop.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(Color(0.04, 0.055, 0.038, 0.92), UITheme.BORDER_DIM, 14, 1, 12)
+	)
+	_prompt_backdrop.add_theme_stylebox_override(
+		"panel", UITheme.pill_style(UITheme.PANEL_DEEP, UITheme.BORDER_DIM, 14)
+	)
+	_gather_backdrop.add_theme_stylebox_override(
+		"panel", UITheme.pill_style(UITheme.PANEL, UITheme.BORDER_DIM, 14)
+	)
+	_plot_backdrop.add_theme_stylebox_override(
+		"panel", UITheme.pill_style(UITheme.PANEL, UITheme.BORDER_DIM, 10)
+	)
+
+	UITheme.style_bar(_hp_bar, UITheme.HP, 8)
+	UITheme.style_bar(_stamina_bar, UITheme.STAMINA, 5)
+	UITheme.style_bar(_xp_bar, UITheme.XP, 3)
+	UITheme.style_bar(_gather_bar, UITheme.STAMINA, 6)
+
+	var vitals_title := $Root/Vitals/VitalsTitle as Label
+	UITheme.style_label(vitals_title, 10, UITheme.ACCENT_SOFT, 2)
+	vitals_title.text = "VITALITY"
+	UITheme.style_heading(_hp_label, 16, UITheme.TEXT)
+	UITheme.style_label(_stamina_value, 9, UITheme.DIM, 0)
+	UITheme.style_heading(_level_label, 20, UITheme.TEXT)
+	UITheme.style_label(_biome_label, 9, UITheme.ACCENT_SOFT, 0)
+	UITheme.style_label(_xp_value, 10, UITheme.DIM, 0)
+	UITheme.style_heading(_gold_label, 15, UITheme.GOLD)
+	UITheme.style_label(_prompt_label, 16, UITheme.TEXT, 4)
+	UITheme.style_label(_gather_label, 12, UITheme.ACCENT_SOFT, 3)
+	UITheme.style_label(_plot_status, 13, UITheme.ACCENT_SOFT, 2)
+	UITheme.style_label(_selected_item, 14, UITheme.TEXT, 4)
 	_prompt_label.visible = false
+	_prompt_backdrop.visible = false
 	_gather_box.visible = false
 	_gather_bar.visible = false
+	_gather_backdrop.visible = false
 	_plot_status.visible = false
+	_plot_backdrop.visible = false
+	_style_vocation_button()
+	if _crosshair != null and _crosshair.has_method(&"set_spread"):
+		_crosshair.call(&"set_spread", 0.0)
 
 
-func _style_bar(bar: ProgressBar, fill: Color, radius: int) -> void:
-	var track := StyleBoxFlat.new()
-	track.bg_color = PALETTE["bar_track"]
-	track.set_corner_radius_all(radius)
-	var filled := StyleBoxFlat.new()
-	filled.bg_color = fill
-	filled.set_corner_radius_all(radius)
-	bar.add_theme_stylebox_override("background", track)
-	bar.add_theme_stylebox_override("fill", filled)
-	bar.show_percentage = false
-
-
-func _style_outlined_label(label: Label, color: Color, size: int) -> void:
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", PALETTE["shadow"])
-	label.add_theme_constant_override("outline_size", 4)
-	label.add_theme_font_size_override("font_size", size)
-
-
-## The unlock hint is a borderless button: normally it only points at the V key,
-## but a click asks the modal to open as well.
 func _style_vocation_button() -> void:
 	var empty := StyleBoxEmpty.new()
 	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
 		_vocation_button.add_theme_stylebox_override(state, empty)
-	_vocation_button.add_theme_color_override("font_color", PALETTE["text_dim"])
-	_vocation_button.add_theme_color_override("font_hover_color", PALETTE["gold"])
-	_vocation_button.add_theme_color_override("font_pressed_color", PALETTE["gold"])
-	_vocation_button.add_theme_color_override("font_outline_color", PALETTE["shadow"])
+	_vocation_button.add_theme_font_override("font", UITheme.regular_font())
+	_vocation_button.add_theme_color_override("font_color", UITheme.DIM)
+	_vocation_button.add_theme_color_override("font_hover_color", UITheme.AMBER)
+	_vocation_button.add_theme_color_override("font_pressed_color", UITheme.AMBER)
+	_vocation_button.add_theme_color_override("font_outline_color", UITheme.SHADOW)
 	_vocation_button.add_theme_constant_override("outline_size", 3)
 	_vocation_button.add_theme_font_size_override("font_size", 11)
 	_vocation_button.alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -280,8 +333,6 @@ func _style_vocation_button() -> void:
 	_vocation_button.visible = false
 
 
-## The damage vignette and the death screen are built in code: both are pure
-## view state of this script, so they stay out of the static HUD layout.
 func _build_feedback_nodes() -> void:
 	var root := $Root as Control
 	_damage_flash = TextureRect.new()
@@ -297,26 +348,46 @@ func _build_feedback_nodes() -> void:
 	# the numbers the player needs to read during a fight.
 	root.move_child(_damage_flash, 0)
 
+	# A dedicated layer keeps floating numbers above the HUD but below the death
+	# screen, so a stale number cannot float over "YOU DIED".
+	_damage_layer = Control.new()
+	_damage_layer.name = "DamageNumbers"
+	_damage_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_damage_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_damage_layer)
+
 	_death_overlay = ColorRect.new()
 	_death_overlay.name = "DeathOverlay"
-	_death_overlay.color = PALETTE["death"]
+	_death_overlay.color = Color(0.11, 0.012, 0.022, 0.78)
 	_death_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_death_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_death_overlay.visible = false
 	root.add_child(_death_overlay)
 
+	var death_box := VBoxContainer.new()
+	death_box.name = "DeathContent"
+	death_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	death_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	death_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	death_box.add_theme_constant_override("separation", 8)
+	_death_overlay.add_child(death_box)
+
 	var label := Label.new()
 	label.name = "DeathLabel"
-	label.text = "You died"
-	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.text = "YOU DIED"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 64)
-	label.add_theme_color_override("font_color", PALETTE["text"])
-	label.add_theme_color_override("font_outline_color", PALETTE["shadow"])
-	label.add_theme_constant_override("outline_size", 8)
-	_death_overlay.add_child(label)
+	UITheme.style_heading(label, 58, Color(0.96, 0.48, 0.38))
+	label.add_theme_constant_override("outline_size", 10)
+	death_box.add_child(label)
+
+	var sub := Label.new()
+	sub.name = "DeathSub"
+	sub.text = "The Mycelium pulls you back to the bloom…"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(sub, 16, UITheme.DIM, 4)
+	death_box.add_child(sub)
 
 	_death_timer = Timer.new()
 	_death_timer.name = "DeathTimer"
@@ -325,21 +396,27 @@ func _build_feedback_nodes() -> void:
 	_death_timer.timeout.connect(_on_death_screen_timeout)
 	add_child(_death_timer)
 
-	# Transient feedback (plot bought/expired, build refused) sits under the
-	# progression block, centred, so it never covers the interaction prompt.
+	_toast_panel = PanelContainer.new()
+	_toast_panel.name = "ToastPanel"
+	_toast_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_toast_panel.offset_left = -330.0
+	_toast_panel.offset_top = 92.0
+	_toast_panel.offset_right = 330.0
+	_toast_panel.offset_bottom = 134.0
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast_panel.visible = false
+	_toast_panel.add_theme_stylebox_override(
+		"panel", UITheme.pill_style(UITheme.PANEL, UITheme.BORDER, 14)
+	)
+	root.add_child(_toast_panel)
+
 	_toast_label = Label.new()
 	_toast_label.name = "Toast"
-	_toast_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_toast_label.offset_left = -360.0
-	_toast_label.offset_top = 96.0
-	_toast_label.offset_right = 360.0
-	_toast_label.offset_bottom = 128.0
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast_label.visible = false
-	_style_outlined_label(_toast_label, PALETTE["gold"], 18)
-	root.add_child(_toast_label)
+	UITheme.style_label(_toast_label, 15, UITheme.AMBER, 4)
+	_toast_panel.add_child(_toast_label)
 
 	_toast_timer = Timer.new()
 	_toast_timer.name = "ToastTimer"
@@ -350,18 +427,14 @@ func _build_feedback_nodes() -> void:
 
 
 ## Edge-only vignette: strongest at the border and fully transparent across the
-## middle 70 % of the screen, so a hit never tints the whole frame red. The
-## frame is drawn under the HUD text, so vitals stay readable while it fades.
+## middle 70 % of the screen, so a hit never tints the whole frame red.
 func _vignette_texture() -> ImageTexture:
-	var tint: Color = PALETTE["damage"]
+	var tint: Color = UITheme.HP
 	var image := Image.create_empty(VIGNETTE_SIZE.x, VIGNETTE_SIZE.y, false, Image.FORMAT_RGBA8)
 	for y in VIGNETTE_SIZE.y:
 		var ny := (float(y) + 0.5) / float(VIGNETTE_SIZE.y) * 2.0 - 1.0
 		for x in VIGNETTE_SIZE.x:
 			var nx := (float(x) + 0.5) / float(VIGNETTE_SIZE.x) * 2.0 - 1.0
-			# Chebyshev distance: 0 at the centre, 1 on any border, so the
-			# transparent hole matches the screen's middle rather than a
-			# circle that the non-uniform stretch would turn into an ellipse.
 			var edge := maxf(absf(nx), absf(ny))
 			image.set_pixel(x, y, Color(tint, smoothstep(VIGNETTE_INNER, 1.0, edge)))
 	return ImageTexture.create_from_image(image)
@@ -375,6 +448,9 @@ func _flash_damage() -> void:
 
 func _apply_initial_state() -> void:
 	_gold_label.text = "Gold %d" % Game.gold
+	var biome := Lore.get_biome(String(Game.current_biome))
+	if _biome_label != null:
+		_biome_label.text = str(biome.get("name", "Verdant Bloom")).to_upper()
 	_xp_bar.max_value = Game.xp_to_level(1)
 	_xp_bar.value = 0.0
 	_bind_player()
@@ -454,6 +530,8 @@ func _on_hp_changed(current: float, max_hp: float) -> void:
 	_hp_bar.max_value = maxf(max_hp, 1.0)
 	_hp_bar.value = clampf(current, 0.0, _hp_bar.max_value)
 	_hp_label.text = "HP %d/%d" % [roundi(current), roundi(max_hp)]
+	var ratio := current / maxf(max_hp, 1.0)
+	UITheme.style_bar(_hp_bar, UITheme.HP_BRIGHT if ratio < 0.30 else UITheme.HP, 8)
 	if _last_hp >= 0.0 and current < _last_hp - 0.001:
 		_flash_damage()
 	_last_hp = current
@@ -467,11 +545,13 @@ func _on_hp_changed(current: float, max_hp: float) -> void:
 func _on_stamina_changed(current: float, max_stamina: float) -> void:
 	_stamina_bar.max_value = maxf(max_stamina, 1.0)
 	_stamina_bar.value = clampf(current, 0.0, _stamina_bar.max_value)
+	_stamina_value.text = "STAMINA  %d / %d" % [roundi(current), roundi(max_stamina)]
 
 
 func _on_xp_changed(current: int, needed: int) -> void:
 	_xp_bar.max_value = maxi(needed, 1)
 	_xp_bar.value = clampi(current, 0, int(_xp_bar.max_value))
+	_xp_value.text = "XP  %d / %d" % [current, needed]
 
 
 func _on_level_changed(new_level: int) -> void:
@@ -535,24 +615,69 @@ func _on_gather_finished(_mushroom_id: String) -> void:
 func _set_gather_visible(value: bool) -> void:
 	_gather_box.visible = value
 	_gather_bar.visible = value
+	_gather_backdrop.visible = value
 
 
 func _on_interaction_prompt_changed(text: String) -> void:
 	_prompt_label.text = text
-	_prompt_label.visible = not text.strip_edges().is_empty()
+	var visible := not text.strip_edges().is_empty()
+	_prompt_label.visible = visible
+	_prompt_backdrop.visible = visible
 
 
-## A landed hit only tints the crosshair: the swing already caused the HP change,
-## so a second full-screen flash would read as the player being hurt.
-func _on_enemy_hit(_enemy: Node, _amount: float, is_crit: bool) -> void:
-	_hit_flash_left = HIT_FLASH_SECONDS
-	_hit_flash_color = PALETTE["crit"] if is_crit else PALETTE["hit"]
+## A landed hit tints the crosshair with a hit-marker flare and floats the
+## damage number over the creature. The swing already caused the HP change, so
+## no second full-screen flash is used.
+func _on_enemy_hit(enemy: Node, amount: float, is_crit: bool) -> void:
+	if _crosshair != null and _crosshair.has_method(&"set_hit"):
+		_crosshair.call(&"set_hit", UITheme.CRIT if is_crit else UITheme.ACCENT)
+	_spawn_damage_number(enemy, amount, is_crit)
+
+
+func _spawn_damage_number(enemy: Node, amount: float, is_crit: bool) -> void:
+	if amount <= 0.0 or enemy == null or not is_instance_valid(enemy):
+		return
+	var target := enemy as Node3D
+	if target == null:
+		return
+	var camera := get_viewport().get_camera_3d()
+	var screen := get_viewport().get_visible_rect().size * 0.5
+	if camera != null:
+		screen = camera.unproject_position(target.global_position + Vector3(0.0, 1.25, 0.0))
+	var label := Label.new()
+	label.name = "DamageNumber"
+	label.text = ("CRIT  %d" if is_crit else "%d") % roundi(amount)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size = Vector2(160.0, 40.0)
+	label.position = screen - Vector2(80.0, 26.0) + Vector2(randf_range(-24.0, 24.0), 0.0)
+	label.pivot_offset = label.size * 0.5
+	UITheme.style_heading(
+		label, 24 if is_crit else 18, UITheme.CRIT if is_crit else UITheme.AMBER
+	)
+	label.add_theme_constant_override("outline_size", 6)
+	if _damage_layer != null:
+		_damage_layer.add_child(label)
+	else:
+		$Root.add_child(label)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 48.0, 0.72)
+	tween.tween_property(label, "modulate:a", 0.0, 0.72).set_delay(0.10)
+	tween.tween_property(label, "scale", Vector2.ONE * 1.18, 0.18)
+	tween.chain().tween_callback(label.queue_free)
 
 
 func _on_player_died() -> void:
 	_bind_player()
+	if _damage_layer != null:
+		for child in _damage_layer.get_children():
+			child.queue_free()
 	if _death_overlay != null:
 		_death_overlay.visible = true
+		_death_overlay.modulate.a = 0.0
+		create_tween().tween_property(_death_overlay, "modulate:a", 1.0, 0.25)
 	if _death_timer != null:
 		_death_timer.start(DEATH_OVERLAY_SECONDS)
 
@@ -575,17 +700,17 @@ func _on_player_respawned() -> void:
 
 
 func _on_toast_requested(text: String) -> void:
-	if _toast_label == null:
+	if _toast_label == null or _toast_panel == null:
 		return
 	_toast_label.text = text
-	_toast_label.visible = true
+	_toast_panel.visible = true
 	if _toast_timer != null:
 		_toast_timer.start(TOAST_SECONDS)
 
 
 func _on_toast_timeout() -> void:
-	if _toast_label != null:
-		_toast_label.visible = false
+	if _toast_panel != null:
+		_toast_panel.visible = false
 
 
 func _on_plot_changed(_plot_id: int) -> void:
@@ -610,31 +735,33 @@ func _refresh_plot_status() -> void:
 		return
 	var owner := StringName(plot.get("owner", &""))
 	if owner == &"":
-		_set_plot_status("Plot %d · %d g to buy" % [
+		_set_plot_status("Plot %d  ·  %d g to buy" % [
 			plot_id + 1, int(system.call(&"plot_price"))
 		])
 		return
 	if bool(system.call(&"is_owned_by", plot_id, system.call(&"local_owner_id"))):
 		var unpaid := int(plot.get("unpaid_days", 0))
 		if unpaid > 0:
-			_set_plot_status("Plot %d · yours · unpaid %d/%d d" % [
+			_set_plot_status("Plot %d  ·  yours  ·  unpaid %d/%d d" % [
 				plot_id + 1, unpaid, Game.PLOT_EXPIRY_DAYS
 			])
 			return
 		var seconds := int(system.call(&"next_fee_seconds", plot_id))
 		if seconds <= 0:
-			_set_plot_status("Plot %d · yours · fee due" % (plot_id + 1))
+			_set_plot_status("Plot %d  ·  yours  ·  fee due" % (plot_id + 1))
 			return
-		_set_plot_status("Plot %d · yours · next fee in %d h" % [
+		_set_plot_status("Plot %d  ·  yours  ·  next fee in %d h" % [
 			plot_id + 1, int(ceil(float(seconds) / SECONDS_PER_HOUR))
 		])
 		return
-	_set_plot_status("Plot %d · owned by %s" % [plot_id + 1, String(owner)])
+	_set_plot_status("Plot %d  ·  owned by %s" % [plot_id + 1, String(owner)])
 
 
 func _set_plot_status(text: String) -> void:
 	_plot_status.text = text
-	_plot_status.visible = not text.is_empty()
+	var visible := not text.is_empty()
+	_plot_status.visible = visible
+	_plot_backdrop.visible = visible
 
 
 func _plot_system() -> Node:
@@ -655,27 +782,38 @@ func _refresh_hotbar() -> void:
 		if id != &"" and _inventory != null and _inventory.has_method(&"get_slot"):
 			var slot: Dictionary = _inventory.call(&"get_slot", index)
 			count = int(slot.get("count", 0))
-		var name_label := _slot_names[index]
-		var count_label := _slot_counts[index]
-		if id == &"" or count <= 0:
-			name_label.text = ""
-			count_label.text = ""
-			name_label.add_theme_color_override("font_color", PALETTE["text"])
-			continue
-		name_label.text = _short_name(id)
-		count_label.text = str(count)
-		name_label.add_theme_color_override("font_color", _item_color(id))
+		var filled := id != &"" and count > 0
+		var display := ItemVisuals.display_name(String(id)) if filled else ""
+		var colour := ItemVisuals.color(String(id)) if filled else UITheme.TEXT
+		_slot_icons[index].texture = ItemVisuals.icon(id) if filled else null
+		_slot_icons[index].visible = filled
+		_slot_names[index].text = display
+		_slot_counts[index].text = str(count) if filled else ""
+		_slot_rarity[index].color = colour if filled else Color(0, 0, 0, 0)
+		_slot_panels[index].tooltip_text = (
+			"%s\n%s" % [display, ItemVisuals.kind(String(id))] if filled else ""
+		)
+	_set_selected(_selected)
 
 
-func _short_name(id: StringName) -> String:
-	var display := Lore.item_display_name(String(id))
-	if display.length() <= HOTBAR_NAME_CHARS:
-		return display
-	return display.substr(0, HOTBAR_NAME_CHARS - 1) + "…"
+func _slot_item_id(index: int) -> StringName:
+	if _inventory == null or not _inventory.has_method(&"get_slot"):
+		return &""
+	var slot: Dictionary = _inventory.call(&"get_slot", index)
+	return StringName(slot.get("id", &"")) if int(slot.get("count", 0)) > 0 else &""
 
 
-func _item_color(id: StringName) -> Color:
-	var mushroom := Lore.get_mushroom(String(id))
-	if mushroom.is_empty():
-		return PALETTE["text"]
-	return Lore.rarity_color(str(mushroom.get("rarity", "")))
+func _update_selected_label() -> void:
+	if _selected_item == null:
+		return
+	var id := _slot_item_id(_selected)
+	if id == &"":
+		_selected_item.text = "Empty hotbar slot"
+		_selected_item.add_theme_color_override("font_color", UITheme.FAINT)
+		return
+	var count := 0
+	if _inventory != null and _inventory.has_method(&"get_slot"):
+		var slot: Dictionary = _inventory.call(&"get_slot", _selected)
+		count = int(slot.get("count", 0))
+	_selected_item.text = "%s   ×%d" % [ItemVisuals.display_name(String(id)), count]
+	_selected_item.add_theme_color_override("font_color", ItemVisuals.color(String(id)))

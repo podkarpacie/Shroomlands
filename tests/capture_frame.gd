@@ -222,13 +222,32 @@ func _dump(label: String) -> void:
 	print("-- decor props within 8 m of the camera --")
 	var decor_root := _player.get_parent().get_node_or_null("World")
 	var shown := 0
+	var nearest := INF
 	if decor_root != null:
 		for decor in decor_root.get_children():
 			if not String(decor.name).begins_with("Decor"):
 				continue
 			var prop := decor as Node3D
-			var dist := prop.global_position.distance_to(_camera.global_position)
-			if dist > 8.0:
+			if prop == null:
+				continue
+			# Scenery is a MultiMesh since the look pass; its node origin is the
+			# world origin, not the mushrooms. Check every instance transform.
+			var multimesh_node := prop as MultiMeshInstance3D
+			if multimesh_node != null and multimesh_node.multimesh != null:
+				var multimesh := multimesh_node.multimesh
+				for index in multimesh.instance_count:
+					var world := multimesh_node.global_transform * multimesh.get_instance_transform(index)
+					var dist := world.origin.distance_to(_camera.global_position)
+					nearest = minf(nearest, dist)
+					if dist <= 8.0:
+						shown += 1
+						print("  %s[%d] at %s  dist_to_camera=%.3f m" % [
+							prop.name, index, _vec(world.origin), dist
+						])
+				continue
+			var prop_dist := prop.global_position.distance_to(_camera.global_position)
+			nearest = minf(nearest, prop_dist)
+			if prop_dist > 8.0:
 				continue
 			shown += 1
 			var cap := prop.get_node_or_null("Cap") as MeshInstance3D
@@ -237,12 +256,14 @@ func _dump(label: String) -> void:
 				var mat := cap.material_override if cap.material_override != null else cap.mesh.surface_get_material(0)
 				if mat is StandardMaterial3D:
 					albedo = (mat as StandardMaterial3D).albedo_color
+			var collision := prop as CollisionObject3D
+			var layer := collision.collision_layer if collision != null else 0
 			print("  %s at %s  dist_to_camera=%.3f m  layer=0x%x  scale=%s  cap_albedo=%s" % [
-				prop.name, _vec(prop.global_position), dist,
-				(prop as CollisionObject3D).collision_layer, _vec(prop.scale), albedo
+				prop.name, _vec(prop.global_position), prop_dist,
+				layer, _vec(prop.scale), albedo
 			])
-	print("  (%d prop(s) within 8 m)" % shown)
-	_check("no decoration within 8 m of the camera (found %d)" % shown, shown == 0)
+	print("  (%d instance(s) within 8 m; nearest %.2f m)" % [shown, nearest])
+	_check("no decoration instance within 8 m of the camera (found %d)" % shown, shown == 0)
 
 	# Who is between the lens and the player? This distinguishes "prop in front
 	# of the camera" from "player simply not rendered".

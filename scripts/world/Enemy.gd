@@ -1,8 +1,7 @@
 class_name Enemy
 extends CharacterBody3D
-## Placeholder fungal stalker: a squat body with a violet cap and two glowing
-## eyes, a three-state AI (wander -> chase -> bite), damage with a material
-## flash and a respawn at its origin.
+## Fungal stalker (`blightling.gltf`): a three-state AI (wander -> chase ->
+## bite), damage with an emission flash and a respawn at its origin.
 ##
 ## Authority: the server (peer 1) runs the AI, owns HP and picks targets;
 ## everybody else only mirrors the transform and the `dead` flag through the
@@ -22,9 +21,13 @@ const PLAYER_GROUP := &"player"
 ## (8), so a body is stopped by terrain and by a player but never by decor.
 const LAYER := 16
 const MASK := 9
+const HURTBOX_LAYER := 32
 const FLASH_SECONDS := 0.18
 const DEATH_SECONDS := 0.45
-const FLASH_COLOR := Color(1.0, 0.82, 0.72, 1.0)
+## The creature is a textured glTF, so the hit flash adds emission instead of
+## tinting `albedo_color` (a near-white tint is invisible on a texture).
+const FLASH_COLOR := Color(1.0, 0.45, 0.3, 1.0)
+const FLASH_ENERGY := 2.5
 
 @export var max_hp := 60.0
 @export var move_speed := 2.6
@@ -55,22 +58,21 @@ var _origin := Vector3.ZERO
 var _wander_target := Vector3.ZERO
 var _wander_timer := 0.0
 var _attack_timer := 0.0
+## Brief hit-stun: knockback velocity is allowed to play out instead of being
+## overwritten by the chase steering on the next physics tick.
+var _stagger_left := 0.0
 var _gravity := Vector3.DOWN * 9.8
 var _rng := RandomNumberGenerator.new()
 var _flash_tween: Tween = null
 var _death_tween: Tween = null
-var _body_material: StandardMaterial3D = null
-var _cap_material: StandardMaterial3D = null
-var _eye_material: StandardMaterial3D = null
-var _body_base := Color.WHITE
-var _cap_base := Color.WHITE
-var _eye_base := Color.WHITE
+## One private copy of the model's material, shared by every mesh of this
+## creature, so a flash never tints its neighbours.
+var _material: StandardMaterial3D = null
 
 @onready var _model: Node3D = $Model
 @onready var _collision: CollisionShape3D = $CollisionShape3D
-@onready var _body_mesh: MeshInstance3D = $Model/Body
-@onready var _cap_mesh: MeshInstance3D = $Model/Cap
-@onready var _eye_meshes: Array[MeshInstance3D] = [$Model/EyeL, $Model/EyeR]
+@onready var _hurtbox: Area3D = $Hurtbox
+@onready var _animator: Node = $Animator
 @onready var _respawn_timer: Timer = $RespawnTimer
 
 
@@ -104,6 +106,12 @@ func _physics_process(delta: float) -> void:
 	_attack_timer = maxf(_attack_timer - delta, 0.0)
 	_apply_gravity(delta)
 
+	if _stagger_left > 0.0:
+		# Let a heavy hit actually move the body before the AI reasserts itself.
+		_stagger_left = maxf(_stagger_left - delta, 0.0)
+		move_and_slide()
+		return
+
 	var target := _nearest_player()
 	var distance := INF if target == null else _flat_distance(target.global_position)
 	if target != null and distance <= attack_range:
@@ -127,27 +135,39 @@ func is_dead() -> bool:
 
 ## Entry point for anything that hurts this creature. A peer that does not own
 ## the body forwards the hit to the server, the only place HP may change.
-func take_damage(amount: float, is_crit := false, attacker: Node = null) -> void:
+func take_damage(
+	amount: float,
+	is_crit := false,
+	attacker: Node = null,
+	hit_direction := Vector3.ZERO,
+	heavy := false
+) -> void:
 	if not is_multiplayer_authority():
 		if Network.mode != Network.OFFLINE:
 			var path := NodePath()
 			if attacker != null and attacker.is_inside_tree():
 				path = attacker.get_path()
-			_request_damage.rpc_id(1, amount, is_crit, path)
+			_request_damage.rpc_id(1, amount, is_crit, path, hit_direction, heavy)
 		return
-	_apply_damage(amount, is_crit, attacker)
+	_apply_damage(amount, is_crit, attacker, hit_direction, heavy)
 
 
 ## Client -> server leg of `take_damage`. `any_peer` lets the attacker call it,
 ## but only the authority acts on it.
 @rpc("any_peer", "call_remote", "reliable")
-func _request_damage(amount: float, is_crit: bool, attacker_path: NodePath) -> void:
+func _request_damage(
+	amount: float,
+	is_crit: bool,
+	attacker_path: NodePath,
+	hit_direction: Vector3,
+	heavy: bool
+) -> void:
 	if not is_multiplayer_authority():
 		return
 	var attacker: Node = null
 	if not attacker_path.is_empty():
 		attacker = get_node_or_null(attacker_path)
-	_apply_damage(amount, is_crit, attacker)
+	_apply_damage(amount, is_crit, attacker, hit_direction, heavy)
 
 
 ## Back to full HP at the spawn point. Called by the respawn timer and by tests.
@@ -157,20 +177,43 @@ func respawn() -> void:
 	velocity = Vector3.ZERO
 	global_position = _origin
 	_attack_timer = 0.0
+	_stagger_left = 0.0
 	_pick_wander_target()
 	dead = false
 
 
-func _apply_damage(amount: float, is_crit: bool, attacker: Node) -> void:
+func _apply_damage(
+	amount: float,
+	is_crit: bool,
+	attacker: Node,
+	hit_direction := Vector3.ZERO,
+	heavy := false
+) -> void:
 	if dead or amount <= 0.0:
 		return
 	hp = maxf(hp - amount, 0.0)
 	_flash()
+	_react_to_hit(hit_direction, heavy, is_crit)
 	# Emitted where HP actually drops, so every damage source reports one hit
 	# and the HUD flash always matches the health bar.
 	EventBus.enemy_hit.emit(self, amount, is_crit)
 	if hp <= 0.0:
 		_die(attacker)
+
+
+## Physical reaction: a stagger window, a shove away from the blow and a
+## procedural flinch on the rigid glTF limbs.
+func _react_to_hit(direction: Vector3, heavy: bool, is_crit: bool) -> void:
+	if direction.length_squared() > 0.0001 and not dead:
+		var shove := direction.normalized()
+		var force := 5.0 if heavy else 2.2
+		if is_crit:
+			force *= 1.25
+		velocity.x += shove.x * force
+		velocity.z += shove.z * force
+		_stagger_left = maxf(_stagger_left, 0.24 if heavy else 0.12)
+	if _animator != null and _animator.has_method(&"play_hit"):
+		_animator.call(&"play_hit", heavy or is_crit)
 
 
 func _die(attacker: Node) -> void:
@@ -198,6 +241,13 @@ func _on_respawn_timeout() -> void:
 	respawn()
 
 
+## Bite wind-up. The damage is applied on the same tick; the animation is purely
+## read-side feedback, so clients and the server never disagree about HP.
+func _animate_bite() -> void:
+	if _animator != null and _animator.has_method(&"play_bite"):
+		_animator.call(&"play_bite")
+
+
 ## --- AI helpers ---------------------------------------------------------
 
 
@@ -222,6 +272,7 @@ func _try_bite(player: Node3D) -> void:
 	if _attack_timer > 0.0:
 		return
 	_attack_timer = attack_cooldown
+	_animate_bite()
 	var stats := player.get_node_or_null("Stats")
 	if stats == null or not stats.has_method(&"take_damage"):
 		return
@@ -306,48 +357,37 @@ func _flat_direction(point: Vector3) -> Vector3:
 
 
 func _setup_materials() -> void:
-	_body_material = _local_material(_body_mesh)
-	_cap_material = _local_material(_cap_mesh)
-	_eye_material = _local_material(_eye_meshes[0])
-	if _eye_meshes.size() > 1:
-		_eye_meshes[1].material_override = _eye_material
-	if _body_material != null:
-		_body_base = _body_material.albedo_color
-	if _cap_material != null:
-		_cap_base = _cap_material.albedo_color
-	if _eye_material != null:
-		_eye_base = _eye_material.albedo_color
+	var meshes := _model.find_children("*", "MeshInstance3D", true, false)
+	for node in meshes:
+		var mesh_instance := node as MeshInstance3D
+		if _material == null:
+			_material = _local_material(mesh_instance)
+		if _material != null:
+			mesh_instance.material_override = _material
+	_restore_materials()
 
 
-## Duplicates the scene material so one creature's flash never tints its
-## neighbours (scene resources are shared between instances by default).
+## Duplicates the model's material so one creature's flash never tints its
+## neighbours (imported materials are shared between instances).
 func _local_material(mesh_instance: MeshInstance3D) -> StandardMaterial3D:
-	if mesh_instance == null:
+	if mesh_instance == null or mesh_instance.mesh == null:
 		return null
-	var source: Material = mesh_instance.material_override
-	if source == null and mesh_instance.mesh != null:
-		source = mesh_instance.mesh.surface_get_material(0)
+	var source: Material = mesh_instance.mesh.surface_get_material(0)
 	if not (source is StandardMaterial3D):
 		return null
-	var local := (source as StandardMaterial3D).duplicate() as StandardMaterial3D
-	mesh_instance.material_override = local
-	return local
+	return (source as StandardMaterial3D).duplicate() as StandardMaterial3D
 
 
 func _flash() -> void:
 	_kill_tween(_flash_tween)
 	_flash_tween = null
-	if _body_material == null:
+	if _material == null:
 		return
-	_body_material.albedo_color = FLASH_COLOR
-	if _cap_material != null:
-		_cap_material.albedo_color = FLASH_COLOR
+	_material.emission_enabled = true
+	_material.emission = FLASH_COLOR
+	_material.emission_energy_multiplier = FLASH_ENERGY
 	_flash_tween = create_tween()
-	_flash_tween.set_parallel(true)
-	if _body_material != null:
-		_flash_tween.tween_property(_body_material, "albedo_color", _body_base, FLASH_SECONDS)
-	if _cap_material != null:
-		_flash_tween.tween_property(_cap_material, "albedo_color", _cap_base, FLASH_SECONDS)
+	_flash_tween.tween_property(_material, "emission_energy_multiplier", 0.0, FLASH_SECONDS)
 
 
 func _apply_dead_state() -> void:
@@ -356,6 +396,8 @@ func _apply_dead_state() -> void:
 		return
 	if _collision != null:
 		_collision.set_deferred(&"disabled", dead)
+	if _hurtbox != null:
+		_hurtbox.set_deferred(&"monitorable", not dead)
 	if dead:
 		remove_from_group(GROUP)
 		if is_multiplayer_authority():
@@ -377,10 +419,7 @@ func _play_death_visual() -> void:
 	_kill_tween(_flash_tween)
 	_flash_tween = null
 	_kill_tween(_death_tween)
-	if _body_material != null:
-		_body_material.albedo_color = _body_base
-	if _cap_material != null:
-		_cap_material.albedo_color = _cap_base
+	_restore_materials()
 	_death_tween = create_tween()
 	_death_tween.set_parallel(true)
 	_death_tween.tween_property(_model, "scale", Vector3(0.05, 0.05, 0.05), DEATH_SECONDS)
@@ -393,12 +432,9 @@ func _hide_model() -> void:
 
 
 func _restore_materials() -> void:
-	if _body_material != null:
-		_body_material.albedo_color = _body_base
-	if _cap_material != null:
-		_cap_material.albedo_color = _cap_base
-	if _eye_material != null:
-		_eye_material.albedo_color = _eye_base
+	if _material != null:
+		_material.emission_enabled = false
+		_material.emission_energy_multiplier = 0.0
 
 
 func _kill_tween(tween: Tween) -> void:

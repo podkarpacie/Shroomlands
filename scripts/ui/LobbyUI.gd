@@ -69,6 +69,7 @@ var _entered_world := false
 
 
 func _ready() -> void:
+	UITheme.install(get_tree().root)
 	_drop_stray_players()
 	_style()
 	_load_settings()
@@ -413,6 +414,7 @@ func _style() -> void:
 	settings_panel.add_theme_stylebox_override("panel", panel_style)
 
 	_title.text = "SHROOMLANDS"
+	_title.add_theme_font_override("font", UITheme.bold_font())
 	_title.add_theme_color_override("font_color", PALETTE["title"])
 	_title.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.75))
 	_title.add_theme_constant_override("outline_size", 6)
@@ -467,6 +469,7 @@ func _style_button(button: Button, accent: bool) -> void:
 		elif state == "disabled":
 			style.bg_color = base.darkened(0.4)
 		button.add_theme_stylebox_override(state, style)
+	button.add_theme_font_override("font", UITheme.bold_font())
 	button.add_theme_color_override("font_color", PALETTE["text"])
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 

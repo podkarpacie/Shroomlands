@@ -6,18 +6,19 @@ frame (see `AGENTS.md` → *Rules that matter*). They are committed copies of th
 artifacts in `tests/` (those stay `.gitignore`d), so a reviewer can see the game without
 installing Godot 4.7.2.
 
-All geometry is **placeholder primitives** (`BoxMesh` / `CapsuleMesh` / `CylinderMesh`) defined
-in the `.tscn` files — this repository contains no 3D model files.
+The player, blightling and mushroom scenes use Blockbench-authored glTF models. Hotbar and
+satchel item icons are rendered from item models by `tools/render_item_icons.gd`, and the
+satchel preview rotates the live model in a SubViewport.
 
 | # | Screenshot | Source | What it shows |
 | --- | --- | --- | --- |
 | 01 | [01-lobby.png](01-lobby.png) | `tests/_capture_lobby.png` | Entry scene: Host / address + Join / Settings / Quit, `v0.1.0` on Godot 4.7.2 |
-| 02 | [02-gameplay.png](02-gameplay.png) | `tests/_capture.png` | Verdant Bloom in third person — HP/stamina bars, level, gold, hotbar, mushroom nodes |
-| 03 | [03-inventory.png](03-inventory.png) | `tests/_capture_inventory.png` | 6×8 inventory panel with stacks gathered in the run |
-| 04 | [04-gathering.png](04-gathering.png) | `tests/_capture_gather.png` | Timed harvest of a mushroom node with its progress feedback |
-| 05 | [05-combat.png](05-combat.png) | `tests/_capture_combat.png` | Melee hit on a fungal enemy, damage numbers / HP feedback |
+| 02 | [02-gameplay.png](02-gameplay.png) | `tests/_capture.png` | Verdant Bloom in third person — themed vital/progression cards, biome line, icon hotbar |
+| 03 | [03-inventory.png](03-inventory.png) | `tests/_capture_inventory.png` | Satchel with item icons, rotating model preview, detail panel and sorting |
+| 04 | [04-gathering.png](04-gathering.png) | `tests/_capture_gather.png` | Timed harvest of a mushroom node with its pill prompt and progress bar |
+| 05 | [05-combat.png](05-combat.png) | `tests/_capture_combat.png` | Melee hit on a fungal enemy, club swing, sparks, damage numbers / HP feedback |
 | 06 | [06-death.png](06-death.png) | `tests/_capture_death.png` | Death overlay and respawn path |
-| 07 | [07-plots-building.png](07-plots-building.png) | `tests/_capture_plots.png` | Plot row (Plot 1–6, 100 g), owned Plot 5 with fee countdown, build-mode menu |
+| 07 | [07-plots-building.png](07-plots-building.png) | `tests/_capture_plots.png` | Plot row and fee status, plus the icon build palette |
 | 08 | [08-vocation.png](08-vocation.png) | `tests/_capture_vocation.png` | Level-20 vocation picker (Knight / Healer / Harvester / Ranger) |
 | 09 | [09-chat.png](09-chat.png) | `tests/_capture_chat.png` | Global / local chat panel driven by `ChatUI` and the server relay |
 
