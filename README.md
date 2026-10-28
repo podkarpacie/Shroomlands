@@ -10,7 +10,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 
 ## Status
 
-- 17 headless test suites, **778 assertions**, all green - including a run with a
+- 18 headless test suites, **867 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -74,9 +74,10 @@ Each suite is a `SceneTree` script and exits non-zero on failure:
 ```powershell
 $godot = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 $suites = @(
-  'test_lore','test_player','test_inventory','test_gathering','test_ui','test_network',
-  'test_chat','test_lobby','test_combat','test_movement_block','test_plots','test_vocation',
-  'test_save','test_sync','test_isolation','test_models','test_movement'
+  'test_audio','test_lore','test_player','test_inventory','test_gathering','test_ui',
+  'test_network','test_chat','test_lobby','test_combat','test_movement_block',
+  'test_plots','test_vocation','test_save','test_sync','test_isolation','test_models',
+  'test_movement'
 )
 foreach ($suite in $suites) {
   & $godot --headless --path . --script "res://tests/$suite.gd"
@@ -85,9 +86,22 @@ foreach ($suite in $suites) {
 ```
 
 Current counts: `test_lore` 65, `test_player` 20, `test_inventory` 31,
-`test_gathering` 38, `test_ui` 51, `test_network` 41, `test_chat` 24, `test_lobby` 81,
+`test_gathering` 38, `test_ui` 51, `test_network` 41, `test_chat` 24, `test_lobby` 98,
 `test_combat` 38, `test_movement_block` 15, `test_plots` 86, `test_vocation` 70,
-`test_save` 58, `test_sync` 68, `test_isolation` 22, `test_models` 40, `test_movement` 30 - **778 assertions**.
+`test_save` 58, `test_sync` 68, `test_isolation` 22, `test_models` 40, `test_movement` 30,
+`test_audio` 72 - **867 assertions**.
+
+### Continuous integration
+
+[![Tests](https://github.com/podkarpacie/Shroomlands/actions/workflows/tests.yml/badge.svg)](https://github.com/podkarpacie/Shroomlands/actions/workflows/tests.yml)
+
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
+every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
+does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
+18 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
+`PASS` counts plus the total (867). It needs no secrets, no export templates and no network
+access beyond the Godot release download.
 
 ### Test isolation
 
@@ -195,15 +209,16 @@ project.godot            autoloads, input map, rendering (Forward+)
 export_presets.cfg       Windows Desktop / Web / Windows Server
 scenes/                  lobby, main, player, UI, world (tscn)
 scripts/
-  core/                  Lore, EventBus, Game, SaveSystem, Main (autoloads + entry scene)
+  core/                  Lore, EventBus, Audio, Game, SaveSystem, Main (autoloads + entry scene)
   multiplayer/           Network.gd (ENet / WebSocket abstraction)
   player/                PlayerController, PlayerStats
   systems/               Gathering, Inventory, Combat, Plot
   ui/                    HUD, InventoryUI, ChatUI, VocationUI, LobbyUI, BuildMode
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom
 resources/               MultiplayerSynchronizer replication configs
-tests/                   17 headless suites, net_harness, capture_frame, network proofs
-tools/                   export_all, run_server, serve_web, run_two_clients, server bootstrap
+tests/                   18 headless suites, net_harness, capture_frame, network proofs
+tools/                   export_all, run_server, serve_web, run_two_clients,
+                         generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
 addons/godot_ai/         editor-only MCP plugin; never exported
 build/                   export output (gitignored)
@@ -328,6 +343,31 @@ coyote time, jump buffer, variable jump height, camera zoom/FOV, limb animation.
 
 `tests/test_models.gd` checks all of the above, including model height, foot position and facing.
 
+## Audio
+
+Every sound is generated, not sourced. `tools/generate_audio.py` writes `assets/audio/*.wav` —
+mono 16-bit PCM at 44.1 kHz — using only the Python standard library. It is deterministic: each
+cue seeds its own `random.Random` from its file name, no clock or OS state is read, and the WAV
+header carries no timestamp, so running it twice leaves every file byte-identical. One-shots are
+peak-normalised to about -3 dBFS with 10 ms fades at both ends; `ambient_mycelia.wav` is built as
+a seamless loop. Regenerate with `python tools/generate_audio.py`.
+
+The mixer is `default_bus_layout.tres`: **Master** (0 dB) with **Music** (-12 dB) and **SFX**
+(-4 dB) sending into it. The `Audio` autoload (`scripts/core/AudioManager.gd`) owns eight SFX
+voices plus one ambient player, resolves a cue by id (`Audio.play_sfx(&"gather")`) and listens
+to `EventBus` for hits, gathering, pickups, level-ups, death, building and vocation events. The
+ambient bed starts when `main.tscn` (group `main`) enters the tree and stops when the last world
+leaves, so the lobby is silent apart from the UI click.
+
+The lobby's settings panel has **Music volume** and **SFX volume** sliders (0-100 %). They apply
+live through `Audio.set_music_volume()` / `Audio.set_sfx_volume()` and persist to
+`user://settings.cfg`; 0 % is a floored -80 dB, never `-inf`.
+
+Headless runs — CI, the dedicated server — keep audio output disabled on purpose: there is no
+listener, and a player still sounding when the process quits is reported by Godot 4.7 as a
+leaked resource (`godotengine/godot#76745`). `Audio.set_output_enabled(true)` turns the pool
+back on for tools and tests.
+
 ## Known gaps
 
 1. **One transport per server instance.** A server listens with ENet/UDP **or**
@@ -355,7 +395,9 @@ coyote time, jump buffer, variable jump height, camera zoom/FOV, limb animation.
 7. **No voice chat**, full skill trees, advanced crafting, raids/endgame, factions or the
    full Great Blight story. Vocation choice exists, but the trees behind it do not.
 8. **No server browser or accounts.** Direct host/port only; no authentication, no
-   character server, no anti-cheat.
+   character server, no anti-cheat. The server relays what each peer reports for
+   player position, gold, inventory, vitals and discoveries, so there is no server-side
+   validation of that state.
 9. **Plot persistence is a JSON file** (`user://plots.json`) owned by one server process.
    No database, no multi-instance coordination, no backups.
 10. **Windows-only server preset.** There is no Linux/macOS export preset in the repo.

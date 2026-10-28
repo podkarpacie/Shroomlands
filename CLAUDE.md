@@ -16,15 +16,17 @@ WebSocket/TCP (browsers + desktop), Windows and Web exports. This is the single-
 4. The architecture tree in `AGENTS.md` → *Architecture*, then `scripts/core/Main.gd`,
    `scripts/multiplayer/Network.gd`, `scripts/systems/`.
 
-Autoloads: `Lore`, `EventBus`, `Game`, `SaveSystem`, `Network` (+ editor-only `_mcp_game_helper`).
+Autoloads: `Lore`, `EventBus`, `Audio`, `Game`, `SaveSystem`, `Network` (+ editor-only
+`_mcp_game_helper`).
 
 ## Commands
 
 ```powershell
 $g = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 
-# All 17 test suites - each must exit 0 (778 assertions)
-Get-ChildItem tests/test_*.gd | ForEach-Object {
+# All 18 test suites - each must exit 0 (867 assertions).
+# test_env.gd is the isolation helper, not a suite: run on its own it exits 1.
+Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | ForEach-Object {
   $n = $_.BaseName
   $o = & $g --headless --path "." --script "res://tests/$n.gd" 2>&1
   "{0,-20} EXIT={1} PASS={2}" -f $n, $LASTEXITCODE, ($o | Select-String '^PASS ').Count
@@ -48,7 +50,7 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
 - Will the `EventBus`-driven UI scale, or is it implicit coupling between systems and panels?
 - Is the `MultiplayerSynchronizer` usage correct for late join (spawn state, authority, the
   `resources/net_*.tres` replication configs)?
-- Are the 17 suites covering **behaviour** or just structure? Look for assertions that would
+- Are the 18 suites covering **behaviour** or just structure? Look for assertions that would
   fail on a regression — start with `test_sync`, `test_plots`, `test_save`, `test_isolation`.
 
 ## Two explicit notes
