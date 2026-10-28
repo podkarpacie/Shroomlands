@@ -6,8 +6,8 @@ Status: MVP shipped, models integrated, toolchain extended. `main` = `c31ed8b`, 
 Shroomlands MVP — 3D multiplayer survival RPG, Godot 4.7.2, GDScript only. Spec: `docs/MVP_SPEC.md`.
 
 ## Current state
-- **18 test suites / 867 assertions green**, all exit 0. Two real-process multiplayer proofs
-  (ENet 2-process, WebSocket 3-process) pass.
+- **20 test suites / 911 assertions green**, all exit 0. Two real-process multiplayer proofs
+  (ENet 2-process, WebSocket 3-process) pass. CI runs the same suites on every push.
 - **Exports verified**: Windows 105 MB (Forward+, launches and closes clean), Web 39.5 MB wasm
   (boots in Firefox from plain `http.server`, Compatibility/WebGL2).
 - **Repo**: https://github.com/podkarpacie/Shroomlands (private).
@@ -35,6 +35,16 @@ My line contributed the model pipeline, the 64×64 atlas fix, test isolation, an
   pickup/level/death/build, and persisted Music/SFX volume sliders in the lobby.
   Headless runs keep audio output disabled (Godot reports leaked players otherwise); tests
   re-enable it explicitly to assert playback.
+
+- **Held items are inventory-driven.** The selected hotbar slot drives `held_item` (a replicated
+  `StringName` on the player), so the owner resolves it from their inventory and every peer renders
+  from the replicated id — no remote inventory needed. `HeldItem.gd` shows glowcap/emberstem in the
+  left hand (upright, hand-tracked position, yaw-only orientation); the other four mushrooms have no
+  model and deliberately render nothing. The club is the weapon, not an inventory item, and stays in
+  the right hand.
+- **Limb animation**: club-carry pose (40 % swing + forward angle), held-item carry pose for the left
+  arm, turn banking, and `stepped` → footstep cue synced to the gait phase. Still procedural — the
+  models have no skeleton (`animations=0, skins=0`), so no authored clips are possible yet.
 
 ## Known gaps
 - No anti-cheat: peers report their own HP, gold, inventory, position; server validates shape
