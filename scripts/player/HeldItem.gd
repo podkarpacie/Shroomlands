@@ -2,12 +2,14 @@ extends Node3D
 ## The item in the selected hotbar slot, held in the left hand.
 ##
 ## The glTF character has no skeleton, so — like `SwingWeapon` — this node is a
-## sibling of the model and copies `hand_l`'s world transform every frame. The
-## owner resolves its own selection through `InventorySystem` and writes the id
-## to the replicated `held_item` on the player root; every other peer only
-## renders that value. That is deliberate: a remote inventory is never applied
-## to a local `InventorySystem`, so a peer must not try to resolve another
-## player's slot.
+## sibling of the model. Every frame it takes the *position* from `hand_l` and the
+## *orientation* from the body's facing yaw alone: `LimbAnimator` pitches forward
+## and rolls that arm outward to carry a prop, and inheriting the hand's basis used
+## to lay the mushroom flat on its side. The owner resolves its own selection
+## through `InventorySystem` and writes the id to the replicated `held_item` on the
+## player root; every other peer only renders that value. That is deliberate: a
+## remote inventory is never applied to a local `InventorySystem`, so a peer must
+## not try to resolve another player's slot.
 ##
 ## Only `glowcap` and `emberstem` ship a model. Any other id keeps the
 ## authoritative `held_item` value and draws nothing — a missing model is not a
@@ -26,9 +28,10 @@ const HELD_HEIGHT := 0.22
 ## prop's base just above the middle of the fist and on its outer side. Local to
 ## `hand_l`, in metres.
 const HAND_GRIP := Vector3(0.02, 0.105, 0.09)
-## Lean the prop away from the torso (-X, the left side) and a touch forward
-## (-Z), so the cap clears the arm and reads in the third-person camera.
-const GRIP_TILT := Vector3(-0.10, 0.0, 0.36)
+## Lean the upright prop away from the torso (-X, the left side) and a touch
+## forward (-Z), a few degrees so it does not look mechanically perfect. Applied
+## in the body's yaw frame, never in the hand's.
+const GRIP_TILT := Vector3(-0.05, 0.0, 0.10)
 
 @export var player_path: NodePath = ^".."
 
@@ -37,6 +40,9 @@ var _selected := 0
 var _player: Node = null
 var _inventory: Node = null
 var _hand: Node3D = null
+## The `Model` node: the character's facing lives there, not on the body, which
+## never turns.
+var _model: Node3D = null
 ## id -> cached visual. Built once per id, then only shown or hidden.
 var _visuals := {}
 var _shown: StringName = &""
@@ -45,6 +51,8 @@ var _shown: StringName = &""
 func _ready() -> void:
 	_player = get_node_or_null(player_path)
 	_hand = _find_hand()
+	if _player != null:
+		_model = _player.get_node_or_null(^"Model") as Node3D
 	if _player == null or _hand == null:
 		# A model without `hand_l` still plays; there is nowhere to hold a prop.
 		visible = false
@@ -72,16 +80,33 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _hand == null or not is_instance_valid(_hand):
+	if not is_instance_valid(_player) or not is_instance_valid(_hand):
+		# The body or its hand is gone: nothing left to carry the prop.
+		visible = false
+		set_process(false)
 		return
 	# The replicated value is the only source of truth for what to draw, so a
 	# remote peer and the owner go through the same path.
 	var id := StringName(_player.get(&"held_item"))
 	if id != _shown:
 		_show(id)
-	global_transform = _hand.global_transform * Transform3D(
-		Basis.from_euler(GRIP_TILT), HAND_GRIP
-	)
+	# Position from the hand, so the prop rides in the fist as the arm swings;
+	# orientation from the body's yaw, so the carry pose cannot tip it over.
+	global_transform = Transform3D(_upright_basis(), _hand.global_transform * HAND_GRIP)
+
+
+## World basis the prop is drawn with: the body's facing yaw plus a fixed lean.
+## The arm's pitch and roll are deliberately dropped — they are a carry pose, not
+## the item's orientation.
+func _upright_basis() -> Basis:
+	var yaw := 0.0
+	if is_instance_valid(_model):
+		yaw = _model.global_rotation.y
+	else:
+		var body := _player as Node3D
+		if body != null:
+			yaw = body.global_rotation.y
+	return Basis(Vector3.UP, yaw) * Basis.from_euler(GRIP_TILT)
 
 
 ## Owner only: the id in the selected slot. Emits nothing itself; the write to
