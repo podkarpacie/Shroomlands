@@ -24,6 +24,11 @@ const FEE_TICK_SECONDS := 60.0
 ## Plot 0 starts here; each following plot continues along +X.
 const ORIGIN_X := -36.0
 const ORIGIN_Z := 24.0
+## Signs stand this far inside the plot's front-left corner. Keeping them off
+## the plot centre leaves the buildable middle free, so the hut a player puts
+## there no longer sits on the board or its floating label. Still inside the
+## plot, so `plot_at(sign.position)` keeps returning that plot's id.
+const SIGN_INSET := 1.5
 const PLOTS_PATH := "user://plots.json"
 const PLOTS_TMP_PATH := "user://plots.json.tmp"
 const PLOT_SIGN_SCENE := preload("res://scenes/world/plot_sign.tscn")
@@ -579,7 +584,11 @@ func _build_visuals() -> void:
 
 		var sign := PLOT_SIGN_SCENE.instantiate()
 		sign.name = "PlotSign%d" % plot_id
-		sign.position = Vector3(centre.x, 0.0, centre.z)
+		sign.position = Vector3(
+			centre.x - PLOT_SIZE * 0.5 + SIGN_INSET,
+			0.0,
+			centre.z - PLOT_SIZE * 0.5 + SIGN_INSET
+		)
 		visuals.add_child(sign)
 		if sign.has_method(&"configure"):
 			sign.call(&"configure", plot_id, self)

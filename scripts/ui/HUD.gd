@@ -63,6 +63,11 @@ var _selection_tween: Tween = null
 
 ## Last HP seen, so only a *drop* flashes the screen.
 var _last_hp := -1.0
+## Last stamina seen. The bar is painted from `_stamina`, but forced to 0 while
+## the death overlay is up (see `_paint_stamina`).
+var _stamina := 0.0
+var _max_stamina := 100.0
+var _dead := false
 ## Last level seen, so the vocation suffix can be rebuilt from either signal.
 var _level := 1
 var _damage_flash: TextureRect = null
@@ -364,13 +369,32 @@ func _build_feedback_nodes() -> void:
 	_death_overlay.visible = false
 	root.add_child(_death_overlay)
 
+	# Upper third, not the middle: the camera keeps the body dead-centre, so a
+	# centred title sat on the character's cap. The card is its own scrim, so
+	# the copy stays readable over sky, grass or a creature.
+	var death_panel := PanelContainer.new()
+	death_panel.name = "DeathPanel"
+	death_panel.anchor_left = 0.5
+	death_panel.anchor_right = 0.5
+	death_panel.offset_left = -300.0
+	death_panel.offset_top = 148.0
+	death_panel.offset_right = 300.0
+	death_panel.offset_bottom = 148.0
+	death_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	death_panel.grow_vertical = Control.GROW_DIRECTION_END
+	death_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	death_panel.add_theme_stylebox_override(
+		"panel", UITheme.panel_style(
+			Color(0.10, 0.015, 0.022, 0.92), Color(0.72, 0.24, 0.20, 0.75), 14, 1, 24
+		)
+	)
+	_death_overlay.add_child(death_panel)
+
 	var death_box := VBoxContainer.new()
 	death_box.name = "DeathContent"
-	death_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	death_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	death_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	death_box.add_theme_constant_override("separation", 8)
-	_death_overlay.add_child(death_box)
+	death_panel.add_child(death_box)
 
 	var label := Label.new()
 	label.name = "DeathLabel"
@@ -386,7 +410,7 @@ func _build_feedback_nodes() -> void:
 	sub.text = "The Mycelium pulls you back to the bloom…"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(sub, 16, UITheme.DIM, 4)
+	UITheme.style_label(sub, 16, Color(0.86, 0.83, 0.76), 4)
 	death_box.add_child(sub)
 
 	_death_timer = Timer.new()
@@ -543,9 +567,20 @@ func _on_hp_changed(current: float, max_hp: float) -> void:
 
 
 func _on_stamina_changed(current: float, max_stamina: float) -> void:
-	_stamina_bar.max_value = maxf(max_stamina, 1.0)
-	_stamina_bar.value = clampf(current, 0.0, _stamina_bar.max_value)
-	_stamina_value.text = "STAMINA  %d / %d" % [roundi(current), roundi(max_stamina)]
+	_stamina = current
+	_max_stamina = max_stamina
+	_paint_stamina()
+
+
+## A dead body keeps its stamina value in `PlayerStats` (it only stops
+## regenerating), which made the death screen read "90 / 100". The HUD shows an
+## empty bar while the overlay is up; `respawn()` refills the stat and
+## `_on_player_respawned` repaints from it.
+func _paint_stamina() -> void:
+	var shown := 0.0 if _dead else _stamina
+	_stamina_bar.max_value = maxf(_max_stamina, 1.0)
+	_stamina_bar.value = clampf(shown, 0.0, _stamina_bar.max_value)
+	_stamina_value.text = "STAMINA  %d / %d" % [roundi(shown), roundi(_max_stamina)]
 
 
 func _on_xp_changed(current: int, needed: int) -> void:
@@ -671,6 +706,8 @@ func _spawn_damage_number(enemy: Node, amount: float, is_crit: bool) -> void:
 
 func _on_player_died() -> void:
 	_bind_player()
+	_dead = true
+	_paint_stamina()
 	if _damage_layer != null:
 		for child in _damage_layer.get_children():
 			child.queue_free()
@@ -697,6 +734,14 @@ func _on_player_respawned() -> void:
 		_death_overlay.visible = false
 	if _death_timer != null:
 		_death_timer.stop()
+	_dead = false
+	# `respawn()` emits stamina_changed while the overlay still forces 0, so
+	# read the restored value back from the stats.
+	var stats := _stats_node()
+	if stats != null:
+		_on_stamina_changed(float(stats.get("stamina")), float(stats.get("max_stamina")))
+	else:
+		_paint_stamina()
 
 
 func _on_toast_requested(text: String) -> void:

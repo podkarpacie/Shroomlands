@@ -1,7 +1,10 @@
 extends StaticBody3D
-## A plot marker standing in the middle of its plot. It is the purchase entry
-## point: the interaction ray sees it (layer 3, like harvestables), and every
-## state query goes through PlotSystem so the sign owns no plot data.
+## A plot marker standing in its plot's front-left corner. It is the purchase
+## entry point: the interaction ray sees it (layer 3, like harvestables), and
+## every state query goes through PlotSystem so the sign owns no plot data.
+##
+## The corner rather than the plot centre is deliberate: players build in the
+## middle, and a sign there disappeared under a hut's roof and label.
 ##
 ## Physics layer 3 keeps it out of the camera spring arm's layer-1 cast, so a
 ## sign never collapses the third-person camera. The player walks through it.

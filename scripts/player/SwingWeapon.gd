@@ -60,6 +60,14 @@ func _build_club() -> void:
 		spot.position = Vector3(cos(angle) * 0.09, 0.73, sin(angle) * 0.09)
 		_club.add_child(spot)
 
+	# A ~30 cm caster held a metre above the ground is smaller than the sun's
+	# soft-shadow penumbra (0.5° disc + blur), so the shadow map resolves it as
+	# a salt-and-pepper dither instead of a soft blob. The club keeps its
+	# lighting but casts nothing: the body shadow already darkens that patch of
+	# ground, and a single texel-sized speckle there reads as a render bug.
+	for part: GeometryInstance3D in _club.get_children():
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
 
 func _mat(color: Color, emission := 0.0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
