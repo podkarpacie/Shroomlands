@@ -216,6 +216,44 @@ max_value = 0.01
 step = 0.0001
 value = 0.0025
 
+[node name="MusicHeader" type="HBoxContainer" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="MusicLabel" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content/MusicHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Music volume"
+
+[node name="MusicValue" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content/MusicHeader"]
+layout_mode = 2
+text = "25%"
+horizontal_alignment = 2
+
+[node name="MusicSlider" type="HSlider" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+max_value = 100.0
+step = 1.0
+value = 25.0
+
+[node name="SfxHeader" type="HBoxContainer" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="SfxLabel" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content/SfxHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SFX volume"
+
+[node name="SfxValue" type="Label" parent="SettingsLayer/Center/SettingsPanel/Margin/Content/SfxHeader"]
+layout_mode = 2
+text = "63%"
+horizontal_alignment = 2
+
+[node name="SfxSlider" type="HSlider" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+max_value = 100.0
+step = 1.0
+value = 63.0
+
 [node name="FullscreenToggle" type="CheckButton" parent="SettingsLayer/Center/SettingsPanel/Margin/Content"]
 layout_mode = 2
 text = "Fullscreen"

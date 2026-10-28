@@ -14,6 +14,11 @@ const SETTINGS_PATH := "user://settings.cfg"
 const SETTINGS_SECTION := "settings"
 const PROBE_SENSITIVITY := 0.0075
 const DEFAULT_SENSITIVITY := 0.0025
+## Audio levels are linear 0..1 and the sliders show percent.
+const PROBE_MUSIC_VOLUME := 0.35
+const PROBE_SFX_VOLUME := 0.55
+const DEFAULT_MUSIC_VOLUME := 0.2511886432
+const DEFAULT_SFX_VOLUME := 0.6309573445
 ## Keeps the developer's files untouched; see tests/test_env.gd.
 const TestEnv := preload("res://tests/test_env.gd")
 
@@ -122,14 +127,36 @@ func _run() -> void:
 			"SettingsLayer/Center/SettingsPanel/Margin/Content/FullscreenToggle"
 		) as CheckButton
 	)
+	var music_slider := (
+		lobby.get_node_or_null(
+			"SettingsLayer/Center/SettingsPanel/Margin/Content/MusicSlider"
+		) as HSlider
+	)
+	var sfx_slider := (
+		lobby.get_node_or_null(
+			"SettingsLayer/Center/SettingsPanel/Margin/Content/SfxSlider"
+		) as HSlider
+	)
 	_check("lobby has a settings layer", settings_layer != null)
 	_check("the settings panel starts closed", settings_layer != null and not settings_layer.visible)
 	_check("settings has a sensitivity slider", slider != null)
 	_check("settings has a fullscreen toggle", fullscreen != null)
+	_check("settings has a music volume slider", music_slider != null)
+	_check("settings has an SFX volume slider", sfx_slider != null)
 	if slider != null:
 		_check(
 			"sensitivity range is 0.0005..0.01 (%.4f..%.4f)" % [slider.min_value, slider.max_value],
 			is_equal_approx(slider.min_value, 0.0005) and is_equal_approx(slider.max_value, 0.01)
+		)
+	for audio_slider: HSlider in [music_slider, sfx_slider]:
+		if audio_slider == null:
+			continue
+		_check(
+			"the %s slider runs 0..100 (%.0f..%.0f)" % [
+				audio_slider.name, audio_slider.min_value, audio_slider.max_value
+			],
+			is_equal_approx(audio_slider.min_value, 0.0)
+				and is_equal_approx(audio_slider.max_value, 100.0)
 		)
 
 	# --- port validation ----------------------------------------------------
@@ -210,6 +237,44 @@ func _run() -> void:
 		is_equal_approx(float(config.get_value(SETTINGS_SECTION, "mouse_sensitivity", -1.0)), PROBE_SENSITIVITY)
 	)
 
+	lobby.call(&"set_music_volume", PROBE_MUSIC_VOLUME)
+	lobby.call(&"set_sfx_volume", PROBE_SFX_VOLUME)
+	_check(
+		"the lobby applies the music volume (%.2f)" % float(lobby.call(&"get_music_volume")),
+		is_equal_approx(float(lobby.call(&"get_music_volume")), PROBE_MUSIC_VOLUME)
+	)
+	_check(
+		"the lobby applies the SFX volume (%.2f)" % float(lobby.call(&"get_sfx_volume")),
+		is_equal_approx(float(lobby.call(&"get_sfx_volume")), PROBE_SFX_VOLUME)
+	)
+	var sfx_bus := AudioServer.get_bus_index(&"SFX")
+	_check("the project has an SFX bus (index %d)" % sfx_bus, sfx_bus >= 0)
+	if sfx_bus >= 0:
+		_check(
+			"the SFX slider reaches the bus (%.1f dB)" % AudioServer.get_bus_volume_db(sfx_bus),
+			is_equal_approx(
+				AudioServer.get_bus_volume_db(sfx_bus), linear_to_db(PROBE_SFX_VOLUME)
+			)
+		)
+	var audio_config := ConfigFile.new()
+	_check("settings.cfg was rewritten", audio_config.load(SETTINGS_PATH) == OK)
+	_check(
+		"settings.cfg holds the music volume (%.2f)" % float(
+			audio_config.get_value(SETTINGS_SECTION, "music_volume", -1.0)
+		),
+		is_equal_approx(
+			float(audio_config.get_value(SETTINGS_SECTION, "music_volume", -1.0)), PROBE_MUSIC_VOLUME
+		)
+	)
+	_check(
+		"settings.cfg holds the SFX volume (%.2f)" % float(
+			audio_config.get_value(SETTINGS_SECTION, "sfx_volume", -1.0)
+		),
+		is_equal_approx(
+			float(audio_config.get_value(SETTINGS_SECTION, "sfx_volume", -1.0)), PROBE_SFX_VOLUME
+		)
+	)
+
 	# Re-instantiate: a fresh lobby must read the file back.
 	lobby.queue_free()
 	await _wait_physics(2)
@@ -224,6 +289,40 @@ func _run() -> void:
 			reloaded.call(&"get_mouse_sensitivity")
 		),
 		is_equal_approx(float(reloaded.call(&"get_mouse_sensitivity")), PROBE_SENSITIVITY)
+	)
+	_check(
+		"a fresh lobby restores the saved music volume (%.2f)" % float(
+			reloaded.call(&"get_music_volume")
+		),
+		is_equal_approx(float(reloaded.call(&"get_music_volume")), PROBE_MUSIC_VOLUME)
+	)
+	_check(
+		"a fresh lobby restores the saved SFX volume (%.2f)" % float(
+			reloaded.call(&"get_sfx_volume")
+		),
+		is_equal_approx(float(reloaded.call(&"get_sfx_volume")), PROBE_SFX_VOLUME)
+	)
+	var reloaded_music := (
+		reloaded.get_node_or_null(
+			"SettingsLayer/Center/SettingsPanel/Margin/Content/MusicSlider"
+		) as HSlider
+	)
+	var reloaded_sfx := (
+		reloaded.get_node_or_null(
+			"SettingsLayer/Center/SettingsPanel/Margin/Content/SfxSlider"
+		) as HSlider
+	)
+	_check(
+		"the music slider shows the saved level (%s)" % (
+			"-" if reloaded_music == null else str(reloaded_music.value)
+		),
+		reloaded_music != null and is_equal_approx(reloaded_music.value, PROBE_MUSIC_VOLUME * 100.0)
+	)
+	_check(
+		"the SFX slider shows the saved level (%s)" % (
+			"-" if reloaded_sfx == null else str(reloaded_sfx.value)
+		),
+		reloaded_sfx != null and is_equal_approx(reloaded_sfx.value, PROBE_SFX_VOLUME * 100.0)
 	)
 	var reloaded_scene := root.get_node_or_null("Lobby")
 	_check("the reloaded lobby is the live menu", reloaded_scene == reloaded)
@@ -264,6 +363,8 @@ func _run() -> void:
 		_saves.call(&"delete_save")
 
 	# Leave the user's settings as the project default.
+	reloaded.call(&"set_music_volume", DEFAULT_MUSIC_VOLUME)
+	reloaded.call(&"set_sfx_volume", DEFAULT_SFX_VOLUME)
 	reloaded.call(&"set_mouse_sensitivity", DEFAULT_SENSITIVITY)
 	var restored := ConfigFile.new()
 	restored.load(SETTINGS_PATH)
@@ -272,6 +373,22 @@ func _run() -> void:
 			restored.get_value(SETTINGS_SECTION, "mouse_sensitivity", -1.0)
 		),
 		is_equal_approx(float(restored.get_value(SETTINGS_SECTION, "mouse_sensitivity", -1.0)), DEFAULT_SENSITIVITY)
+	)
+	_check(
+		"the music volume is restored (%.2f)" % float(
+			restored.get_value(SETTINGS_SECTION, "music_volume", -1.0)
+		),
+		is_equal_approx(
+			float(restored.get_value(SETTINGS_SECTION, "music_volume", -1.0)), DEFAULT_MUSIC_VOLUME
+		)
+	)
+	_check(
+		"the SFX volume is restored (%.2f)" % float(
+			restored.get_value(SETTINGS_SECTION, "sfx_volume", -1.0)
+		),
+		is_equal_approx(
+			float(restored.get_value(SETTINGS_SECTION, "sfx_volume", -1.0)), DEFAULT_SFX_VOLUME
+		)
 	)
 
 	# --- Continue: save on disk -> offline world ---------------------------

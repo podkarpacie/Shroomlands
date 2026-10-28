@@ -14,11 +14,16 @@ config/name="Shroomlands"
 run/main_scene="res://scenes/multiplayer/lobby.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
+
 [autoload]
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 Lore="*res://scripts/core/Lore.gd"
 EventBus="*res://scripts/core/EventBus.gd"
+Audio="*res://scripts/core/AudioManager.gd"
 Game="*res://scripts/core/Game.gd"
 SaveSystem="*res://scripts/core/SaveSystem.gd"
 Network="*res://scripts/multiplayer/Network.gd"

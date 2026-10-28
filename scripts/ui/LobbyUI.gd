@@ -14,6 +14,10 @@ const SETTINGS_VERSION := 1
 const MIN_SENSITIVITY := 0.0005
 const MAX_SENSITIVITY := 0.01
 const DEFAULT_SENSITIVITY := 0.0025
+## Audio levels are linear 0..1; the sliders show percent. The defaults match
+## `AudioManager` and the bus layout (-12 dB music, -4 dB effects).
+const DEFAULT_MUSIC_VOLUME := 0.2511886432
+const DEFAULT_SFX_VOLUME := 0.6309573445
 ## Ports below 1024 are privileged and 65535 is the last valid TCP/UDP port.
 const MIN_PORT := 1024
 const MAX_PORT := 65535
@@ -59,12 +63,26 @@ const PALETTE := {
 @onready var _fullscreen_toggle: CheckButton = (
 	$SettingsLayer/Center/SettingsPanel/Margin/Content/FullscreenToggle
 )
+@onready var _music_slider: HSlider = (
+	$SettingsLayer/Center/SettingsPanel/Margin/Content/MusicSlider
+)
+@onready var _music_value: Label = (
+	$SettingsLayer/Center/SettingsPanel/Margin/Content/MusicHeader/MusicValue
+)
+@onready var _sfx_slider: HSlider = (
+	$SettingsLayer/Center/SettingsPanel/Margin/Content/SfxSlider
+)
+@onready var _sfx_value: Label = (
+	$SettingsLayer/Center/SettingsPanel/Margin/Content/SfxHeader/SfxValue
+)
 @onready var _settings_close_button: Button = (
 	$SettingsLayer/Center/SettingsPanel/Margin/Content/SettingsCloseButton
 )
 
 var _sensitivity := DEFAULT_SENSITIVITY
 var _fullscreen := false
+var _music_volume := DEFAULT_MUSIC_VOLUME
+var _sfx_volume := DEFAULT_SFX_VOLUME
 var _entered_world := false
 
 
@@ -207,11 +225,36 @@ func is_fullscreen() -> bool:
 	return _fullscreen
 
 
+## Linear 0..1. The slider is a percentage, this is the audio level.
+func set_music_volume(value: float) -> void:
+	_music_volume = clampf(value, 0.0, 1.0)
+	_sync_volume_controls()
+	Audio.set_music_volume(_music_volume)
+	save_settings()
+
+
+func set_sfx_volume(value: float) -> void:
+	_sfx_volume = clampf(value, 0.0, 1.0)
+	_sync_volume_controls()
+	Audio.set_sfx_volume(_sfx_volume)
+	save_settings()
+
+
+func get_music_volume() -> float:
+	return _music_volume
+
+
+func get_sfx_volume() -> float:
+	return _sfx_volume
+
+
 func save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value(SETTINGS_SECTION, "version", SETTINGS_VERSION)
 	config.set_value(SETTINGS_SECTION, "mouse_sensitivity", _sensitivity)
 	config.set_value(SETTINGS_SECTION, "fullscreen", _fullscreen)
+	config.set_value(SETTINGS_SECTION, "music_volume", _music_volume)
+	config.set_value(SETTINGS_SECTION, "sfx_volume", _sfx_volume)
 	var error := config.save(SETTINGS_PATH)
 	if error != OK:
 		_set_status("Cannot save settings: %s" % error_string(error), true)
@@ -221,6 +264,18 @@ func save_settings() -> void:
 
 
 func _connect_buttons() -> void:
+	# Every menu button clicks first, then does its work; connecting here keeps
+	# the cue out of each handler.
+	for button: Button in [
+		_continue_button,
+		_new_game_button,
+		_host_button,
+		_join_button,
+		_settings_button,
+		_settings_close_button,
+		_quit_button,
+	]:
+		button.pressed.connect(_play_click)
 	_continue_button.pressed.connect(continue_game)
 	_new_game_button.pressed.connect(new_game)
 	_host_button.pressed.connect(host_game)
@@ -232,6 +287,12 @@ func _connect_buttons() -> void:
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_sensitivity_slider.value_changed.connect(_on_sensitivity_slider_changed)
 	_fullscreen_toggle.toggled.connect(set_fullscreen)
+	_music_slider.value_changed.connect(_on_music_slider_changed)
+	_sfx_slider.value_changed.connect(_on_sfx_slider_changed)
+
+
+func _play_click() -> void:
+	Audio.play_sfx(&"ui_click", 0.04, -8.0)
 
 
 func _on_join_pressed() -> void:
@@ -254,6 +315,14 @@ func _on_quit_pressed() -> void:
 
 func _on_sensitivity_slider_changed(value: float) -> void:
 	set_mouse_sensitivity(value)
+
+
+func _on_music_slider_changed(value: float) -> void:
+	set_music_volume(value / 100.0)
+
+
+func _on_sfx_slider_changed(value: float) -> void:
+	set_sfx_volume(value / 100.0)
 
 
 func _set_settings_open(value: bool) -> void:
@@ -326,6 +395,8 @@ func _load_settings() -> void:
 	if config.load(SETTINGS_PATH) != OK:
 		_sensitivity = DEFAULT_SENSITIVITY
 		_fullscreen = false
+		_music_volume = DEFAULT_MUSIC_VOLUME
+		_sfx_volume = DEFAULT_SFX_VOLUME
 		return
 	_sensitivity = clampf(
 		float(config.get_value(SETTINGS_SECTION, "mouse_sensitivity", DEFAULT_SENSITIVITY)),
@@ -333,10 +404,17 @@ func _load_settings() -> void:
 		MAX_SENSITIVITY
 	)
 	_fullscreen = bool(config.get_value(SETTINGS_SECTION, "fullscreen", false))
+	_music_volume = clampf(
+		float(config.get_value(SETTINGS_SECTION, "music_volume", DEFAULT_MUSIC_VOLUME)), 0.0, 1.0
+	)
+	_sfx_volume = clampf(
+		float(config.get_value(SETTINGS_SECTION, "sfx_volume", DEFAULT_SFX_VOLUME)), 0.0, 1.0
+	)
 
 
 func _sync_controls() -> void:
 	_sync_sensitivity_controls()
+	_sync_volume_controls()
 	_sync_fullscreen_control()
 	_ip_field.text = "127.0.0.1" if _ip_field.text.is_empty() else _ip_field.text
 	_port_field.text = str(Network.DEFAULT_PORT) if _port_field.text.is_empty() else _port_field.text
@@ -362,6 +440,14 @@ func _sync_sensitivity_controls() -> void:
 
 func _sync_fullscreen_control() -> void:
 	_fullscreen_toggle.set_pressed_no_signal(_fullscreen)
+
+
+## Both audio sliders show percent; the stored level is linear 0..1.
+func _sync_volume_controls() -> void:
+	_music_slider.set_value_no_signal(_music_volume * 100.0)
+	_music_value.text = "%d%%" % int(round(_music_volume * 100.0))
+	_sfx_slider.set_value_no_signal(_sfx_volume * 100.0)
+	_sfx_value.text = "%d%%" % int(round(_sfx_volume * 100.0))
 
 
 func _apply_settings() -> void:
@@ -431,7 +517,8 @@ func _style() -> void:
 	_status_label.add_theme_constant_override("outline_size", 3)
 	_transport_hint.add_theme_color_override("font_color", PALETTE["dim"])
 	_transport_hint.add_theme_font_size_override("font_size", 11)
-	_sensitivity_value.add_theme_color_override("font_color", PALETTE["text"])
+	for value_label: Label in [_sensitivity_value, _music_value, _sfx_value]:
+		value_label.add_theme_color_override("font_color", PALETTE["text"])
 	var settings_title := $SettingsLayer/Center/SettingsPanel/Margin/Content/SettingsTitle as Label
 	settings_title.add_theme_color_override("font_color", PALETTE["text"])
 	settings_title.add_theme_font_size_override("font_size", 20)

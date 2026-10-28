@@ -1,61 +1,50 @@
 # Shroomlands — Progress
 
-Status: **MVP complete and verified.** 17 suites / 778 assertions green; ENet + WebSocket
-multiplayer proven with real processes; Windows and Web exports built and boot-tested.
+Status: MVP shipped, models integrated, toolchain extended. `main` = `c31ed8b`, clean, pushed.
 
 ## Goal
-Shroomlands MVP — 3D multiplayer survival RPG, Godot 4.7.2, GDScript only, per `docs/MVP_SPEC.md`.
+Shroomlands MVP — 3D multiplayer survival RPG, Godot 4.7.2, GDScript only. Spec: `docs/MVP_SPEC.md`.
 
-## Done (spec §14 build order)
-- [x] 1. Autoloads (Lore, EventBus, Game, SaveSystem, Network) + full lore data layer
-- [x] 2. PlayerController (WASD, sprint, jump, spring-arm camera, interact ray)
-- [x] 3. Verdant Bloom world (600x600 ground, mounds, fog, seeded mushroom groves)
-- [x] 4. MushroomNode + GatheringSystem (timed harvest, discovery, 45 s regrow)
-- [x] 5. InventorySystem (48 slots, stacks of 64) + 8-slot hotbar
-- [x] 6. Themed HUD, satchel with 3D-rendered item icons/preview, chat, gather progress, toasts,
-  damage numbers, hit marker, damage vignette, death overlay
-- [x] 7. Network: host/join, server-authoritative spawning, position + vitals sync
-- [x] 8. Chat (global + local 25 m), server-relayed
-- [x] 9. Combat: box attack hitbox + enemy hurtboxes, light/heavy attacks, crits, knockback/stagger,
-  swing/bite/flinch poses, hit sparks, camera shake, stamina cost, fungal enemies, XP, death/respawn
-- [x] 10. PlotSystem: 6 plots, buy/fee/expiry on wall clock, grid building, persistence
-- [x] 11. Vocation selection at level 20 with four stat bonuses
-- [x] 12. Save/load: full state, autosave, Continue / New Game
-- [x] 13. Exports: Windows (Forward+, 105 MB) and Web (Compatibility/WebGL2, 37.7 MB wasm)
-- [x] 14. Hosting: dedicated server, playit.gg docs, web server script
+## Current state
+- **18 test suites / 867 assertions green**, all exit 0. Two real-process multiplayer proofs
+  (ENet 2-process, WebSocket 3-process) pass.
+- **Exports verified**: Windows 105 MB (Forward+, launches and closes clean), Web 39.5 MB wasm
+  (boots in Firefox from plain `http.server`, Compatibility/WebGL2).
+- **Repo**: https://github.com/podkarpacie/Shroomlands (private).
+- **Models**: 4 Blockbench glTF assets authored + wired into the scenes (player, blightling,
+  glowcap, emberstem). `.bbmodel` sources in `assets/models/source/`.
 
-## Verification snapshot (all re-run by me, not taken on report)
-| Check | Result |
-| --- | --- |
-| 17 test suites | 778 assertions, 0 failures, all exit 0 |
-| ENet 2-process | PASS — players=2, walk synced, chat, HP_DROP, INV_RECV, enemies=4 |
-| WebSocket 3-process | PASS — 2 WS clients on a WS-only dedicated server |
-| Web build in Firefox | Renders lobby from plain `python -m http.server`, no special headers |
-| Windows exe | 105 MB, Vulkan Forward+, window opens and closes cleanly |
-| Export hygiene | No `addons/godot_ai` in any shipped pack |
+## Workstreams (merged)
+There were two parallel lines of work. `328dbf8` (tag `v0.1.0`) is the UI overhaul —
+model-backed item icons, hitbox combat, `LimbAnimator`/`SwingWeapon`, themed HUD/inventory.
+My line contributed the model pipeline, the 64×64 atlas fix, test isolation, and polish.
 
-## Blocked
-- (none)
+## Done this session
+- Installed **77 gamedev Agent Skills** (+router) to `~/.config/opencode/skills/`
+  (`gamedev-skills/awesome-gamedev-agent-skills`, Apache-2.0, NOTICE retained).
+  Verified `godot-multiplayer` loads by ID with its reference files.
+- Fixed the glTF UV overflow: `pack_uv` was overflowing a 16 px atlas (used 29×50), so UVs
+  exceeded 1.0 and wrapped → smeared faces. All four models rebuilt at 64×64.
+- Fixed weapon shadow aliasing (PCSS dither from a small caster), death-overlay overlap,
+  and plot-sign/building overlap; stamina now reads 0 while dead.
+- Refreshed `docs/screenshots/02-08`.
+- **Added the entire audio layer** (there was none): 10 procedural WAV cues synthesised by the
+  committed `tools/generate_audio.py` (deterministic — verified byte-identical across runs),
+  Master/Music/SFX bus layout, `Audio` autoload with a pooled polyphonic SFX player, a 20 s
+  seamlessly looping ambient bed that starts with the world, event wiring for combat/gather/
+  pickup/level/death/build, and persisted Music/SFX volume sliders in the lobby.
+  Headless runs keep audio output disabled (Godot reports leaked players otherwise); tests
+  re-enable it explicitly to assert playback.
 
-## Deliberate deviations from spec
-- **Forward+ on Web is impossible in 4.7.2** (no WebGPU backend in the web template). Desktop stays
-  Forward+; web ships Compatibility/WebGL2. Spec §15 wanted both — they cannot both be true.
-- **Blender replaced by Blockbench** (105 MB, AI-native MCP, glTF into Godot). Blender only if
-  sculpting/high-poly is ever needed.
-- **One transport per server instance.** ENet (desktop) and WebSocket (browsers) cannot share a
-  server process in the MVP; two servers = two worlds.
-- **playit.gg** needs a port field (added) but assigns a random public port, so desktop clients must
-  be told the mapped port; a fixed VPS/router forward on 7777 is the frictionless path.
-
-## Known gaps (deliberate MVP scope)
-- No anti-cheat: peers report their own HP, gold, inventory, position.
-- Plots/currency are not reconciled server-side; one gold pool per session, plots are a JSON file.
-- Enemies are one type, server-spawned; no HP bars on clients, no loot, no attack telegraph.
-- No voice chat, full skill trees, other biomes, raids, accounts, server browser, TLS (`wss://`).
-- Art is low-poly by design: authored Blockbench models for player, blightling and mushrooms,
-  procedural 3D item icons; no high-poly sculpting or skeletal animation yet.
+## Known gaps
+- No anti-cheat: peers report their own HP, gold, inventory, position; server validates shape
+  only. Plots/currency are not reconciled server-side.
+- Web renderer is Compatibility/WebGL2 — Forward+ is impossible in 4.7.2's web template.
+- One transport per server instance (ENet XOR WebSocket); mixed sessions unsupported.
+- Models are unrigged (no skeletal animation); movement uses procedural limb motion.
+- No voice chat, skill trees, other biomes, raids, accounts, server browser, TLS.
+- Leftover local branch `model-wiring-pre-upstream` holds discarded wiring work (local only).
 
 ## Follow-ups
-- Add a second creature silhouette, loot drops and a ranged/thrown option so combat has more than
-  one melee rhythm.
+- Consider hiding non-Godot skills (`opencode/autoinvoke: false`) — 78 skills are advertised.
 - Server-side validation pass before any economy or PvP work.
