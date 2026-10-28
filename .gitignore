@@ -19,6 +19,17 @@ tests/_capture*.png.import
 # regenerates their import descriptors locally and they would only churn.
 docs/screenshots/*.import
 
+# --- Model artefacts ---------------------------------------------------------
+# The .gltf embeds its own texture and the editable sources live in
+# assets/models/source/, so the loose Blockbench texture exports that land next
+# to the exports are duplicates, and so are their import descriptors.
+# player2.bbmodel is an abandoned variant and models.rar is an archive of the
+# same files. Nothing under assets/models/source/ is affected.
+assets/models/*_tex*.png
+assets/models/*_tex*.png.import
+assets/models/player2.bbmodel
+assets/models/*.rar
+
 # --- Scratch files -----------------------------------------------------------
 *.tmp
 # Claude/input bundles: applied to the tree, never source.
