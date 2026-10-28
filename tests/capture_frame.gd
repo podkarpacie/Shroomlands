@@ -5,14 +5,15 @@ extends SceneTree
 ##   Godot_v4.7.2-stable_win64.exe --path . --script res://tests/capture_frame.gd
 ##
 ## Prints the full player/camera/spring-arm state, checks that the player is in
-## front of the camera and inside the frustum, then saves seven frames: normal
-## gameplay with the HUD, the open inventory panel, a gather in progress, the
-## plot row in build mode, a melee hit on a creature, the death overlay and the
-## vocation modal with its four cards.
+## front of the camera and inside the frustum, then saves eight frames: normal
+## gameplay with the HUD, the second held item in the left hand, the open
+## inventory panel, a gather in progress, the plot row in build mode, a melee hit
+## on a creature, the death overlay and the vocation modal with its four cards.
 ## Every PNG path is printed as an absolute path.
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const CAPTURE_PATH := "res://tests/_capture.png"
+const HELD_CAPTURE_PATH := "res://tests/_capture_held.png"
 const INVENTORY_CAPTURE_PATH := "res://tests/_capture_inventory.png"
 const GATHER_CAPTURE_PATH := "res://tests/_capture_gather.png"
 const COMBAT_CAPTURE_PATH := "res://tests/_capture_combat.png"
@@ -93,6 +94,7 @@ func _run() -> void:
 		await physics_frame
 	_dump("AT %d PHYSICS FRAMES (~10 s)" % LATE_FRAMES)
 
+	await _capture_held_item()
 	await _capture_gather()
 	await _capture_plots()
 	await _capture_combat()
@@ -101,6 +103,7 @@ func _run() -> void:
 
 	print("\ncapture files:")
 	print("  normal:    %s" % ProjectSettings.globalize_path(CAPTURE_PATH))
+	print("  held:      %s" % ProjectSettings.globalize_path(HELD_CAPTURE_PATH))
 	print("  inventory: %s" % ProjectSettings.globalize_path(INVENTORY_CAPTURE_PATH))
 	print("  gather:    %s" % ProjectSettings.globalize_path(GATHER_CAPTURE_PATH))
 	print("  plots:     %s" % ProjectSettings.globalize_path(PLOT_CAPTURE_PATH))
@@ -318,6 +321,25 @@ func _vec(v: Vector3) -> String:
 
 func _vec2(v: Vector2) -> String:
 	return "(%.3f, %.3f)" % [v.x, v.y]
+
+
+## Second held-item still. The seeded inventory already puts a glowcap in slot 0
+## (the normal capture); switching the hotbar to slot 1 through the same signal
+## the HUD emits shows the emberstem without simulating input. The camera is left
+## alone on purpose: the still has to read from the default behind-the-back view.
+func _capture_held_item() -> void:
+	var bus: Node = root.get_node_or_null("EventBus")
+	_check("the EventBus autoload exists", bus != null)
+	if bus == null:
+		return
+	bus.emit_signal(&"hotbar_selected", 1)
+	await _wait_physics(4)
+	var held := StringName(_player.get(&"held_item"))
+	_check("the emberstem is held for its capture (%s)" % String(held), held == &"emberstem")
+	await _save(HELD_CAPTURE_PATH)
+	# Back to the glowcap for every later still.
+	bus.emit_signal(&"hotbar_selected", 0)
+	await _wait_physics(2)
 
 
 ## Mid-gather frame: stand next to the nearest mushroom, start the real timed

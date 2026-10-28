@@ -389,6 +389,28 @@ func _on_hp_changed(current: float, _max_hp: float) -> void:
 func _on_node_added(node: Node) -> void:
 	if node.is_in_group(WORLD_GROUP):
 		_watch_world(node)
+	_watch_footsteps(node)
+
+
+## Every `LimbAnimator` under a body in group `player` reports its footfalls.
+## A replicated body animates from position deltas, so its steps are as real as
+## the local ones and both peers hear the same gait.
+func _watch_footsteps(node: Node) -> void:
+	if not node.has_signal(&"stepped"):
+		return
+	var body := node.get_parent()
+	if body == null or not body.is_in_group(&"player"):
+		return
+	if not node.is_connected(&"stepped", _on_stepped):
+		node.connect(&"stepped", _on_stepped)
+
+
+## A step is texture under the scene, not an event: quieter than every combat
+## cue, with enough pitch variation that the same sample does not machine-gun.
+func _on_stepped(_foot: int) -> void:
+	if _settling():
+		return
+	play_sfx(&"footstep", 0.12, -9.0)
 
 
 func _watch_world(world: Node) -> void:

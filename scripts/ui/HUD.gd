@@ -90,6 +90,9 @@ func _ready() -> void:
 	_apply_initial_state()
 	_connect_signals()
 	_vocation_button.pressed.connect(_on_vocation_pressed)
+	# `_build_hotbar` emitted the selection already; this covers a listener whose
+	# body spawned after the HUD was ready.
+	EventBus.hotbar_selected.emit(_selected)
 
 
 func _process(delta: float) -> void:
@@ -173,6 +176,7 @@ func _set_selected(index: int) -> void:
 			0.12
 		).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_update_selected_label()
+	EventBus.hotbar_selected.emit(_selected)
 
 
 ## Eight cells with an item icon, a key number, a stack badge and a rarity bar.

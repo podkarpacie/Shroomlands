@@ -204,6 +204,9 @@ func _finish() -> void:
 	if positions.is_empty():
 		positions = _last_positions
 	print("CHAT_RESULT sent=%d received=%d" % [1 if _chat_sent else 0, _chat_received.size()])
+	# The client's selected slot holds the loot it just gathered, so the host's
+	# line proves the replicated `held_item` reached the other peer.
+	print("HELD_ITEMS %s" % _held_string(players))
 	if _mode == "DEDICATED":
 		# Boot check by default; with `--net-expect-players=N` it waits for the
 		# clients and proves the server spawned one body per connected peer.
@@ -315,6 +318,16 @@ func _positions_string(players: Array[Node]) -> String:
 		var at := (player as Node3D).global_position
 		parts.append("%.2f,%.2f,%.2f" % [at.x, at.y, at.z])
 	return ";".join(parts)
+
+
+## `peer:held_item` per body, `-` for an empty hand or an empty roster. The
+## HOST's line is the proof that a remote client's selection replicated.
+func _held_string(players: Array[Node]) -> String:
+	var parts: PackedStringArray = []
+	for player in players:
+		var held := String(player.get(&"held_item"))
+		parts.append("%s:%s" % [player.name, held if not held.is_empty() else "-"])
+	return ";".join(parts) if not parts.is_empty() else "-"
 
 
 func _find_local_player() -> Node3D:

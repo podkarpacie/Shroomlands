@@ -57,6 +57,10 @@ signal landed(impact_speed: float)
 @export var zoom_min := 2.2
 @export var zoom_max := 8.0
 @export var zoom_step := 0.6
+## Id of the item the selected hotbar slot points at, drawn in the left hand.
+## Replicated by the body's synchronizer: a peer never needs another player's
+## `InventorySystem` to know what that player is holding.
+@export var held_item: StringName = &""
 
 var is_sprinting: bool:
 	get:

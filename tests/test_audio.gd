@@ -23,6 +23,7 @@ const CUES: Array[String] = [
 	"level_up",
 	"death",
 	"place",
+	"footstep",
 	"ui_click",
 	"ambient_mycelia",
 ]
@@ -112,6 +113,16 @@ func _run() -> void:
 			_check("%s carries sample data (%d bytes)" % [path.get_file(), wav.data.size()],
 				wav.data.size() > 1024)
 		_check("Audio knows the '%s' cue" % id, bool(audio.call(&"has_cue", StringName(id))))
+
+	# The footstep has to stay a short scuff: it is triggered twice per gait
+	# cycle, so a long tail would smear the walk into a drone.
+	var footstep := load("%s/footstep.wav" % SFX_DIR) as AudioStream
+	_check("the footstep cue loads", footstep != null)
+	if footstep != null:
+		_check(
+			"the footstep cue is short (%.3f s)" % footstep.get_length(),
+			footstep.get_length() > 0.05 and footstep.get_length() < 0.15
+		)
 
 	# --- the ambient bed loops ---------------------------------------------
 	var ambient := load("%s/%s.wav" % [SFX_DIR, AMBIENT]) as AudioStreamWAV

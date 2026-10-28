@@ -3,6 +3,10 @@ extends Node3D
 ## club is a sibling of the model (not a child of it) and copies `hand_r`'s world
 ## transform every frame. That keeps the club out of the model's mesh count while
 ## still following the procedural arm swing exactly.
+##
+## The club is the player's weapon, not an inventory item: it stays in the right
+## hand whatever `held_item` says. An empty hotbar slot or a mushroom in the left
+## hand must not remove it.
 
 const HAND_NAME := &"hand_r"
 

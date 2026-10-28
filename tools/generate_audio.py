@@ -227,6 +227,18 @@ def _place() -> list[float]:
     return out
 
 
+def _footstep() -> list[float]:
+    """Soft ground thud under one step: a damped low body and a short scuff."""
+    out = _buffer(0.09)
+    body = _shape(_sweep(0.09, 150.0, 68.0), 0.002, 0.022)
+    scuff = _shape(_lowpass(_noise(_rng("footstep"), 0.09), 1100.0), 0.001, 0.016)
+    sub = _shape(_sine(72.0, 0.09), 0.002, 0.028)
+    _into(out, body, 0.80)
+    _into(out, scuff, 0.45)
+    _into(out, sub, 0.30)
+    return out
+
+
 def _ui_click() -> list[float]:
     """Very short, soft click for menu buttons."""
     out = _buffer(0.05)
@@ -288,6 +300,7 @@ CUES = {
     "level_up": _level_up,
     "death": _death,
     "place": _place,
+    "footstep": _footstep,
     "ui_click": _ui_click,
     "ambient_mycelia": _ambient,
 }
