@@ -1,0 +1,225 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/PauseMenu.gd" id="1_pause"]
+
+[node name="PauseMenu" type="CanvasLayer" groups=["pause_menu"]]
+process_mode = 3
+layer = 30
+visible = false
+script = ExtResource("1_pause")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.015, 0.024, 0.018, 0.82)
+
+[node name="Center" type="CenterContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Card" type="PanelContainer" parent="Root/Center"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Root/Center/Card"]
+layout_mode = 2
+theme_override_constants/margin_left = 26
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 26
+theme_override_constants/margin_bottom = 20
+
+[node name="Content" type="HBoxContainer" parent="Root/Center/Card/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Actions" type="VBoxContainer" parent="Root/Center/Card/Margin/Content"]
+custom_minimum_size = Vector2(236, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Root/Center/Card/Margin/Content/Actions"]
+layout_mode = 2
+text = "SHROOMLANDS"
+
+[node name="Subtitle" type="Label" parent="Root/Center/Card/Margin/Content/Actions"]
+layout_mode = 2
+text = "Paused"
+
+[node name="LocalHint" type="Label" parent="Root/Center/Card/Margin/Content/Actions"]
+visible = false
+layout_mode = 2
+text = "Paused (local) — the server keeps running"
+autowrap_mode = 3
+
+[node name="ResumeButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Resume"
+
+[node name="SettingsButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Settings"
+
+[node name="ControlsButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Controls"
+
+[node name="PlayersButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Players"
+
+[node name="QuitToMenuButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Quit to Menu"
+
+[node name="QuitGameButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Quit Game"
+
+[node name="Footer" type="Label" parent="Root/Center/Card/Margin/Content/Actions"]
+layout_mode = 2
+text = "Changes apply immediately"
+autowrap_mode = 3
+
+[node name="Sections" type="VBoxContainer" parent="Root/Center/Card/Margin/Content"]
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="IdleHint" type="Label" parent="Root/Center/Card/Margin/Content/Sections"]
+layout_mode = 2
+text = "Esc resumes · Tab satchel · Enter chat · B build · V vocation"
+autowrap_mode = 3
+
+[node name="SettingsSection" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SettingsTitle" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+layout_mode = 2
+text = "Settings"
+
+[node name="MusicHeader" type="HBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MusicLabel" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection/MusicHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Music"
+
+[node name="MusicValue" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection/MusicHeader"]
+layout_mode = 2
+text = "25%"
+horizontal_alignment = 2
+
+[node name="MusicSlider" type="HSlider" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+value = 25.0
+
+[node name="SfxHeader" type="HBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SfxLabel" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection/SfxHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SFX"
+
+[node name="SfxValue" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection/SfxHeader"]
+layout_mode = 2
+text = "63%"
+horizontal_alignment = 2
+
+[node name="SfxSlider" type="HSlider" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+value = 63.0
+
+[node name="SensitivityHeader" type="HBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SensitivityLabel" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection/SensitivityHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Mouse sensitivity"
+
+[node name="SensitivityValue" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection/SensitivityHeader"]
+layout_mode = 2
+text = "0.0025"
+horizontal_alignment = 2
+
+[node name="SensitivitySlider" type="HSlider" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+min_value = 0.0005
+max_value = 0.01
+step = 0.0001
+value = 0.0025
+
+[node name="FullscreenToggle" type="CheckButton" parent="Root/Center/Card/Margin/Content/Sections/SettingsSection"]
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="ControlsSection" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ControlsTitle" type="Label" parent="Root/Center/Card/Margin/Content/Sections/ControlsSection"]
+layout_mode = 2
+text = "Controls"
+
+[node name="ControlsScroll" type="ScrollContainer" parent="Root/Center/Card/Margin/Content/Sections/ControlsSection"]
+custom_minimum_size = Vector2(0, 380)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ControlsMargin" type="MarginContainer" parent="Root/Center/Card/Margin/Content/Sections/ControlsSection/ControlsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_right = 14
+
+[node name="ControlsList" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/ControlsSection/ControlsScroll/ControlsMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PlayersSection" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PlayersTitle" type="Label" parent="Root/Center/Card/Margin/Content/Sections/PlayersSection"]
+layout_mode = 2
+text = "Players"
+
+[node name="PlayersList" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/PlayersSection"]
+layout_mode = 2
+theme_override_constants/separation = 6

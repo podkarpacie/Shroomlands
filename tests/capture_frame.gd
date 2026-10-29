@@ -5,10 +5,11 @@ extends SceneTree
 ##   Godot_v4.7.2-stable_win64.exe --path . --script res://tests/capture_frame.gd
 ##
 ## Prints the full player/camera/spring-arm state, checks that the player is in
-## front of the camera and inside the frustum, then saves eight frames: normal
+## front of the camera and inside the frustum, then saves ten frames: normal
 ## gameplay with the HUD, the second held item in the left hand, the open
 ## inventory panel, a gather in progress, the plot row in build mode, a melee hit
-## on a creature, the death overlay and the vocation modal with its four cards.
+## on a creature, the death overlay, the vocation modal with its four cards and
+## the pause menu with its Controls page open.
 ## Every PNG path is printed as an absolute path.
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
@@ -21,6 +22,7 @@ const COMBAT_CAPTURE_PATH := "res://tests/_capture_combat.png"
 const DEATH_CAPTURE_PATH := "res://tests/_capture_death.png"
 const PLOT_CAPTURE_PATH := "res://tests/_capture_plots.png"
 const VOCATION_CAPTURE_PATH := "res://tests/_capture_vocation.png"
+const PAUSE_CAPTURE_PATH := "res://tests/_capture_pause.png"
 ## The capture tool must not start from a real save: a loaded level-20 character
 ## would auto-open the vocation modal over every frame. The file is put back
 ## when the tool exits.
@@ -104,6 +106,7 @@ func _run() -> void:
 	await _capture_combat()
 	await _capture_death()
 	await _capture_vocation()
+	await _capture_pause()
 
 	print("\ncapture files:")
 	print("  normal:    %s" % ProjectSettings.globalize_path(CAPTURE_PATH))
@@ -115,6 +118,7 @@ func _run() -> void:
 	print("  combat:    %s" % ProjectSettings.globalize_path(COMBAT_CAPTURE_PATH))
 	print("  death:     %s" % ProjectSettings.globalize_path(DEATH_CAPTURE_PATH))
 	print("  vocation:  %s" % ProjectSettings.globalize_path(VOCATION_CAPTURE_PATH))
+	print("  pause:     %s" % ProjectSettings.globalize_path(PAUSE_CAPTURE_PATH))
 
 	_restore_save()
 	if _failures == 0:
@@ -658,6 +662,44 @@ func _capture_vocation() -> void:
 		game.set(&"chosen_vocation", &"")
 
 
+## Pause menu still: the in-game menu with its Controls page open over the frozen
+## world. The card must fit the viewport — a Quit button that hangs off the
+## screen is not usable — so the panel rect is asserted as well.
+func _capture_pause() -> void:
+	var menu := _main_pause_menu()
+	_check("Main has a PauseMenu layer", menu != null)
+	if menu == null:
+		return
+	menu.call(&"open")
+	menu.call(&"set_section", "controls")
+	await _wait_physics(3)
+	_check("the pause menu is visible for its capture", menu.visible)
+	var card := menu.get_node_or_null("Root/Center/Card") as Control
+	var viewport_size := root.get_visible_rect().size
+	_check("the pause card exists", card != null)
+	if card != null:
+		var rect := card.get_global_rect()
+		print("pause card rect %s -> %s inside viewport %s" % [
+			_vec2(rect.position), _vec2(rect.end), _vec2(viewport_size)
+		])
+		_check(
+			"the pause card fits the viewport (%s)" % _vec2(rect.size),
+			rect.position.x >= 0.0 and rect.position.y >= 0.0
+				and rect.end.x <= viewport_size.x and rect.end.y <= viewport_size.y
+		)
+	var controls_text := String(menu.call(&"get_controls_text"))
+	print("-- Controls page --\n%s" % controls_text)
+	_check(
+		"the Controls page lists the movement keys",
+		controls_text.contains("W")
+			and controls_text.contains("Shift")
+			and controls_text.contains("Space")
+	)
+	await _save(PAUSE_CAPTURE_PATH)
+	menu.call(&"close")
+	await process_frame
+
+
 func _main_hud() -> Node:
 	var main := _player.get_parent()
 	if main == null:
@@ -670,6 +712,13 @@ func _main_vocation_ui() -> CanvasLayer:
 	if main == null:
 		return null
 	return main.get_node_or_null("VocationUI") as CanvasLayer
+
+
+func _main_pause_menu() -> CanvasLayer:
+	var main := _player.get_parent()
+	if main == null:
+		return null
+	return main.get_node_or_null("PauseMenu") as CanvasLayer
 
 
 func _main_plot_system() -> Node:

@@ -121,6 +121,12 @@ func _exit_tree() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Escape closes an open satchel first, so the pause menu never opens on top
+	# of it (see `PauseMenu.handle_escape` for the whole priority chain).
+	if visible and event.is_action_pressed(&"ui_cancel"):
+		set_open(false)
+		get_viewport().set_input_as_handled()
+		return
 	if not event.is_action_pressed(&"toggle_inventory"):
 		return
 	toggle()

@@ -170,8 +170,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_spring_arm.rotation.x = _pitch
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"ui_cancel"):
-		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		# Escape belongs to the pause menu; it owns the priority chain, so an
+		# open chat, satchel or build session closes before the menu opens.
+		if _request_pause_menu():
+			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
 		if button.pressed and button.button_index == MOUSE_BUTTON_LEFT:
@@ -435,6 +437,28 @@ func _try_attack() -> void:
 		return
 	# Shift + LMB is the heavy swing; `CombatSystem` owns the cooldown and cost.
 	combat.call(&"try_attack", Input.is_action_pressed(&"sprint"))
+
+
+## Escape: the pause menu owns the chain (chat -> satchel -> build -> menu).
+## Without a menu in the tree — the body is also instantiated on its own by a
+## few suites — the key keeps its old job of releasing the mouse.
+func _request_pause_menu() -> bool:
+	var menu := _pause_menu()
+	if menu != null and menu.has_method(&"handle_escape"):
+		return bool(menu.call(&"handle_escape"))
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	return true
+
+
+func _pause_menu() -> Node:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	var main := tree.get_first_node_in_group(&"main")
+	if main == null:
+		return null
+	return main.get_node_or_null(^"PauseMenu")
 
 
 func _capture_mouse() -> void:

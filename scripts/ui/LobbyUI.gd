@@ -249,15 +249,85 @@ func get_sfx_volume() -> float:
 
 
 func save_settings() -> void:
-	var config := ConfigFile.new()
-	config.set_value(SETTINGS_SECTION, "version", SETTINGS_VERSION)
-	config.set_value(SETTINGS_SECTION, "mouse_sensitivity", _sensitivity)
-	config.set_value(SETTINGS_SECTION, "fullscreen", _fullscreen)
-	config.set_value(SETTINGS_SECTION, "music_volume", _music_volume)
-	config.set_value(SETTINGS_SECTION, "sfx_volume", _sfx_volume)
-	var error := config.save(SETTINGS_PATH)
+	var error := write_settings({
+		"mouse_sensitivity": _sensitivity,
+		"fullscreen": _fullscreen,
+		"music_volume": _music_volume,
+		"sfx_volume": _sfx_volume,
+	})
 	if error != OK:
 		_set_status("Cannot save settings: %s" % error_string(error), true)
+
+
+# --- shared persistence (the in-game pause menu edits the same file) --------
+
+
+## The values both option pages own. A missing or unreadable file reads as
+## exactly these, so neither page needs to know about the file layout.
+static func default_settings() -> Dictionary:
+	return {
+		"mouse_sensitivity": DEFAULT_SENSITIVITY,
+		"fullscreen": false,
+		"music_volume": DEFAULT_MUSIC_VOLUME,
+		"sfx_volume": DEFAULT_SFX_VOLUME,
+	}
+
+
+## Reads `settings.cfg` clamped to the sliders' ranges. Safe on a fresh profile:
+## a missing key (or a whole missing file) falls back to `default_settings()`.
+static func read_settings() -> Dictionary:
+	var values := default_settings()
+	var config := ConfigFile.new()
+	if config.load(SETTINGS_PATH) != OK:
+		return values
+	values["mouse_sensitivity"] = clampf(
+		float(config.get_value(SETTINGS_SECTION, "mouse_sensitivity", values["mouse_sensitivity"])),
+		MIN_SENSITIVITY,
+		MAX_SENSITIVITY
+	)
+	values["fullscreen"] = bool(
+		config.get_value(SETTINGS_SECTION, "fullscreen", values["fullscreen"])
+	)
+	values["music_volume"] = clampf(
+		float(config.get_value(SETTINGS_SECTION, "music_volume", values["music_volume"])), 0.0, 1.0
+	)
+	values["sfx_volume"] = clampf(
+		float(config.get_value(SETTINGS_SECTION, "sfx_volume", values["sfx_volume"])), 0.0, 1.0
+	)
+	return values
+
+
+## Writes every key a page owns, so a change made in the lobby is visible in the
+## pause menu and the other way round. Returns the `ConfigFile` error.
+static func write_settings(values: Dictionary) -> Error:
+	var defaults := default_settings()
+	var config := ConfigFile.new()
+	config.set_value(SETTINGS_SECTION, "version", SETTINGS_VERSION)
+	config.set_value(
+		SETTINGS_SECTION,
+		"mouse_sensitivity",
+		clampf(
+			float(values.get("mouse_sensitivity", defaults["mouse_sensitivity"])),
+			MIN_SENSITIVITY,
+			MAX_SENSITIVITY
+		)
+	)
+	config.set_value(
+		SETTINGS_SECTION,
+		"fullscreen",
+		bool(values.get("fullscreen", defaults["fullscreen"]))
+	)
+	config.set_value(
+		SETTINGS_SECTION,
+		"music_volume",
+		clampf(float(values.get("music_volume", defaults["music_volume"])), 0.0, 1.0)
+	)
+	config.set_value(
+		SETTINGS_SECTION,
+		"sfx_volume",
+		clampf(float(values.get("sfx_volume", defaults["sfx_volume"])), 0.0, 1.0)
+	)
+	return config.save(SETTINGS_PATH)
 
 
 # --- wiring ----------------------------------------------------------------
@@ -391,25 +461,11 @@ func _enter_world() -> void:
 
 
 func _load_settings() -> void:
-	var config := ConfigFile.new()
-	if config.load(SETTINGS_PATH) != OK:
-		_sensitivity = DEFAULT_SENSITIVITY
-		_fullscreen = false
-		_music_volume = DEFAULT_MUSIC_VOLUME
-		_sfx_volume = DEFAULT_SFX_VOLUME
-		return
-	_sensitivity = clampf(
-		float(config.get_value(SETTINGS_SECTION, "mouse_sensitivity", DEFAULT_SENSITIVITY)),
-		MIN_SENSITIVITY,
-		MAX_SENSITIVITY
-	)
-	_fullscreen = bool(config.get_value(SETTINGS_SECTION, "fullscreen", false))
-	_music_volume = clampf(
-		float(config.get_value(SETTINGS_SECTION, "music_volume", DEFAULT_MUSIC_VOLUME)), 0.0, 1.0
-	)
-	_sfx_volume = clampf(
-		float(config.get_value(SETTINGS_SECTION, "sfx_volume", DEFAULT_SFX_VOLUME)), 0.0, 1.0
-	)
+	var values := read_settings()
+	_sensitivity = float(values["mouse_sensitivity"])
+	_fullscreen = bool(values["fullscreen"])
+	_music_volume = float(values["music_volume"])
+	_sfx_volume = float(values["sfx_volume"])
 
 
 func _sync_controls() -> void:
