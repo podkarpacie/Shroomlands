@@ -8,6 +8,12 @@ extends CharacterBody3D
 ## stays where the mouse put it and the silhouette still faces where it walks.
 
 const PlayerStatsScript := preload("res://scripts/player/PlayerStats.gd")
+## Head and cap meshes that would fill the lens in first person. Their own
+## `visible` values are remembered on entry, so a mesh an artist hid stays
+## hidden when the view pulls back out.
+const HEAD_MESHES: Array[StringName] = [
+	&"head_box", &"cap_rim", &"cap_mid", &"cap_top", &"cap_crown", &"eye_l", &"eye_r"
+]
 
 signal jumped
 ## Emitted on touchdown with the downward speed at impact (m/s), for the landing
@@ -53,10 +59,35 @@ signal landed(impact_speed: float)
 @export var base_fov := 75.0
 ## Extra field of view while sprinting; sells the speed without touching gameplay.
 @export var sprint_fov_kick := 7.0
-## Mouse-wheel zoom range and step for the third-person camera.
+## Mouse-wheel zoom range, in metres. The wheel runs from
+## `first_person_distance` (the rig's eyes) out to `zoom_max`; `zoom_min` is
+## where the third-person framing ends and the camera starts easing from the
+## pivot toward the eye point.
 @export var zoom_min := 2.2
 @export var zoom_max := 8.0
+## Metres of dolly per wheel tick.
 @export var zoom_step := 0.6
+## Effective arm length at or below which the view is first person: the head
+## meshes are hidden, the arms raise into their FPS pose and the arm stops
+## colliding. Leaving needs `fp_exit_margin` more than this, so a wheel parked on
+## the edge cannot flicker between the two framings.
+@export var first_person_threshold := 0.6
+@export var fp_exit_margin := 0.15
+## Closest zoom target, the near end of the first-person range.
+@export var first_person_distance := 0.05
+## Frame-rate-independent easing rate of the zoom dolly, per second.
+@export var zoom_smoothing := 12.0
+## First-person camera origin in `CameraPivot` space. The camera sits 0.62 m
+## above the body origin and 0.15 m in front of it, i.e. 0.18 m below and 0.15 m
+## forward of the pivot at y = 0.8. It is deliberately higher than the rig's
+## head bone: the arms are third-person boxes, and an eye at chin height pressed
+## the near end of both forearms into the lower half of the frame.
+@export var fp_eye_offset := Vector3(0.0, -0.18, -0.15)
+## Pitch limits once the view is first person. The third-person cone keeps the
+## arm out of the ground; with the head gone the camera can look almost straight
+## up and down.
+@export var fp_min_pitch := -85.0
+@export var fp_max_pitch := 85.0
 ## Id of the item the selected hotbar slot points at, drawn in the left hand.
 ## Replicated by the body's synchronizer: a peer never needs another player's
 ## `InventorySystem` to know what that player is holding.
@@ -98,9 +129,27 @@ var xp: int:
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
 @onready var _interact_ray: RayCast3D = $InteractRay
+## The helper that raises the arms into the FPS pose. Optional: a body built
+## without it still zooms and hides its head.
+@onready var _fp_arms: Node = get_node_or_null(^"FpArms")
 
 var _pitch := 0.0
-var _zoom := 4.0
+## Zoom target in metres. `_process` eases `spring_length` toward it, so a wheel
+## tick glides instead of snapping.
+var _zoom_target := 4.0
+## Compatibility alias for the name the older camera test writes. Kept a real
+## property (not a dead export) so `set("_zoom", 8)` still aims the wheel.
+var _zoom: float:
+	get:
+		return _zoom_target
+	set(value):
+		_zoom_target = clampf(value, first_person_distance, zoom_max)
+var _first_person := false
+var _head_meshes: Array[MeshInstance3D] = []
+## mesh -> the `visible` it had before the first-person view hid it.
+var _head_visibility := {}
+## The arm's scene-configured mask, restored when the view leaves first person.
+var _arm_collision_mask := 1
 var _shake_left := 0.0
 var _shake_duration := 0.0
 var _shake_strength := 0.0
@@ -139,8 +188,10 @@ func _ready() -> void:
 	if is_instance_valid(_spring_arm):
 		_spring_arm.add_excluded_object(get_rid())
 		_spring_arm.spring_length = camera_distance
-	_zoom = camera_distance
+		_arm_collision_mask = _spring_arm.collision_mask
+	_zoom_target = camera_distance
 	_camera.fov = base_fov
+	_collect_head_meshes()
 	# Stay glued to slopes and small steps instead of skipping off them.
 	floor_snap_length = 0.35
 	floor_constant_speed = true
@@ -162,10 +213,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var motion := event as InputEventMouseMotion
 		_camera_pivot.rotate_y(-motion.relative.x * mouse_sensitivity)
+		# First person drops the third-person cone: the cap is gone, so there is
+		# nothing left for the clamp at -75..60 to keep the arm out of.
+		var pitch_floor := fp_min_pitch if _first_person else min_pitch
+		var pitch_ceiling := fp_max_pitch if _first_person else max_pitch
 		_pitch = clampf(
 			_pitch - motion.relative.y * mouse_sensitivity,
-			deg_to_rad(min_pitch),
-			deg_to_rad(max_pitch)
+			deg_to_rad(pitch_floor),
+			deg_to_rad(pitch_ceiling)
 		)
 		_spring_arm.rotation.x = _pitch
 		get_viewport().set_input_as_handled()
@@ -178,11 +233,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		var button := event as InputEventMouseButton
 		if button.pressed and button.button_index == MOUSE_BUTTON_LEFT:
 			_capture_mouse()
-		elif button.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			if button.button_index == MOUSE_BUTTON_WHEEL_UP:
-				_zoom = clampf(_zoom - zoom_step, zoom_min, zoom_max)
-			elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				_zoom = clampf(_zoom + zoom_step, zoom_min, zoom_max)
+		elif Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			# Wheel up pushes the camera toward the eyes, down pulls it back.
+			if event.is_action_pressed(&"zoom_in"):
+				zoom_by(-zoom_step)
+			elif event.is_action_pressed(&"zoom_out"):
+				zoom_by(zoom_step)
 
 
 ## Camera easing runs per rendered frame: the arm glides to the zoom target and
@@ -190,11 +246,114 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not is_multiplayer_authority() or not is_instance_valid(_spring_arm):
 		return
-	var ease_zoom := 1.0 - exp(-12.0 * delta)
-	_spring_arm.spring_length = lerpf(_spring_arm.spring_length, _zoom, ease_zoom)
+	advance_zoom(delta)
 	var fov_target := base_fov + (sprint_fov_kick if _is_sprinting else 0.0)
 	_camera.fov = lerpf(_camera.fov, fov_target, 1.0 - exp(-8.0 * delta))
 	_update_shake(delta)
+	_follow_view(delta)
+
+
+## One frame of the zoom dolly. Public because the camera suite drives it by
+## hand: a single step has to be inspectable, which a live `_process` is not.
+func advance_zoom(delta: float) -> void:
+	if not is_instance_valid(_spring_arm):
+		return
+	_spring_arm.spring_length = lerpf(
+		_spring_arm.spring_length, _zoom_target, 1.0 - exp(-zoom_smoothing * delta)
+	)
+	_spring_arm.position = fp_eye_offset * _eye_offset_blend()
+	_update_first_person()
+
+
+## Wheel hook: positive pulls the camera back, negative pushes it toward the eyes.
+func zoom_by(amount: float) -> void:
+	set_zoom_target(_zoom_target + amount)
+
+
+## Clamps to the wheel's own range, so no caller can aim past the eyes or past
+## the widest third-person pull-back.
+func set_zoom_target(distance: float) -> void:
+	_zoom_target = clampf(distance, first_person_distance, zoom_max)
+
+
+func get_zoom_target() -> float:
+	return _zoom_target
+
+
+func is_first_person() -> bool:
+	return _first_person
+
+
+## 0 while the arm is still clearly third person, 1 once it is short enough that
+## the camera has to sit at the rig's eyes. The 0.25 m drop and 0.15 m forward
+## drift are what turn the pivot into an eye point.
+func _eye_offset_blend() -> float:
+	var span := maxf(zoom_min - first_person_threshold, 0.01)
+	return clampf((zoom_min - _spring_arm.spring_length) / span, 0.0, 1.0)
+
+
+## Enters first person below the threshold and only leaves once the arm has
+## grown `fp_exit_margin` past it, so the wheel cannot flicker on the boundary.
+func _update_first_person() -> void:
+	var ceiling := first_person_threshold
+	if _first_person:
+		ceiling += fp_exit_margin
+	_set_first_person(_spring_arm.spring_length <= ceiling)
+
+
+func _set_first_person(value: bool) -> void:
+	if _first_person == value:
+		return
+	_first_person = value
+	if is_instance_valid(_spring_arm):
+		# Nothing may shorten the arm inside its own head: a wall behind the
+		# player would otherwise snap the camera into the cap.
+		_spring_arm.collision_mask = 0 if value else _arm_collision_mask
+		if not value:
+			# Back inside the third-person cone: the pivot has to obey its own
+			# limit again, or the arm would stay pitched into the ground.
+			_pitch = clampf(_pitch, deg_to_rad(min_pitch), deg_to_rad(max_pitch))
+			_spring_arm.rotation.x = _pitch
+	if _fp_arms != null and _fp_arms.has_method(&"set_active"):
+		_fp_arms.call(&"set_active", value)
+	_set_head_visible(not value)
+
+
+## Hides the head and cap meshes in first person and puts every one of them back
+## the way it was found. The visibility is remembered at the moment the view
+## hides them, so a mesh an artist (or a script) turned off stays off.
+func _set_head_visible(value: bool) -> void:
+	for mesh in _head_meshes:
+		if not is_instance_valid(mesh):
+			continue
+		if value:
+			mesh.visible = bool(_head_visibility.get(mesh, true))
+		else:
+			_head_visibility[mesh] = mesh.visible
+			mesh.visible = false
+
+
+func _collect_head_meshes() -> void:
+	_head_meshes.clear()
+	_head_visibility.clear()
+	if _model == null:
+		return
+	for name in HEAD_MESHES:
+		for node: Node in _model.find_children(String(name), "MeshInstance3D", true, false):
+			var mesh := node as MeshInstance3D
+			if mesh != null:
+				_head_meshes.append(mesh)
+
+
+## First person turns the body with the view. The arms are parented to `Model`,
+## which otherwise only faces the walking direction, so without this the hands
+## would point wherever the player last walked the moment the mouse turns.
+func _follow_view(delta: float) -> void:
+	if not _first_person:
+		return
+	_model.rotation.y = lerp_angle(
+		_model.rotation.y, _camera_pivot.rotation.y, 1.0 - exp(-18.0 * delta)
+	)
 
 
 ## A short, deterministic-decay camera kick on a connected hit. This is the
@@ -353,6 +512,10 @@ func _wants_sprint(input: Vector2) -> bool:
 
 
 func _face_direction(direction: Vector3, delta: float) -> void:
+	# First person turns the body with the view instead; walking must not spin
+	# the arms out of the frame.
+	if _first_person:
+		return
 	if direction.length_squared() < 0.0001:
 		return
 	var target_yaw := atan2(-direction.x, -direction.z)

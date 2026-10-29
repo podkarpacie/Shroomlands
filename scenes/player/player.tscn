@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/PlayerController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/player/PlayerStats.gd" id="2_stats"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/player/PlayerAnimator.gd" id="9_animator"]
 [ext_resource type="Script" path="res://scripts/player/SwingWeapon.gd" id="10_weapon"]
 [ext_resource type="Script" path="res://scripts/player/HeldItem.gd" id="11_held_item"]
+[ext_resource type="Script" path="res://scripts/player/FpArms.gd" id="12_fp_arms"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -34,6 +35,9 @@ script = ExtResource("10_weapon")
 
 [node name="HeldItem" type="Node3D" parent="."]
 script = ExtResource("11_held_item")
+
+[node name="FpArms" type="Node" parent="."]
+script = ExtResource("12_fp_arms")
 
 [node name="Visual" parent="Model" instance=ExtResource("8_model")]
 

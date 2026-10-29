@@ -16,6 +16,7 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const CAPTURE_PATH := "res://tests/_capture.png"
 const WALK_CAPTURE_PATH := "res://tests/_capture_walk.png"
 const HELD_CAPTURE_PATH := "res://tests/_capture_held.png"
+const FP_CAPTURE_PATH := "res://tests/_capture_fp.png"
 const INVENTORY_CAPTURE_PATH := "res://tests/_capture_inventory.png"
 const GATHER_CAPTURE_PATH := "res://tests/_capture_gather.png"
 const COMBAT_CAPTURE_PATH := "res://tests/_capture_combat.png"
@@ -27,6 +28,10 @@ const PAUSE_CAPTURE_PATH := "res://tests/_capture_pause.png"
 ## would auto-open the vocation modal over every frame. The file is put back
 ## when the tool exits.
 const SAVE_PATH := "user://player_save.json"
+## Head and cap meshes that have to disappear with the camera parked at the eyes.
+const HEAD_MESHES: Array[StringName] = [
+	&"head_box", &"cap_rim", &"cap_mid", &"cap_top", &"cap_crown", &"eye_l", &"eye_r"
+]
 ## The camera collapse in the bug report showed up ~10 s after load.
 const LATE_FRAMES := 600
 
@@ -101,6 +106,7 @@ func _run() -> void:
 	_dump("AT %d PHYSICS FRAMES (~10 s)" % LATE_FRAMES)
 
 	await _capture_held_item()
+	await _capture_first_person()
 	await _capture_gather()
 	await _capture_plots()
 	await _capture_combat()
@@ -112,6 +118,7 @@ func _run() -> void:
 	print("  normal:    %s" % ProjectSettings.globalize_path(CAPTURE_PATH))
 	print("  walk:      %s" % ProjectSettings.globalize_path(WALK_CAPTURE_PATH))
 	print("  held:      %s" % ProjectSettings.globalize_path(HELD_CAPTURE_PATH))
+	print("  fp:        %s" % ProjectSettings.globalize_path(FP_CAPTURE_PATH))
 	print("  inventory: %s" % ProjectSettings.globalize_path(INVENTORY_CAPTURE_PATH))
 	print("  gather:    %s" % ProjectSettings.globalize_path(GATHER_CAPTURE_PATH))
 	print("  plots:     %s" % ProjectSettings.globalize_path(PLOT_CAPTURE_PATH))
@@ -381,6 +388,80 @@ func _capture_held_item() -> void:
 	# Back to the konop for every later still.
 	bus.emit_signal(&"hotbar_selected", 0)
 	await _wait_physics(2)
+
+
+## First-person still: zoomed all the way in, so the head, cap and eyes must be
+## gone, the arms raised into their FPS pose and both the club and the held prop
+## in frame. The camera is put back at its default distance afterwards so every
+## later still is unchanged.
+func _capture_first_person() -> void:
+	var arm := _player.get_node_or_null("CameraPivot/SpringArm3D") as SpringArm3D
+	_check("the camera arm exists for the first-person capture", arm != null)
+	if arm == null:
+		return
+	var near := float(_player.get("first_person_distance"))
+	var threshold := float(_player.get("first_person_threshold"))
+	_player.call(&"set_zoom_target", near)
+	# The dolly is a per-frame ease, so give it real frames rather than one big
+	# step: the still has to show the settled pose.
+	await _wait_seconds(1.5)
+	print("first person: %s  spring_length=%.3f  threshold=%.2f" % [
+		str(_player.call(&"is_first_person")), arm.spring_length, threshold
+	])
+	_check(
+		"the zoom reaches the first-person range (%.3f m)" % arm.spring_length,
+		arm.spring_length <= threshold
+	)
+	_check("the first-person view is engaged", bool(_player.call(&"is_first_person")))
+
+	var head := _player.find_child("head", true, false) as Node3D
+	_check("the rig has its head bone", head != null)
+	if head != null:
+		var distance := _camera.global_position.distance_to(head.global_position)
+		print("camera to head bone: %.3f m" % distance)
+		_check("the camera sits at the head (%.3f m)" % distance, distance < 0.35)
+
+	for name: StringName in HEAD_MESHES:
+		var mesh := _player.find_child(String(name), true, false) as MeshInstance3D
+		_check("%s is hidden in first person" % name, mesh != null and not mesh.is_visible_in_tree())
+
+	var viewport_size := root.get_visible_rect().size
+	for hand_name in [&"hand_left2", &"hand_right2"]:
+		var hand := _player.find_child(String(hand_name), true, false) as Node3D
+		_check("the rig has %s" % hand_name, hand != null)
+		if hand == null:
+			continue
+		var projected := _camera.unproject_position(hand.global_position)
+		print("%s projected to (%.1f, %.1f) of %s, in frustum=%s" % [
+			hand_name, projected.x, projected.y, _vec2(viewport_size),
+			_camera.is_position_in_frustum(hand.global_position)
+		])
+		_check(
+			"%s is in the lower half of the frame" % hand_name,
+			_camera.is_position_in_frustum(hand.global_position)
+				and projected.x >= 0.0 and projected.x <= viewport_size.x
+				and projected.y >= viewport_size.y * 0.5 and projected.y <= viewport_size.y
+		)
+
+	var club := _player.get_node_or_null("Weapon/Club") as Node3D
+	_check("the club is visible in first person", club != null and club.is_visible_in_tree())
+	var held := _player.get_node_or_null("HeldItem") as Node3D
+	_check("the held prop is visible in first person", held != null and held.is_visible_in_tree())
+	await _save(FP_CAPTURE_PATH)
+
+	# Zoom back out and prove the head comes back.
+	_player.call(&"set_zoom_target", 4.0)
+	await _wait_seconds(1.5)
+	_check(
+		"leaving first person pulls the camera back out (%.2f m)" % arm.spring_length,
+		arm.spring_length > threshold
+	)
+	var restored := true
+	for name: StringName in HEAD_MESHES:
+		var mesh := _player.find_child(String(name), true, false) as MeshInstance3D
+		if mesh == null or not mesh.is_visible_in_tree():
+			restored = false
+	_check("leaving first person restores the head meshes", restored)
 
 
 ## Mid-gather frame: stand next to the nearest mushroom, start the real timed

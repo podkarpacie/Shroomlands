@@ -10,7 +10,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 
 ## Status
 
-- 22 headless test suites, **1036 assertions**, all green - including a run with a
+- 25 headless test suites, **1432 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -27,7 +27,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 
 | Spec §10 | Status | What is there |
 | --- | --- | --- |
-| **A. PlayerController** | Done | `CharacterBody3D`, WASD + mouse, sprint, jump, interact (E), HP/stamina/XP/level, third-person spring arm with wheel zoom; tight acceleration, coyote time, jump buffer, variable jump height, sprint-jump keeps speed |
+| **A. PlayerController** | Done | `CharacterBody3D`, WASD + mouse, sprint, jump, interact (E), HP/stamina/XP/level, third-person spring arm with wheel zoom **from 8 m down to first person** (smooth dolly, head hidden, arms and weapon visible); tight acceleration, coyote time, jump buffer, variable jump height, sprint-jump keeps speed |
 | **B. GatheringSystem** | Done | Six mushroom species, gather time, regrow timer (45 s), species discovery/catalogue |
 | **C. InventorySystem** | Done | 6×8 satchel with 3D-rendered item icons, rotating model preview, sorting, drag/drop, 8-slot hotbar, server-synced mirror |
 | **D. CombatSystem** | Done | Box hitbox + enemy hurtboxes, knockback/stagger, crits, hit sparks, camera shake, keyframed player swing, procedural enemy bite/flinch |
@@ -75,10 +75,10 @@ Each suite is a `SceneTree` script and exits non-zero on failure:
 ```powershell
 $godot = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 $suites = @(
-  'test_audio','test_chat','test_combat','test_gathering','test_holding','test_inventory',
-  'test_isolation','test_limbs','test_lobby','test_lore','test_models','test_movement',
-  'test_movement_block','test_network','test_pause','test_player','test_plots','test_rig',
-  'test_save','test_sync','test_ui','test_vocation'
+  'test_audio','test_chat','test_combat','test_consumables','test_effects','test_fp_camera',
+  'test_gathering','test_holding','test_inventory','test_isolation','test_limbs','test_lobby',
+  'test_lore','test_models','test_movement','test_movement_block','test_network','test_pause',
+  'test_player','test_plots','test_rig','test_save','test_sync','test_ui','test_vocation'
 )
 foreach ($suite in $suites) {
   & $godot --headless --path . --script "res://tests/$suite.gd"
@@ -86,12 +86,12 @@ foreach ($suite in $suites) {
 }
 ```
 
-Current counts: `test_audio` 78, `test_chat` 24, `test_combat` 38, `test_gathering` 38,
-`test_holding` 24, `test_inventory` 31, `test_isolation` 22, `test_limbs` 15,
-`test_lobby` 98, `test_lore` 65, `test_models` 40, `test_movement` 30,
-`test_movement_block` 15, `test_network` 41, `test_pause` 76, `test_player` 20,
-`test_plots` 86, `test_rig` 48, `test_save` 58, `test_sync` 68, `test_ui` 51,
-`test_vocation` 70 - **1036 assertions**.
+Current counts: `test_audio` 78, `test_chat` 24, `test_combat` 38, `test_consumables` 36,
+`test_effects` 40, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
+`test_inventory` 31, `test_isolation` 22, `test_limbs` 15, `test_lobby` 98, `test_lore` 322,
+`test_models` 40, `test_movement` 30, `test_movement_block` 15, `test_network` 41,
+`test_pause` 76, `test_player` 20, `test_plots` 86, `test_rig` 48, `test_save` 58,
+`test_sync` 68, `test_ui` 60, `test_vocation` 70 - **1432 assertions**.
 
 ### Continuous integration
 
@@ -100,9 +100,9 @@ Current counts: `test_audio` 78, `test_chat` 24, `test_combat` 38, `test_gatheri
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-22 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+25 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1036). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1432). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -213,12 +213,12 @@ scenes/                  lobby, main, player, UI, world (tscn)
 scripts/
   core/                  Lore, EventBus, Audio, Game, SaveSystem, Main (autoloads + entry scene)
   multiplayer/           Network.gd (ENet / WebSocket abstraction)
-  player/                PlayerController, PlayerStats, PlayerAnimator, SwingWeapon, HeldItem
+  player/                PlayerController, PlayerStats, PlayerAnimator, SwingWeapon, HeldItem, FpArms
   systems/               Gathering, Inventory, Combat, Plot
   ui/                    HUD, InventoryUI, ChatUI, VocationUI, LobbyUI, PauseMenu, BuildMode
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom
 resources/               MultiplayerSynchronizer replication configs
-tests/                   22 headless suites, net_harness, capture_frame, network proofs
+tests/                   25 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -368,6 +368,30 @@ Commit the four files together: `<name>.gltf`, `<name>.gltf.import`, `<name>_0.p
   threads from two noise textures, shared by the plain and the mounds so there are no seams.
 - **Spores**: slow motes in a box that follows the local player.
 
+### First person
+
+The scroll wheel runs the camera from **8 m third person down to the rig's eye point**.
+`zoom_min` (2.2 m) is where the dolly starts easing the lens from the pivot toward the
+head; below `first_person_threshold` (0.6 m) the view is first person, and leaving needs
+`fp_exit_margin` (0.15 m) more than that so a wheel parked on the boundary cannot flicker
+between the two framings. The dolly is an exponential ease per rendered frame
+(`zoom_smoothing`), never a snap.
+
+In first person the head, cap and eye meshes are hidden and restored exactly as they were
+found (a mesh an artist turned off stays off), the pitch clamp widens from -75..60 to
+-85..85 degrees, the spring arm stops colliding, and `FpArms.gd` poses the arms so the
+club and the held prop sit in the lower corners of the frame instead of over the
+crosshair. Its pose runs at `process_priority` 100 — after the `AnimationPlayer` wrote the
+clip — and it lifts `Weapon`/`HeldItem` one step above that, so both read the posed hands
+and stay attached. A slow sine sway and a yaw-following lag keep the hands from looking
+welded to the lens.
+
+Two honest limits. There is no dedicated first-person arm rig: `FpArms` poses the
+third-person block arms (22 cm cubes), pulling the chain forward and down out of the near
+plane rather than scaling it, so the pose is a compromise. And `attack` / `draw` /
+`holster` are bone-clip one-shots that the pose overrides, so swinging or switching items
+does not move the first-person arms.
+
 `tests/test_movement.gd` pins the movement feel: acceleration and braking, the sprint-jump fix,
 coyote time, jump buffer, variable jump height, camera zoom/FOV, and the imported bone animation
 (legs and arms swing from the `walk`/`run` clips).
@@ -376,6 +400,10 @@ coyote time, jump buffer, variable jump height, camera zoom/FOV, and the importe
 `attack` from `swing_seq`, `draw`/`holster` from `held_item`, the hand bones the club and prop
 hang from, and a body nobody owns animating from positions alone. `tests/test_pause.gd` covers
 the pause menu contract.
+
+`tests/test_fp_camera.gd` drives the zoom seam by hand: the clamped 0.05-8 m range, one
+exponential step toward the target, the head/cap hide and exact restore, the wider pitch,
+the raised arm bones, and the club and held prop staying welded to the posed hands.
 
 `tests/test_models.gd` checks all of the above, including model height, foot position and facing.
 

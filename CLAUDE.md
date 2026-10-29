@@ -26,7 +26,7 @@ Autoloads: `Lore`, `EventBus`, `Audio`, `Game`, `SaveSystem`, `Network` (+ edito
 ```powershell
 $g = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 
-# All 22 test suites - each must exit 0 (1036 assertions).
+# All 25 test suites - each must exit 0 (1432 assertions).
 # test_env.gd is the isolation helper, not a suite: run on its own it exits 1.
 Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | ForEach-Object {
   $n = $_.BaseName
@@ -52,7 +52,7 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
 - Will the `EventBus`-driven UI scale, or is it implicit coupling between systems and panels?
 - Is the `MultiplayerSynchronizer` usage correct for late join (spawn state, authority, the
   `resources/net_*.tres` replication configs)?
-- Are the 22 suites covering **behaviour** or just structure? Look for assertions that would
+- Are the 25 suites covering **behaviour** or just structure? Look for assertions that would
   fail on a regression — start with `test_sync`, `test_plots`, `test_save`, `test_isolation`.
 
 ## Explicit notes
@@ -83,6 +83,18 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
   `assets/models/source/player_rigged.bbmodel`. The enemy has no rig and still uses
   `scripts/world/LimbAnimator.gd`; do not add `LimbAnimator` back to the player, it would fight
   `PlayerAnimator`.
+- **First person is a camera, not a second rig.** The wheel runs the spring arm from 8 m down
+  to the rig's eye point (`zoom_min` 2.2 m starts the dolly, `first_person_threshold` 0.6 m
+  enters first person with `fp_exit_margin` 0.15 m of hysteresis, `zoom_smoothing` is the
+  exponential ease). In first person `PlayerController` hides and exactly restores the seven
+  head/cap/eye meshes, widens the pitch clamp to -85..85, stops the arm colliding, turns the
+  model to the view, and `scripts/player/FpArms.gd` poses the arms at `process_priority` 100
+  so the pose wins over the `AnimationPlayer`; `Weapon`/`HeldItem` are bumped one step above
+  that so they follow the posed hands. Limits worth knowing: the arms are the third-person
+  block arms, pulled forward and down out of the near plane rather than scaled, and
+  `attack`/`draw`/`holster` are clip one-shots the pose overrides, so they do not move the
+  first-person arms. `tests/test_fp_camera.gd` pins the range, the ease, the hide/restore,
+  the pitch and the attached props.
 - **Verification rules.** Never trust an OS screenshot on Windows at 150 % DPI scaling — a Win32
   capture is a top-left *crop* of the real frame; use `tests/capture_frame.gd` (in-engine
   viewport, windowed, never `--headless`). Every suite must exit `0`; see `README.md` → *Tests*.
