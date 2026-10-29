@@ -107,6 +107,16 @@ const VOCATIONS := {
 }
 
 const MUSHROOMS := {
+	"konop": {
+		"id": "konop",
+		"name": "Konop",
+		"rarity": "common",
+		"biomes": ["verdant_bloom"],
+		"description": "A hardy starter mushroom. Pressed into weak health potions.",
+		"toxicity": 0,
+		"uses": ["weak_health_potion"],
+		"regrow_seconds": 45.0,
+	},
 	"glowcap": {
 		"id": "glowcap",
 		"name": "Glowcap",
@@ -166,6 +176,104 @@ const MUSHROOMS := {
 		"toxicity": 1,
 		"uses": ["mineral", "artificer_craft", "hard_fiber"],
 		"regrow_seconds": 45.0,
+	},
+}
+
+## Crafted goods. Like mushrooms and resources they are dictionary-defined and
+## referenced by id; `kind: "consumable"` items run their `effect` when used.
+##
+## Effects (see `ConsumableSystem`): `heal` (instant HP), `stamina` (instant) and
+## `regen` (`per_second` HP for `seconds`). Entries with `"placeholder": true` are
+## stand-ins to be replaced by the real lore.
+const ITEMS := {
+	"weak_health_potion": {
+		"id": "weak_health_potion",
+		"name": "Weak Health Potion",
+		"kind": "consumable",
+		"rarity": "common",
+		"description": "A starter brew pressed from Konop. Restores a little health.",
+		"effect": {"heal": 30.0},
+		"cooldown": 1.5,
+		"stack_size": 16,
+	},
+	"regen_elixir": {
+		"id": "regen_elixir",
+		"name": "Regeneration Elixir",
+		"kind": "consumable",
+		"rarity": "common",
+		"description": "Emberstem boiled down to a slow, steady mend.",
+		"effect": {"regen": {"per_second": 4.0, "seconds": 10.0}},
+		"cooldown": 1.5,
+		"stack_size": 16,
+		"placeholder": true,
+	},
+	"stamina_tonic": {
+		"id": "stamina_tonic",
+		"name": "Stamina Tonic",
+		"rarity": "common",
+		"kind": "consumable",
+		"description": "A bright tonic of glowcap and emberstem. Restores stamina.",
+		"effect": {"stamina": 50.0},
+		"cooldown": 1.5,
+		"stack_size": 16,
+		"placeholder": true,
+	},
+	"greater_health_potion": {
+		"id": "greater_health_potion",
+		"name": "Greater Health Potion",
+		"kind": "consumable",
+		"rarity": "rare",
+		"description": "Sunheart and Konop, properly distilled. Restores a lot of health.",
+		"effect": {"heal": 80.0},
+		"cooldown": 2.0,
+		"stack_size": 16,
+		"placeholder": true,
+	},
+}
+
+## Recipes, by id. `inputs` are consumed, `output` is produced; `seconds` is the
+## base brew time (skills shorten it), `xp` goes to the player, `level` is the
+## minimum player level and `skill` an optional `SkillData` node that must be
+## learned first. `"placeholder": true` marks stand-ins for the real lore.
+const RECIPES := {
+	"weak_health_potion": {
+		"id": "weak_health_potion",
+		"output": {"id": "weak_health_potion", "count": 1},
+		"inputs": [{"id": "konop", "count": 2}],
+		"seconds": 2.0,
+		"xp": 8,
+		"level": 1,
+		"skill": "",
+	},
+	"regen_elixir": {
+		"id": "regen_elixir",
+		"output": {"id": "regen_elixir", "count": 1},
+		"inputs": [{"id": "emberstem", "count": 3}],
+		"seconds": 3.0,
+		"xp": 12,
+		"level": 3,
+		"skill": "",
+		"placeholder": true,
+	},
+	"stamina_tonic": {
+		"id": "stamina_tonic",
+		"output": {"id": "stamina_tonic", "count": 1},
+		"inputs": [{"id": "glowcap", "count": 2}, {"id": "emberstem", "count": 1}],
+		"seconds": 3.0,
+		"xp": 12,
+		"level": 3,
+		"skill": "",
+		"placeholder": true,
+	},
+	"greater_health_potion": {
+		"id": "greater_health_potion",
+		"output": {"id": "greater_health_potion", "count": 1},
+		"inputs": [{"id": "konop", "count": 3}, {"id": "sunheart", "count": 1}],
+		"seconds": 5.0,
+		"xp": 40,
+		"level": 8,
+		"skill": "adv_herbalism",
+		"placeholder": true,
 	},
 }
 
@@ -310,6 +418,81 @@ func get_mushroom(id: String) -> Dictionary:
 	return mushroom
 
 
+## A crafted item's definition, or `{}`.
+func get_item(id: String) -> Dictionary:
+	var item: Dictionary = ITEMS.get(id, {})
+	return item
+
+
+## True for anything that may sit in an inventory: a mushroom, a resource or a
+## crafted item.
+func is_item(id: String) -> bool:
+	return MUSHROOMS.has(id) or RESOURCES.has(id) or ITEMS.has(id)
+
+
+## The definition of any item id, from whichever table owns it.
+func item_info(id: String) -> Dictionary:
+	if MUSHROOMS.has(id):
+		return MUSHROOMS[id]
+	if ITEMS.has(id):
+		return ITEMS[id]
+	if RESOURCES.has(id):
+		return RESOURCES[id]
+	return {}
+
+
+func item_rarity(id: String) -> String:
+	return str(item_info(id).get("rarity", ""))
+
+
+## Display colour of an item by rarity; white when it has none.
+func item_color(id: String) -> Color:
+	return rarity_color(item_rarity(id))
+
+
+func item_stack_size(id: String, fallback: int) -> int:
+	return int(item_info(id).get("stack_size", fallback))
+
+
+## Plain-language effect of a consumable, for tooltips; "" when it has none.
+func item_effect_text(id: String) -> String:
+	var effect: Dictionary = get_item(id).get("effect", {})
+	var parts: Array[String] = []
+	if effect.has("heal"):
+		parts.append("Restores %d health." % int(effect["heal"]))
+	if effect.has("stamina"):
+		parts.append("Restores %d stamina." % int(effect["stamina"]))
+	if effect.has("regen"):
+		var regen: Dictionary = effect["regen"]
+		parts.append(
+			"Restores %d health per second for %d s."
+			% [int(regen.get("per_second", 0.0)), int(regen.get("seconds", 0.0))]
+		)
+	return " ".join(parts)
+
+
+func get_recipe(id: String) -> Dictionary:
+	var recipe: Dictionary = RECIPES.get(id, {})
+	return recipe
+
+
+## Recipe ids ordered by required level, then id, so lists are stable.
+func recipe_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for id: String in RECIPES:
+		ids.append(id)
+	ids.sort_custom(_sort_recipes)
+	return ids
+
+
+func _sort_recipes(a: String, b: String) -> bool:
+	var level_a := int(RECIPES[a].get("level", 1))
+	var level_b := int(RECIPES[b].get("level", 1))
+	if level_a == level_b:
+		return a < b
+	return level_a < level_b
+
+
 func get_vocation(id: String) -> Dictionary:
 	var vocation: Dictionary = VOCATIONS.get(id, {})
 	return vocation
@@ -342,6 +525,8 @@ func item_display_name(id: String) -> String:
 		return str(MUSHROOMS[id]["name"])
 	if RESOURCES.has(id):
 		return str(RESOURCES[id]["name"])
+	if ITEMS.has(id):
+		return str(ITEMS[id]["name"])
 	return id
 
 

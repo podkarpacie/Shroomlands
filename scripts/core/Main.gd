@@ -353,7 +353,7 @@ func validate_inventory_payload(slots: Array) -> bool:
 		var raw_id: Variant = slot.get("id", null)
 		if not (raw_id is String or raw_id is StringName):
 			return false
-		if not Lore.is_mushroom(str(raw_id)) and not Lore.RESOURCES.has(str(raw_id)):
+		if not Lore.is_item(str(raw_id)):
 			return false
 		var raw_count: Variant = slot.get("count", null)
 		if not (raw_count is int or raw_count is float):

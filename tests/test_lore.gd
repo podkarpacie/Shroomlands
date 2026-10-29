@@ -12,7 +12,7 @@ func _initialize() -> void:
 
 	_check("5 biomes", lore.BIOMES.size() == 5)
 	_check("4 vocations", lore.VOCATIONS.size() == 4)
-	_check("6 mushrooms", lore.MUSHROOMS.size() == 6)
+	_check("7 mushrooms (Konop is the starter)", lore.MUSHROOMS.size() == 7)
 	_check("6 resources", lore.RESOURCES.size() == 6)
 	_check("6 cities", lore.CITIES.size() == 6)
 	_check("3 factions", lore.FACTIONS.size() == 3)

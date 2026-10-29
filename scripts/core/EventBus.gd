@@ -26,6 +26,15 @@ signal species_discovered(mushroom_id: String)
 # flash follows the damage instead of the swing.
 signal enemy_hit(enemy: Node, amount: float, is_crit: bool)
 
+# Crafting, consumables and skills
+signal craft_started(recipe_id: String, seconds: float)
+signal craft_progress_changed(current: float, total: float)
+signal craft_cancelled(recipe_id: String)
+signal item_crafted(recipe_id: String, item_id: String, count: int)
+signal item_used(item_id: String)
+signal skills_changed
+signal skill_points_changed(available: int)
+
 # Gathering (HUD progress bar in phase 6 listens here)
 signal gather_progress_changed(current: float, total: float)
 signal gather_finished(mushroom_id: String)

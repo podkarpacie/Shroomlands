@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/core/Main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/world/verdant_bloom.tscn" id="2_world"]
@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://scripts/systems/PlotSystem.gd" id="6_plots"]
 [ext_resource type="PackedScene" path="res://scenes/ui/build_mode.tscn" id="7_build"]
 [ext_resource type="PackedScene" path="res://scenes/ui/vocation_select.tscn" id="8_vocation"]
+[ext_resource type="Script" path="res://scripts/ui/CraftingUI.gd" id="9_craftingui"]
+[ext_resource type="Script" path="res://scripts/ui/SkillTreeUI.gd" id="10_skillui"]
 
 [node name="Main" type="Node3D" groups=["main"]]
 script = ExtResource("1_main")
@@ -38,3 +40,9 @@ script = ExtResource("6_plots")
 [node name="BuildMode" parent="." instance=ExtResource("7_build")]
 
 [node name="VocationUI" parent="." instance=ExtResource("8_vocation")]
+
+[node name="CraftingUI" type="CanvasLayer" parent="."]
+script = ExtResource("9_craftingui")
+
+[node name="SkillTreeUI" type="CanvasLayer" parent="."]
+script = ExtResource("10_skillui")

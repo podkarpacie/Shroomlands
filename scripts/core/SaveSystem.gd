@@ -13,7 +13,7 @@ const SAVE_PATH_ENV := "SHROOMLANDS_SAVE_PATH"
 const SAVE_PATH_FLAG := "--save-path="
 ## Bumped whenever a key changes shape. Readers stay compatible with older
 ## files (an old save simply has fewer keys, see `apply_state`).
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 
 
 ## The file this process reads and writes. Resolved per call, so a suite that
@@ -111,6 +111,7 @@ func collect_state() -> Dictionary:
 		"vocation": String(Game.chosen_vocation),
 		"position": [0.0, 0.0, 0.0],
 		"inventory": {},
+		"skills": {},
 		"saved_at": _timestamp(),
 	}
 	var player := Game.get_local_player()
@@ -128,6 +129,9 @@ func collect_state() -> Dictionary:
 	var inventory := player.get_node_or_null("InventorySystem")
 	if inventory != null and inventory.has_method(&"to_dict"):
 		state["inventory"] = inventory.call(&"to_dict")
+	var skills := player.get_node_or_null("SkillSystem")
+	if skills != null and skills.has_method(&"to_dict"):
+		state["skills"] = skills.call(&"to_dict")
 	return state
 
 
@@ -167,6 +171,13 @@ func apply_state(data: Dictionary) -> void:
 	# instead of the knight's heal-to-full.
 	if stats != null and Game.chosen_vocation != &"" and stats.has_method(&"apply_vocation_bonus"):
 		stats.call(&"apply_vocation_bonus", String(Game.chosen_vocation))
+	# Skills before the vitals: they raise max HP / stamina, and the saved HP is
+	# clamped to whatever the maximum is when it is restored. The saved level is
+	# passed in because the stats still hold the fresh character's level here.
+	var skills := player.get_node_or_null("SkillSystem")
+	var skills_data: Variant = data.get("skills")
+	if skills != null and skills.has_method(&"from_dict") and skills_data is Dictionary:
+		skills.call(&"from_dict", skills_data, clampi(_as_int(data.get("level"), 1), 1, Game.MAX_LEVEL))
 	if stats != null:
 		_restore_stats(stats, data)
 	elif "level" in player:

@@ -37,6 +37,12 @@ func _run() -> void:
 
 	var ids: Array[String] = ItemVisuals.all_ids()
 	ids.append("gold")
+	# `-- only=konop,weak_health_potion` renders just those, so a new item does not
+	# overwrite every existing icon.
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("only="):
+			var wanted := argument.trim_prefix("only=").split(",", false)
+			ids = ids.filter(func(id: String) -> bool: return wanted.has(id))
 	for id: String in ids:
 		var dir := BUILD_DIR if ItemVisuals.BUILD_IDS.has(id) else ITEM_DIR
 		var path := "%s/%s.png" % [dir, id]

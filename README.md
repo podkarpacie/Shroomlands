@@ -10,7 +10,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 
 ## Status
 
-- 18 headless test suites, **867 assertions**, all green - including a run with a
+- 22 headless test suites, **1120 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -28,7 +28,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 | Spec §10 | Status | What is there |
 | --- | --- | --- |
 | **A. PlayerController** | Done | `CharacterBody3D`, WASD + mouse, sprint, jump, interact (E), HP/stamina/XP/level, third-person spring arm with wheel zoom; tight acceleration, coyote time, jump buffer, variable jump height, sprint-jump keeps speed |
-| **B. GatheringSystem** | Done | Six mushroom species, gather time, regrow timer (45 s), species discovery/catalogue |
+| **B. GatheringSystem** | Done | Seven mushroom species (Konop is the starter), gather time, regrow timer (45 s), species discovery/catalogue |
 | **C. InventorySystem** | Done | 6×8 satchel with 3D-rendered item icons, rotating model preview, sorting, drag/drop, 8-slot hotbar, server-synced mirror |
 | **D. CombatSystem** | Done | Box hitbox + enemy hurtboxes, knockback/stagger, crits, hit sparks, camera shake, procedural swing/bite/flinch |
 | **E. PlotSystem** | Done | Six 12 m plots, buy with gold, daily fee settled from wall-clock time (offline included), 3-day expiry, 1 m grid building (hut/farm/workshop/chest), server-authoritative, `user://plots.json` |
@@ -36,11 +36,13 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 | **G. UI** | Done | Themed HUD (vitals, biome, progression, icon hotbar, damage numbers), satchel, chat, build palette, vocation picker, lobby |
 | **H. World** | Done (one biome) | Verdant Bloom placeholder terrain, mushroom nodes, decorative props, plot row, four enemy spawns |
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, position, HP/stamina, inventory. Plots live server-side |
+| **J. CraftingSystem** | Done | Data-driven recipes (`Lore.RECIPES`), timed brews, skill-shortened, ingredient/level/skill/space checks, transactional (nothing is taken unless the potion fits); consumables with heal / stamina / regen effects (F uses the hotbar slot) |
+| **K. SkillSystem** | Done | Skill tree (`SkillData.gd`): 3 shared trees plus each vocation's 3, one point per level, prerequisites, level and vocation gates, respec for gold, saved and re-validated on load; crafting panel (C) and skills panel (K) |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
 | Export Web + Desktop | Done | Windows Desktop, Web (nothreads), Windows Server presets; all boot |
 | Hosting (playit.gg) | Done | `tools/run_server.ps1` (ENet or WebSocket), `tools/serve_web.ps1`, [`docs/HOSTING.md`](docs/HOSTING.md); the lobby has a Port field for tunnelled public ports |
 
-Not in this MVP: voice chat, full skill trees, the other four biomes, advanced crafting,
+Not in this MVP: voice chat, finished vocation skill trees (the twelve vocation trees are starter placeholders), the other four biomes, crafting stations,
 raids/endgame, the full story, mobile.
 
 ## Run from source
@@ -77,7 +79,7 @@ $suites = @(
   'test_audio','test_lore','test_player','test_inventory','test_gathering','test_ui',
   'test_network','test_chat','test_lobby','test_combat','test_movement_block',
   'test_plots','test_vocation','test_save','test_sync','test_isolation','test_models',
-  'test_movement'
+  'test_movement','test_skills','test_crafting'
 )
 foreach ($suite in $suites) {
   & $godot --headless --path . --script "res://tests/$suite.gd"
@@ -85,11 +87,12 @@ foreach ($suite in $suites) {
 }
 ```
 
-Current counts: `test_lore` 65, `test_player` 20, `test_inventory` 31,
-`test_gathering` 38, `test_ui` 51, `test_network` 41, `test_chat` 24, `test_lobby` 98,
-`test_combat` 38, `test_movement_block` 15, `test_plots` 86, `test_vocation` 70,
-`test_save` 58, `test_sync` 68, `test_isolation` 22, `test_models` 40, `test_movement` 30,
-`test_audio` 72 - **867 assertions**.
+Current counts: `test_audio` 78, `test_chat` 24, `test_combat` 38, `test_crafting` 125,
+`test_gathering` 38, `test_holding` 24, `test_inventory` 31, `test_isolation` 22,
+`test_limbs` 14, `test_lobby` 98, `test_lore` 70, `test_models` 40, `test_movement` 30,
+`test_movement_block` 15, `test_network` 41, `test_player` 20, `test_plots` 86, `test_save`
+58, `test_skills` 79, `test_sync` 68, `test_ui` 51, `test_vocation` 70 - **1120 assertions**
+across 22 suites.
 
 ### Continuous integration
 
@@ -98,9 +101,9 @@ Current counts: `test_lore` 65, `test_player` 20, `test_inventory` 31,
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-18 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+the suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (867). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1120). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -216,7 +219,7 @@ scripts/
   ui/                    HUD, InventoryUI, ChatUI, VocationUI, LobbyUI, BuildMode
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom
 resources/               MultiplayerSynchronizer replication configs
-tests/                   18 headless suites, net_harness, capture_frame, network proofs
+tests/                   22 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -405,3 +408,23 @@ back on for tools and tests.
     smoke runs cover two clients.
 12. **Web build is single-threaded** (nothreads variant, no GDExtension). It boots and
     renders, but expect lower performance than desktop.
+
+## Crafting and skills
+
+Content lives in two files; code never hard-codes an id.
+
+- **`scripts/core/Lore.gd`**: `MUSHROOMS` (add a species here; if `assets/models/<id>.gltf`
+  exists it is used automatically, otherwise a tinted primitive), `ITEMS` (crafted goods and
+  their `effect`) and `RECIPES` (`inputs` -> `output`, `seconds`, `xp`, `level`, optional
+  `skill`). Entries marked `"placeholder": true` are stand-ins for the real lore.
+- **`scripts/core/SkillData.gd`**: `TREES` and `NODES`. Each node lists its `effects` per rank,
+  `requires`, `min_level` and optionally `unlocks` (recipe ids). The header comment documents
+  every effect stat. The twelve vocation trees are starter placeholders.
+
+Controls: **C** crafting, **K** skills, **F** use the selected hotbar item.
+
+How the pieces fit: `CraftingSystem` and `ConsumableSystem` and `SkillSystem` are owner-only
+nodes on the player. Skills push flat stats (health, stamina, speed) into the player as
+*deltas*, so they stack with vocation bonuses and a respec restores the exact original values;
+combat, gathering and crafting read the other bonuses through `SkillSystem.get_modifier`.
+`tests/test_skills.gd` and `tests/test_crafting.gd` cover the data, the rules and the panels.

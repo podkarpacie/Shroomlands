@@ -141,9 +141,11 @@ func _swing(heavy: bool) -> void:
 		if struck.has(id):
 			continue
 		struck[id] = true
-		var is_crit := _rng.randf() < crit_chance
-		var amount := (heavy_damage if heavy else light_damage) * (
-			crit_multiplier if is_crit else 1.0
+		var is_crit := _rng.randf() < crit_chance + _skill_modifier("crit_chance")
+		var amount := (
+			(heavy_damage if heavy else light_damage)
+			* (1.0 + _skill_modifier("damage_mult"))
+			* (crit_multiplier if is_crit else 1.0)
 		)
 		if enemy.has_method(&"take_damage"):
 			# The creature emits `EventBus.enemy_hit` when it applies the loss,
@@ -165,6 +167,12 @@ func _swing(heavy: bool) -> void:
 
 
 ## Walks up from a body or Area3D collider to the creature that owns it.
+## A skill-tree bonus (see `SkillSystem`), 0 when the player has no skills node.
+func _skill_modifier(stat: String) -> float:
+	var skills := get_parent().get_node_or_null("SkillSystem") as SkillSystem if get_parent() != null else null
+	return skills.get_modifier(stat) if skills != null else 0.0
+
+
 func _enemy_from(collider: Object) -> Node:
 	var node := collider as Node
 	while node != null:

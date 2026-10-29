@@ -51,7 +51,7 @@ func _run() -> void:
 
 	var mushrooms := _available_mushrooms()
 	print("harvestable mushrooms: %d" % mushrooms.size())
-	_check("world places 8-12 harvestable mushrooms", mushrooms.size() >= 8 and mushrooms.size() <= 12)
+	_check("world places 8-16 harvestable mushrooms", mushrooms.size() >= 8 and mushrooms.size() <= 16)
 	if mushrooms.size() < 4:
 		_finish()
 		return

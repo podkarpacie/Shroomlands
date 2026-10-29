@@ -50,7 +50,7 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
 - Will the `EventBus`-driven UI scale, or is it implicit coupling between systems and panels?
 - Is the `MultiplayerSynchronizer` usage correct for late join (spawn state, authority, the
   `resources/net_*.tres` replication configs)?
-- Are the 18 suites covering **behaviour** or just structure? Look for assertions that would
+- Are the 22 suites covering **behaviour** or just structure? Look for assertions that would
   fail on a regression — start with `test_sync`, `test_plots`, `test_save`, `test_isolation`.
 
 ## Two explicit notes

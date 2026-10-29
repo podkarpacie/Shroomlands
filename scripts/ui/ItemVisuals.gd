@@ -13,7 +13,11 @@ const ICON_SIZE := 128
 const PREVIEW_TARGET_SIZE := 1.15
 
 const MUSHROOM_IDS: Array[String] = [
-	"glowcap", "emberstem", "venomveil", "sunheart", "blightroot", "geodecap"
+	"konop", "glowcap", "emberstem", "venomveil", "sunheart", "blightroot", "geodecap"
+]
+## Crafted goods (`Lore.ITEMS`): drawn as a bottle tinted by the liquid inside.
+const CRAFTED_IDS: Array[String] = [
+	"weak_health_potion", "greater_health_potion", "regen_elixir", "stamina_tonic"
 ]
 const RESOURCE_IDS: Array[String] = [
 	"mycelium_fiber", "hardened_mycelium", "spore_crystals",
@@ -24,6 +28,11 @@ const BUILD_IDS: Array[String] = ["hut", "farm", "workshop", "chest"]
 ## Rarity / identity colours. Matching `Lore.rarity_color` where a species has a
 ## rarity, but kept here for resources and build pieces too.
 const COLORS := {
+	"konop": Color(0.62, 0.72, 0.38),
+	"weak_health_potion": Color(0.88, 0.28, 0.32),
+	"greater_health_potion": Color(0.96, 0.20, 0.36),
+	"regen_elixir": Color(0.45, 0.86, 0.40),
+	"stamina_tonic": Color(0.96, 0.80, 0.26),
 	"glowcap": Color(0.34, 0.90, 0.86),
 	"emberstem": Color(0.96, 0.46, 0.18),
 	"venomveil": Color(0.60, 0.30, 0.90),
@@ -57,6 +66,7 @@ static var _scene_cache: Dictionary = {}
 static func all_ids() -> Array[String]:
 	var ids: Array[String] = []
 	ids.append_array(MUSHROOM_IDS)
+	ids.append_array(CRAFTED_IDS)
 	ids.append_array(RESOURCE_IDS)
 	ids.append_array(BUILD_IDS)
 	return ids
@@ -77,6 +87,14 @@ static func _mushroom_data(id: String) -> Dictionary:
 	if lore == null:
 		return {}
 	var result: Variant = lore.call(&"get_mushroom", id)
+	return result if result is Dictionary else {}
+
+
+static func _crafted_data(id: String) -> Dictionary:
+	var lore := _lore()
+	if lore == null:
+		return {}
+	var result: Variant = lore.call(&"get_item", id)
 	return result if result is Dictionary else {}
 
 
@@ -103,6 +121,8 @@ static func display_name(id: String) -> String:
 
 static func color(id: String) -> Color:
 	var mushroom := _mushroom_data(id)
+	if mushroom.is_empty():
+		mushroom = _crafted_data(id)
 	if not mushroom.is_empty():
 		var lore := _lore()
 		if lore != null:
@@ -121,6 +141,10 @@ static func kind(id: String) -> String:
 		return "Mushroom  ·  %s" % rarity.capitalize()
 	if _resources().has(id):
 		return "Resource"
+	var crafted := _crafted_data(id)
+	if not crafted.is_empty():
+		var tier := str(crafted.get("rarity", "common")).replace("_", " ")
+		return "%s  ·  %s" % [str(crafted.get("kind", "item")).capitalize(), tier.capitalize()]
 	return "Curiosity"
 
 
@@ -144,6 +168,12 @@ static func description(id: String) -> String:
 	var resource: Dictionary = _resources().get(id, {})
 	if not resource.is_empty():
 		return str(resource.get("description", ""))
+	var crafted := _crafted_data(id)
+	if not crafted.is_empty():
+		var text := str(crafted.get("description", ""))
+		var lore := _lore()
+		var effect := str(lore.call(&"item_effect_text", id)) if lore != null else ""
+		return text if effect.is_empty() else "%s %s" % [text, effect]
 	return "An unfamiliar piece of the Mycelium."
 
 
@@ -216,6 +246,10 @@ static func _model_scene(id: String) -> PackedScene:
 static func _procedural_model(id: String) -> Node3D:
 	match id:
 		"venomveil", "sunheart", "blightroot", "geodecap":
+			return _mushroom(id)
+		"weak_health_potion", "greater_health_potion", "regen_elixir", "stamina_tonic":
+			return _potion(id)
+		"konop":
 			return _mushroom(id)
 		"mycelium_fiber":
 			return _fiber()
@@ -313,6 +347,31 @@ static func _mushroom(id: String) -> Node3D:
 			tendril.rotation.z = 0.50
 			tendril.rotation.y = angle
 			root.add_child(tendril)
+	return root
+
+
+## A corked bottle of `id`'s liquid colour: round belly, short neck, cork.
+static func _potion(id: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Model_%s" % id
+	var liquid: Color = COLORS.get(id, Color(0.8, 0.5, 0.5))
+	var glass := Color(0.78, 0.92, 0.90)
+	var body := _sphere(0.30, 0.56, liquid, 16, 8, 0.7)
+	body.position.y = 0.30
+	root.add_child(body)
+	# A small gloss patch sitting on the belly's surface, not poking out of it.
+	var shine := _sphere(0.055, 0.11, Color(1, 1, 1), 10, 5)
+	shine.position = Vector3(0.10, 0.428, 0.234)
+	root.add_child(shine)
+	var neck := _cylinder(0.075, 0.085, 0.22, glass.darkened(0.10), 10)
+	neck.position.y = 0.66
+	root.add_child(neck)
+	var lip := _cylinder(0.105, 0.105, 0.04, glass, 12)
+	lip.position.y = 0.78
+	root.add_child(lip)
+	var cork := _cylinder(0.075, 0.065, 0.11, Color(0.60, 0.42, 0.24), 8)
+	cork.position.y = 0.85
+	root.add_child(cork)
 	return root
 
 

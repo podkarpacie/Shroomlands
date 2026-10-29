@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/PlayerController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/player/PlayerStats.gd" id="2_stats"]
@@ -11,6 +11,9 @@
 [ext_resource type="Script" path="res://scripts/world/LimbAnimator.gd" id="9_animator"]
 [ext_resource type="Script" path="res://scripts/player/SwingWeapon.gd" id="10_weapon"]
 [ext_resource type="Script" path="res://scripts/player/HeldItem.gd" id="11_held_item"]
+[ext_resource type="Script" path="res://scripts/systems/SkillSystem.gd" id="11_skills"]
+[ext_resource type="Script" path="res://scripts/systems/CraftingSystem.gd" id="12_crafting"]
+[ext_resource type="Script" path="res://scripts/systems/ConsumableSystem.gd" id="13_consumables"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -76,3 +79,12 @@ script = ExtResource("4_gathering")
 
 [node name="CombatSystem" type="Node" parent="."]
 script = ExtResource("6_combat")
+
+[node name="SkillSystem" type="Node" parent="."]
+script = ExtResource("11_skills")
+
+[node name="CraftingSystem" type="Node" parent="."]
+script = ExtResource("12_crafting")
+
+[node name="ConsumableSystem" type="Node" parent="."]
+script = ExtResource("13_consumables")

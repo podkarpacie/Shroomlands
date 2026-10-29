@@ -162,6 +162,47 @@ func remove_item(id: StringName, count: int) -> int:
 	return removed
 
 
+## Dry run: would `add_id` x `add_count` fit after `removals` (`[{id, count}]`)
+## were taken out? Works on a copy and emits nothing, so a crafting check can ask
+## "is there room for the potion once the mushrooms are gone?" without touching
+## the real slots or the UI.
+func would_fit(removals: Array, add_id: StringName, add_count: int) -> bool:
+	_ensure_slots()
+	if add_id == &"" or add_count <= 0:
+		return true
+	var scratch: Array[Dictionary] = []
+	for slot: Dictionary in slots:
+		scratch.append(slot.duplicate())
+	for removal: Variant in removals:
+		var take_id := StringName((removal as Dictionary).get("id", &""))
+		var left := int((removal as Dictionary).get("count", 0))
+		for index in range(SLOT_COUNT - 1, -1, -1):
+			if left <= 0:
+				break
+			var slot: Dictionary = scratch[index]
+			if slot.is_empty() or StringName(slot.get("id", &"")) != take_id:
+				continue
+			var taken := mini(int(slot.get("count", 0)), left)
+			left -= taken
+			if taken >= int(slot.get("count", 0)):
+				scratch[index] = {}
+			else:
+				scratch[index] = {"id": take_id, "count": int(slot["count"]) - taken}
+	var limit := max_stack(add_id)
+	var remaining := add_count
+	for slot: Dictionary in scratch:
+		if remaining <= 0:
+			break
+		if not slot.is_empty() and StringName(slot.get("id", &"")) == add_id:
+			remaining -= maxi(limit - int(slot.get("count", 0)), 0)
+	for slot: Dictionary in scratch:
+		if remaining <= 0:
+			break
+		if slot.is_empty():
+			remaining -= limit
+	return remaining <= 0
+
+
 func count_item(id: StringName) -> int:
 	_ensure_slots()
 	var total := 0
@@ -264,6 +305,8 @@ func _sort_rank(id: StringName) -> int:
 		return Lore.rarity_rank(str(mushroom.get("rarity", "")))
 	if Lore.RESOURCES.has(str(id)):
 		return 20
+	if Lore.ITEMS.has(str(id)):
+		return 30
 	return 40
 
 
@@ -335,8 +378,7 @@ func from_dict(data: Dictionary) -> void:
 
 ## Stack size for an id. `Lore` may override `MAX_STACK` with `stack_size`.
 func max_stack(id: StringName) -> int:
-	var limit := int(Lore.get_mushroom(str(id)).get("stack_size", MAX_STACK))
-	return maxi(limit, 1)
+	return maxi(Lore.item_stack_size(str(id), MAX_STACK), 1)
 
 
 func _ensure_slots() -> void:
@@ -354,7 +396,7 @@ func _changed(index: int) -> void:
 
 
 func _warn_unknown(id: StringName) -> void:
-	if Lore.is_mushroom(str(id)) or Lore.RESOURCES.has(str(id)):
+	if Lore.is_item(str(id)):
 		return
 	if _warned_unknown.has(id):
 		return

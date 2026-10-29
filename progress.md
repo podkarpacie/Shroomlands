@@ -6,7 +6,7 @@ Status: MVP shipped, models integrated, toolchain extended. `main` = `c31ed8b`, 
 Shroomlands MVP — 3D multiplayer survival RPG, Godot 4.7.2, GDScript only. Spec: `docs/MVP_SPEC.md`.
 
 ## Current state
-- **20 test suites / 911 assertions green**, all exit 0. Two real-process multiplayer proofs
+- **22 test suites / 1120 assertions green**, all exit 0. Two real-process multiplayer proofs
   (ENet 2-process, WebSocket 3-process) pass. CI runs the same suites on every push.
 - **Exports verified**: Windows 105 MB (Forward+, launches and closes clean), Web 39.5 MB wasm
   (boots in Firefox from plain `http.server`, Compatibility/WebGL2).

@@ -16,9 +16,11 @@ var _target: MushroomNode = null
 var _elapsed := 0.0
 var _total := 0.0
 var _last_hp := -1.0
+var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	_rng.randomize()
 	_last_hp = _player_hp()
 	EventBus.hp_changed.connect(_on_hp_changed)
 
@@ -34,7 +36,7 @@ func begin(target: MushroomNode) -> bool:
 		return false
 	_target = target
 	_elapsed = 0.0
-	_total = maxf(target.harvest_seconds, 0.01)
+	_total = maxf(target.harvest_seconds / (1.0 + _skill_modifier("gather_speed")), 0.01)
 	_last_hp = _player_hp()
 	_set_sprint_lock(true)
 	EventBus.gather_progress_changed.emit(0.0, _total)
@@ -80,6 +82,9 @@ func _complete() -> void:
 	var id := str(node.mushroom_id)
 	node.harvest()
 	var amount := node.last_yield
+	# Keen Eye and friends: a chance of one extra mushroom per harvest.
+	if _rng.randf() < _skill_modifier("gather_yield_chance"):
+		amount += 1
 	var inventory := _inventory()
 	if inventory != null and inventory.has_method(&"add_item"):
 		var leftover := int(inventory.call(&"add_item", node.mushroom_id, amount))
@@ -87,6 +92,13 @@ func _complete() -> void:
 			push_warning("GatheringSystem: inventory full, %d x %s could not be stored." % [leftover, id])
 	_reset()
 	EventBus.gather_finished.emit(id)
+
+
+## A skill-tree bonus (see `SkillSystem`), 0 when the player has no skills node.
+func _skill_modifier(stat: String) -> float:
+	var parent := get_parent()
+	var skills := parent.get_node_or_null("SkillSystem") as SkillSystem if parent != null else null
+	return skills.get_modifier(stat) if skills != null else 0.0
 
 
 func _reset() -> void:
