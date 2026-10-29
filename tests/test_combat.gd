@@ -98,6 +98,8 @@ func _run() -> void:
 	var light_damage := float(_combat.get("light_damage"))
 	var crit_multiplier := float(_combat.get("crit_multiplier"))
 	var stamina_cost := float(_combat.get("attack_stamina_cost"))
+	var condition_before := int(_player.get("weapon_condition"))
+	_check("the weapon starts at full condition (%d)" % condition_before, condition_before == 100)
 	var hp_before := float(target.get("hp"))
 	var stamina_before := float(_stats.get("stamina"))
 	var swung := bool(_combat.call(&"try_attack", false))
@@ -128,6 +130,12 @@ func _run() -> void:
 	_check("enemy_hit fired exactly once (%d)" % _hits.size(), _hits.size() == 1)
 	if not _hits.is_empty():
 		_check("enemy_hit names the creature that lost HP", _hits[0]["enemy"] == target)
+	_check(
+		"one swing wears the weapon by one point (%d -> %d)" % [
+			condition_before, int(_player.get("weapon_condition"))
+		],
+		int(_player.get("weapon_condition")) == condition_before - 1
+	)
 
 	# --- cooldown -----------------------------------------------------------
 	var second := bool(_combat.call(&"try_attack", false))
@@ -240,6 +248,44 @@ func _run() -> void:
 		_check("the player respawns at World/PlayerSpawn", moved < 1.5)
 	else:
 		_check("world has a PlayerSpawn marker", false)
+
+	# --- weapon condition: broken halves damage, the bench repairs it --------
+	_combat.set("crit_chance", 0.0)
+	_player.set("weapon_condition", 100)
+	_stats.set("stamina", float(_stats.get("max_stamina")))
+	_stand_in_front_of(target)
+	await _wait_physics(40)
+	var full_hp := float(target.get("hp"))
+	var full_swing := bool(_combat.call(&"try_attack", false))
+	var full_drop := full_hp - float(target.get("hp"))
+	_check("a full-condition swing lands for light_damage (%.1f)" % full_drop, full_swing and is_equal_approx(full_drop, light_damage))
+
+	await _wait_physics(40)
+	_player.set("weapon_condition", 0)
+	_stats.set("stamina", float(_stats.get("max_stamina")))
+	var broken_hp := float(target.get("hp"))
+	var broken_swing := bool(_combat.call(&"try_attack", false))
+	var broken_drop := broken_hp - float(target.get("hp"))
+	print("weapon condition 0: %.1f damage (full %.1f)" % [broken_drop, full_drop])
+	_check(
+		"a broken weapon deals half light_damage (%.1f)" % broken_drop,
+		broken_swing and is_equal_approx(broken_drop, light_damage * 0.5)
+	)
+
+	var repair_ui := _main.get_node_or_null("RepairUI")
+	_check("Main has a RepairUI panel", repair_ui != null)
+	var game: Variant = root.get_node_or_null("Game")
+	if repair_ui != null and game != null:
+		_player.set("weapon_condition", 40)
+		game.set("gold", 200)
+		var cost := int(repair_ui.call(&"repair_cost"))
+		_check("the bench quotes 2 g per missing point (%d)" % cost, cost == 120)
+		_check("the bench repairs a worn weapon", bool(repair_ui.call(&"repair")))
+		_check(
+			"the bench restores the weapon to 100 (%d)" % int(_player.get("weapon_condition")),
+			int(_player.get("weapon_condition")) == 100
+		)
+		_check("the repair costs the quoted gold (%d)" % int(game.get("gold")), int(game.get("gold")) == 80)
 
 	_finish()
 

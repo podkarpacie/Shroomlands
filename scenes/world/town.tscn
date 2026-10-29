@@ -1,0 +1,98 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/Town.gd" id="1_town"]
+[ext_resource type="PackedScene" path="res://scenes/world/station.tscn" id="2_station"]
+[ext_resource type="PackedScene" path="res://scenes/world/area_gate.tscn" id="3_gate"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_town"]
+sky_top_color = Color(0.18, 0.32, 0.46, 1)
+sky_horizon_color = Color(0.82, 0.80, 0.68, 1)
+sky_curve = 0.18
+ground_bottom_color = Color(0.12, 0.13, 0.09, 1)
+ground_horizon_color = Color(0.56, 0.57, 0.43, 1)
+ground_curve = 0.05
+sun_angle_max = 22.0
+sun_curve = 0.12
+
+[sub_resource type="Sky" id="Sky_town"]
+sky_material = SubResource("ProceduralSkyMaterial_town")
+
+[sub_resource type="Environment" id="Environment_town"]
+background_mode = 2
+sky = SubResource("Sky_town")
+ambient_light_source = 3
+ambient_light_energy = 1.1
+reflected_light_source = 2
+tonemap_mode = 3
+tonemap_white = 5.0
+ssao_enabled = true
+ssao_radius = 1.3
+ssao_intensity = 1.8
+glow_enabled = true
+glow_intensity = 0.8
+glow_strength = 1.0
+glow_bloom = 0.05
+glow_blend_mode = 1
+glow_hdr_threshold = 0.95
+fog_enabled = true
+fog_light_color = Color(0.76, 0.78, 0.66, 1)
+fog_light_energy = 1.0
+fog_sun_scatter = 0.2
+fog_density = 0.004
+fog_aerial_perspective = 0.35
+fog_sky_affect = 0.6
+adjustment_enabled = true
+adjustment_contrast = 1.05
+adjustment_saturation = 1.12
+
+[node name="Town" type="Node3D"]
+script = ExtResource("1_town")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.590017, -0.569108, 0.572709, 0, 0.709333, 0.704873, -0.807391, -0.415887, 0.418518, 0, 0, 0)
+light_color = Color(1, 0.94, 0.82, 1)
+light_energy = 1.45
+light_angular_distance = 0.5
+shadow_enabled = true
+shadow_blur = 1.3
+directional_shadow_max_distance = 90.0
+directional_shadow_fade_start = 0.85
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_town")
+
+[node name="PlayerSpawn" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 4)
+
+[node name="AreaExit" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 24.5)
+
+[node name="Shop" parent="." instance=ExtResource("2_station")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -10.5, 0, 4)
+station_title = "Shop"
+prompt = "Shop — buy and sell"
+panel_node_name = &"ShopUI"
+
+[node name="AlchemyTable" parent="." instance=ExtResource("2_station")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 0, 4)
+station_title = "Alchemy"
+prompt = "Alchemy table — brew potions"
+panel_node_name = &"AlchemyUI"
+
+[node name="RepairBench" parent="." instance=ExtResource("2_station")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 0, -21.5)
+station_title = "Repair"
+prompt = "Repair bench — weapon condition"
+panel_node_name = &"RepairUI"
+
+[node name="PlotBoard" parent="." instance=ExtResource("2_station")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 20)
+station_title = "Plot board"
+prompt = "Plot board — plot district"
+panel_node_name = &"PlotBoardUI"
+
+[node name="ForestGate" parent="." instance=ExtResource("3_gate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 24)
+target_scene = "res://scenes/world/verdant_bloom.tscn"
+target_label = "Verdant Bloom"
+prompt = "Leave to"

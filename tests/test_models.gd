@@ -6,6 +6,7 @@ extends SceneTree
 ## (autoload identifiers are not resolvable while `--script` compiles).
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const FOREST_SCENE_PATH := "res://scenes/world/verdant_bloom.tscn"
 const MUSHROOM_SCENE_PATH := "res://scenes/world/mushroom_node.tscn"
 const TestEnv := preload("res://tests/test_env.gd")
 
@@ -36,7 +37,17 @@ func _run() -> void:
 	_check_player()
 	await _check_enemies()
 	await _check_mushroom_node()
-	_check_decor(main)
+	# The spawn world is the town now; the forest decor suite checks its own
+	# fresh `verdant_bloom.tscn` instead of Main/World.
+	var forest_packed := load(FOREST_SCENE_PATH) as PackedScene
+	_check("verdant_bloom.tscn loads", forest_packed != null)
+	if forest_packed != null:
+		var forest := forest_packed.instantiate()
+		root.add_child(forest)
+		for _frame in 3:
+			await physics_frame
+		_check_decor(forest)
+		forest.queue_free()
 	_finish()
 
 
@@ -182,8 +193,7 @@ func _check_mushroom_node() -> void:
 	unknown.queue_free()
 
 
-func _check_decor(main: Node) -> void:
-	var world := main.get_node_or_null("World")
+func _check_decor(world: Node) -> void:
 	_check("world exists", world != null)
 	if world == null:
 		return

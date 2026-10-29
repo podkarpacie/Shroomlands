@@ -1,8 +1,9 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/VerdantBloom.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/world/mushroom_node.tscn" id="2_mushroom"]
 [ext_resource type="Shader" path="res://assets/shaders/ground.gdshader" id="3_ground_shader"]
+[ext_resource type="PackedScene" path="res://scenes/world/area_gate.tscn" id="4_gate"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_macro"]
 frequency = 0.012
@@ -197,6 +198,12 @@ environment = SubResource("Environment_verdant")
 
 [node name="PlayerSpawn" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+
+[node name="Town Gate" parent="." instance=ExtResource("4_gate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+target_scene = "res://scenes/world/town.tscn"
+target_label = "Fungal Town"
+prompt = "Enter"
 
 [node name="MushroomPoint1" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 0, -4.5)

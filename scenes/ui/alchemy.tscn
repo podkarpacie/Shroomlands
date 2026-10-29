@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/AlchemyUI.gd" id="1_alchemy"]
+[ext_resource type="PackedScene" path="res://scenes/ui/station_common.tscn" id="2_common"]
+
+[node name="AlchemyUI" type="CanvasLayer" groups=["station_panel"]]
+layer = 22
+visible = false
+script = ExtResource("1_alchemy")
+
+[node name="Station" parent="." instance=ExtResource("2_common")]

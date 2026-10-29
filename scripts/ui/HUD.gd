@@ -533,9 +533,7 @@ func _flash_damage() -> void:
 
 func _apply_initial_state() -> void:
 	_gold_label.text = "Gold %d" % Game.gold
-	var biome := Lore.get_biome(String(Game.current_biome))
-	if _biome_label != null:
-		_biome_label.text = str(biome.get("name", "Verdant Bloom")).to_upper()
+	_refresh_area_name()
 	_xp_bar.max_value = Game.xp_to_level(1)
 	_xp_bar.value = 0.0
 	_bind_player()
@@ -562,6 +560,7 @@ func _connect_signals() -> void:
 	_track(EventBus.xp_changed, _on_xp_changed)
 	_track(EventBus.level_changed, _on_level_changed)
 	_track(EventBus.gold_changed, _on_gold_changed)
+	_track(EventBus.area_changed, _on_area_changed)
 	_track(EventBus.inventory_changed, _on_inventory_changed)
 	_track(EventBus.hotbar_changed, _on_inventory_changed)
 	_track(EventBus.gather_progress_changed, _on_gather_progress_changed)
@@ -691,6 +690,31 @@ func _on_vocation_pressed() -> void:
 
 func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = "Gold %d" % amount
+
+
+func _on_area_changed(display_name: String) -> void:
+	_set_area_name(display_name)
+
+
+## The HUD is ready before its `Main` parent, so the first caption is read back
+## from the loaded world instead of trusting `Game.current_biome`, which only
+## tracks the biome and not the town. `Main.enter_area` updates it afterwards
+## through `EventBus.area_changed`.
+func _refresh_area_name() -> void:
+	var main := get_tree().get_first_node_in_group(&"main")
+	if main != null and main.has_method(&"get_area_name"):
+		_set_area_name(String(main.call(&"get_area_name")))
+		return
+	_set_area_name(str(Lore.get_biome(String(Game.current_biome)).get("name", "Verdant Bloom")))
+
+
+func _set_area_name(display_name: String) -> void:
+	if _biome_label == null:
+		return
+	var label := display_name.strip_edges()
+	if label.is_empty():
+		label = str(Lore.get_biome(String(Game.current_biome)).get("name", "Verdant Bloom"))
+	_biome_label.text = label.to_upper()
 
 
 func _on_inventory_changed() -> void:

@@ -20,6 +20,9 @@ extends Node
 const ENEMY_LAYER := 16
 const HURTBOX_LAYER := 32
 const HIT_LIMIT := 16
+## Damage multiplier once the weapon reaches 0 condition. Wear is deliberately
+## coarse for this phase: a broken weapon still swings, it just hits softer.
+const BROKEN_CONDITION_DAMAGE := 0.5
 
 @export var attack_range := 2.6
 @export var attack_cooldown := 0.55
@@ -104,6 +107,10 @@ func _build_hitbox() -> void:
 
 func _swing(heavy: bool) -> void:
 	last_hit_count = 0
+	# Read the condition before the swing wears it, so the blow that takes the
+	# blade to 0 still lands at full strength.
+	var condition_scale := _condition_damage_scale()
+	_wear_weapon()
 	var forward := _facing()
 	var scale := heavy_hitbox_scale if heavy else 1.0
 	var depth := attack_range * scale
@@ -148,7 +155,7 @@ func _swing(heavy: bool) -> void:
 		var is_crit := _rng.randf() < crit_chance
 		var amount := (heavy_damage if heavy else light_damage) * (
 			crit_multiplier if is_crit else 1.0
-		) * _outgoing_damage_multiplier()
+		) * _outgoing_damage_multiplier() * condition_scale
 		if enemy.has_method(&"take_damage"):
 			# The creature emits `EventBus.enemy_hit` when it applies the loss,
 			# so a hit is reported exactly once whichever system caused it.
@@ -174,6 +181,24 @@ func _outgoing_damage_multiplier() -> float:
 	if _stats != null and _stats.has_method(&"damage_multiplier"):
 		return maxf(float(_stats.call(&"damage_multiplier")), 0.0)
 	return 1.0
+
+
+## One point of wear per evaluated swing. A body without the property (an older
+## scene, a test double) simply never wears out.
+func _wear_weapon() -> void:
+	if not ("weapon_condition" in _body):
+		return
+	_body.set(
+		&"weapon_condition",
+		maxi(int(_body.get(&"weapon_condition")) - 1, 0)
+	)
+
+
+## 1.0 with any condition left, `BROKEN_CONDITION_DAMAGE` at 0.
+func _condition_damage_scale() -> float:
+	if not ("weapon_condition" in _body):
+		return 1.0
+	return BROKEN_CONDITION_DAMAGE if int(_body.get(&"weapon_condition")) <= 0 else 1.0
 
 
 ## Walks up from a body or Area3D collider to the creature that owns it.

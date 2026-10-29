@@ -4,8 +4,9 @@
 from fungi and mycelium — no ordinary trees, grass or metal ore" (`Lore.WORLD_NAME` /
 `Lore.WORLD_DESCRIPTION`). You gather mushrooms, craft, fight, build on plots, and uncover what
 damaged the First Mycelium; someone deliberately caused the Great Blight. Godot 4.7.2,
-**GDScript only**, one biome (Verdant Bloom), 2–32 players over ENet/UDP (desktop) or
-WebSocket/TCP (browsers + desktop), Windows and Web exports. This is the single-biome MVP.
+**GDScript only**, one biome (Verdant Bloom) plus its walled town hub (Mycoria), 2–32 players
+over ENet/UDP (desktop) or WebSocket/TCP (browsers + desktop), Windows and Web exports. This is
+the single-biome MVP.
 Esc opens an in-game pause menu (Resume / Settings / Controls / Players / Quit to Menu / Quit
 Game) that shares the lobby's `settings.cfg`; it pauses the tree only offline.
 
@@ -26,7 +27,7 @@ Autoloads: `Lore`, `EventBus`, `Audio`, `Game`, `SaveSystem`, `Network` (+ edito
 ```powershell
 $g = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 
-# All 25 test suites - each must exit 0 (1432 assertions).
+# All 28 test suites - each must exit 0 (1548 assertions).
 # test_env.gd is the isolation helper, not a suite: run on its own it exits 1.
 Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | ForEach-Object {
   $n = $_.BaseName
@@ -52,7 +53,7 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
 - Will the `EventBus`-driven UI scale, or is it implicit coupling between systems and panels?
 - Is the `MultiplayerSynchronizer` usage correct for late join (spawn state, authority, the
   `resources/net_*.tres` replication configs)?
-- Are the 25 suites covering **behaviour** or just structure? Look for assertions that would
+- Are the 28 suites covering **behaviour** or just structure? Look for assertions that would
   fail on a regression — start with `test_sync`, `test_plots`, `test_save`, `test_isolation`.
 
 ## Explicit notes
@@ -95,6 +96,17 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
   `attack`/`draw`/`holster` are clip one-shots the pose overrides, so they do not move the
   first-person arms. `tests/test_fp_camera.gd` pins the range, the ease, the hide/restore,
   the pitch and the attached props.
+- **The town hub is a separate area scene, and travel is offline-only.** `main.tscn` starts in
+  `scenes/world/town.tscn` (`Town.gd`, `display_name` "Mycoria"); the north gate frees and
+  re-instances the `World` node with `verdant_bloom.tscn`, and the forest gate comes back.
+  `Main.enter_area` moves the local body to the new `PlayerSpawn`, sets `Game.current_biome` and
+  emits `EventBus.area_changed` with the area's own `display_name`; `HUD` follows that caption
+  (and seeds it at startup). The world is not replicated, so in multiplayer a gate refuses and a
+  client's request is answered with the same denial. The stations (shop, alchemy, repair, plot
+  board) are `Station.gd` interactables opening `StationPanelUI` panels. Weapon condition lives
+  on `PlayerController` (one point per swing, half damage at 0) and the repair bench restores it
+  at 2 g/point. Armour Patch and Nighteye Draught are still in `Lore.POTIONS` but gated in both
+  panels: there is no armour system and no darkness yet.
 - **Verification rules.** Never trust an OS screenshot on Windows at 150 % DPI scaling — a Win32
   capture is a top-left *crop* of the real frame; use `tests/capture_frame.gd` (in-engine
   viewport, windowed, never `--headless`). Every suite must exit `0`; see `README.md` → *Tests*.

@@ -1,7 +1,7 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/core/Main.gd" id="1_main"]
-[ext_resource type="PackedScene" path="res://scenes/world/verdant_bloom.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://scenes/world/town.tscn" id="2_world"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory.tscn" id="4_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/chat.tscn" id="5_chat"]
@@ -9,6 +9,10 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/build_mode.tscn" id="7_build"]
 [ext_resource type="PackedScene" path="res://scenes/ui/vocation_select.tscn" id="8_vocation"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="9_pause"]
+[ext_resource type="PackedScene" path="res://scenes/ui/shop.tscn" id="10_shop"]
+[ext_resource type="PackedScene" path="res://scenes/ui/alchemy.tscn" id="11_alchemy"]
+[ext_resource type="PackedScene" path="res://scenes/ui/repair.tscn" id="12_repair"]
+[ext_resource type="PackedScene" path="res://scenes/ui/plot_board.tscn" id="13_board"]
 
 [node name="Main" type="Node3D" groups=["main"]]
 script = ExtResource("1_main")
@@ -41,3 +45,11 @@ script = ExtResource("6_plots")
 [node name="VocationUI" parent="." instance=ExtResource("8_vocation")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("9_pause")]
+
+[node name="ShopUI" parent="." instance=ExtResource("10_shop")]
+
+[node name="AlchemyUI" parent="." instance=ExtResource("11_alchemy")]
+
+[node name="RepairUI" parent="." instance=ExtResource("12_repair")]
+
+[node name="PlotBoardUI" parent="." instance=ExtResource("13_board")]

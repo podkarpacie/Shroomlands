@@ -1,0 +1,76 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/AreaGate.gd" id="1_gate"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_post"]
+albedo_color = Color(0.36, 0.27, 0.17, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_post"]
+material = SubResource("StandardMaterial3D_post")
+size = Vector3(0.6, 3.0, 0.6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_lintel"]
+material = SubResource("StandardMaterial3D_post")
+size = Vector3(6.6, 0.5, 0.7)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cap"]
+albedo_color = Color(0.52, 0.82, 0.46, 1)
+emission_enabled = true
+emission = Color(0.52, 0.82, 0.46, 1)
+emission_energy_multiplier = 1.4
+roughness = 0.8
+
+[sub_resource type="SphereMesh" id="SphereMesh_cap"]
+material = SubResource("StandardMaterial3D_cap")
+radius = 0.55
+height = 0.42
+radial_segments = 16
+rings = 8
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_post"]
+size = Vector3(0.6, 3.0, 0.6)
+
+[node name="AreaGate" type="StaticBody3D" groups=["interactable"]]
+script = ExtResource("1_gate")
+target_scene = "res://scenes/world/verdant_bloom.tscn"
+target_label = "Verdant Bloom"
+prompt = "Travel to"
+
+[node name="PostLeftShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, 1.5, 0)
+shape = SubResource("BoxShape3D_post")
+
+[node name="PostRightShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 1.5, 0)
+shape = SubResource("BoxShape3D_post")
+
+[node name="PostLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, 1.5, 0)
+mesh = SubResource("BoxMesh_post")
+
+[node name="PostRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 1.5, 0)
+mesh = SubResource("BoxMesh_post")
+
+[node name="Lintel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.1, 0)
+mesh = SubResource("BoxMesh_lintel")
+
+[node name="CapLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, 3.45, 0)
+mesh = SubResource("SphereMesh_cap")
+
+[node name="CapRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 3.45, 0)
+mesh = SubResource("SphereMesh_cap")
+
+[node name="Label" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.85, 0)
+billboard = 1
+modulate = Color(0.94, 0.96, 0.86, 1)
+outline_modulate = Color(0.03, 0.04, 0.03, 1)
+text = "Verdant Bloom"
+font_size = 64
+outline_size = 16
+pixel_size = 0.010

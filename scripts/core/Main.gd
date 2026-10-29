@@ -14,6 +14,9 @@ extends Node3D
 
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 const ENEMY_SCENE := preload("res://scenes/world/enemy.tscn")
+## The two story areas. `main.tscn` starts in town; the gate stations swap them.
+const TOWN_SCENE_PATH := "res://scenes/world/town.tscn"
+const FOREST_SCENE_PATH := "res://scenes/world/verdant_bloom.tscn"
 ## `local` chat reaches only peers whose body is within this many metres of the
 ## sender. Global chat ignores distance.
 const CHAT_LOCAL_RANGE := 25.0
@@ -87,10 +90,147 @@ func _ready() -> void:
 			# replicated player and enemy nodes from the spawners. Spawning
 			# locally here would create duplicates the server never knew about.
 			_start_roster_timer()
+	# The HUD is ready before this node, so its first caption is a seed. Announce
+	# the starting area exactly like a gate announces a swap.
+	EventBus.area_changed.emit(get_area_name())
 
 
 func get_player() -> Node3D:
 	return _player
+
+
+## Name of the active area for the HUD (`display_name` on the area scene), or the
+## biome name while no area scene is loaded.
+func get_area_name() -> String:
+	return _area_display_name(_world)
+
+
+func _area_display_name(world: Node) -> String:
+	if world != null and &"display_name" in world:
+		var label := str(world.get(&"display_name")).strip_edges()
+		if not label.is_empty():
+			return label
+	var biome := Lore.get_biome(String(Game.current_biome))
+	return str(biome.get("name", "Verdant Bloom"))
+
+
+## Swaps the active area without touching the UI layers, which are siblings of
+## `World`. Offline this frees the current world, instances `path`, moves the
+## local body to the new `PlayerSpawn` and re-runs the per-area loader (creature
+## roster and plot visibility). Returns false when the path is invalid, while a
+## client asks the server instead, and in a networked session, where the world is
+## not replicated yet: this phase is deliberately offline-only so a gate can
+## never desync a session.
+func enter_area(path: String) -> bool:
+	if path.is_empty():
+		return false
+	match Network.mode:
+		Network.CLIENT:
+			request_area.rpc_id(1, path)
+			EventBus.toast_requested.emit("Area travel requested from the server…")
+			return false
+		Network.SERVER:
+			EventBus.toast_requested.emit("Area travel is offline only in this phase")
+			return false
+	return _swap_area(path)
+
+
+## Client -> server leg of `enter_area`. The server owns the swap; until the
+## world itself replicates it acknowledges with a refusal so nothing diverges.
+@rpc("any_peer", "call_remote", "reliable")
+func request_area(_path: String) -> void:
+	if Network.mode != Network.SERVER:
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender <= 1:
+		return
+	area_request_result.rpc_id(sender, false)
+
+
+## Server -> client: gate travel result. Only the denial path is reachable while
+## the swap is offline-only.
+@rpc("authority", "call_remote", "reliable")
+func area_request_result(granted: bool) -> void:
+	if granted:
+		return
+	EventBus.toast_requested.emit("Area travel is offline only in this phase")
+
+
+func _swap_area(path: String) -> bool:
+	if not ResourceLoader.exists(path):
+		# `load()` would log an engine ERROR for a typo; a gate path is data, so a
+		# missing scene stays a quiet refusal like any other bad target.
+		push_warning("Main: area '%s' does not exist." % path)
+		return false
+	var packed := load(path) as PackedScene
+	if packed == null:
+		push_warning("Main: cannot load area '%s'." % path)
+		return false
+	var world := packed.instantiate() as Node3D
+	if world == null:
+		push_warning("Main: area '%s' is not a Node3D." % path)
+		return false
+
+	var previous := _world
+	if previous != null and is_instance_valid(previous):
+		# Remove it now so the new marker is the only `PlayerSpawn` in the tree
+		# (PlayerStats resolves respawns by name) and so a stale world cannot
+		# answer a spawn query in the same frame.
+		remove_child(previous)
+		previous.queue_free()
+	world.name = "World"
+	add_child(world)
+	# Keep the world before the CanvasLayers, exactly where main.tscn had it.
+	move_child(world, 0)
+	_world = world
+
+	_move_local_player_to(_area_spawn_point(world))
+	Game.current_biome = (
+		&"town" if path == TOWN_SCENE_PATH else &"verdant_bloom"
+	)
+	# The HUD caption follows the area scene's own label, so a renamed or new
+	# area needs no change in the UI layer.
+	EventBus.area_changed.emit(_area_display_name(world))
+	_reload_area_state(path)
+	return true
+
+
+## Puts the local body on the new spawn and clears residual motion, so a walk
+## into the gate does not carry across the swap. Safe without a body.
+func _move_local_player_to(spawn: Marker3D) -> void:
+	var body := Game.get_local_player() as Node3D
+	if body == null or not is_instance_valid(body):
+		return
+	if spawn != null:
+		body.global_position = spawn.global_position
+	if body is CharacterBody3D:
+		(body as CharacterBody3D).velocity = Vector3.ZERO
+	body.reset_physics_interpolation()
+
+
+## Per-area loaders. The placeholder creature roster exists in both areas for now
+## (the network harness depends on it in town too); the plot district belongs to
+## town and is hidden when the forest is active. Plot state itself is not touched.
+func _reload_area_state(path: String) -> void:
+	var plots := get_node_or_null(^"PlotSystem") as Node3D
+	if plots != null:
+		plots.visible = path == TOWN_SCENE_PATH
+	if Network.mode == Network.CLIENT:
+		return
+	for child in _enemies.get_children():
+		_enemies.remove_child(child)
+		child.queue_free()
+	_spawn_enemies()
+
+
+func _area_spawn_point(world: Node3D) -> Marker3D:
+	if world != null and world.has_method(&"get_spawn_point"):
+		var point: Variant = world.call(&"get_spawn_point")
+		if point is Marker3D:
+			return point as Marker3D
+	if world != null:
+		return world.find_child("PlayerSpawn", true, false) as Marker3D
+	return null
 
 
 func _spawn_player() -> void:
@@ -571,8 +711,4 @@ func _peer_player(peer_id: int) -> Node3D:
 
 
 func _get_spawn_point() -> Marker3D:
-	if _world != null and _world.has_method(&"get_spawn_point"):
-		var point: Variant = _world.call(&"get_spawn_point")
-		if point is Marker3D:
-			return point as Marker3D
-	return null
+	return _area_spawn_point(_world)

@@ -24,6 +24,10 @@ signal buffs_changed
 signal gold_changed(amount: int)
 signal mushroom_gathered(mushroom_id: String, count: int)
 signal species_discovered(mushroom_id: String)
+## The active area changed. `display_name` is the area scene's own label
+## ("Mycoria", "Verdant Bloom"); `Main.enter_area` is the only emitter, so the
+## HUD never has to know which scene file backs a name.
+signal area_changed(display_name: String)
 
 # Combat: emitted once per applied hit by the creature that lost HP, so the HUD
 # flash follows the damage instead of the swing.

@@ -181,6 +181,10 @@ func handle_escape() -> bool:
 	if _open:
 		close()
 		return true
+	var station := _open_station_panel()
+	if station != null:
+		station.call(&"set_open", false)
+		return true
 	var chat := _panel(&"ChatUI", &"set_open")
 	if chat != null and bool(chat.call(&"is_open")):
 		chat.call(&"set_open", false)
@@ -545,6 +549,17 @@ func _panel(node_name: StringName, method: StringName) -> Node:
 	if panel == null or not panel.has_method(method):
 		return null
 	return panel
+
+
+## The first open shop/alchemy/repair/plot-board panel. Every station panel
+## registers in `station_panel`, so a new one joins the Escape chain by existing.
+func _open_station_panel() -> Node:
+	if get_tree() == null:
+		return null
+	for node: Node in get_tree().get_nodes_in_group(&"station_panel"):
+		if node.has_method(&"is_open") and bool(node.call(&"is_open")):
+			return node
+	return null
 
 
 func _mark_section(button: Button, active: bool) -> void:

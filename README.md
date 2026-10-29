@@ -6,11 +6,12 @@ First Mycelium. Someone deliberately caused the Great Blight.
 
 A 3D multiplayer survival RPG built with **Godot 4.7.2** and **GDScript only**
 (spec: [`docs/MVP_SPEC.md`](docs/MVP_SPEC.md)). This repository is the single-biome MVP:
-Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports.
+the Verdant Bloom and its walled town hub, Mycoria, two to 32 players over ENet or WebSocket,
+and Windows/Web exports.
 
 ## Status
 
-- 25 headless test suites, **1432 assertions**, all green - including a run with a
+- 28 headless test suites, **1548 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -38,6 +39,7 @@ Verdant Bloom, two to 32 players over ENet or WebSocket, and Windows/Web exports
 | **H. World** | Done (one biome) | Verdant Bloom placeholder terrain, mushroom nodes, decorative props, plot row, four enemy spawns |
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, position, HP/stamina, inventory. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
+| Town hub | Done (travel is offline-only) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
 | Export Web + Desktop | Done | Windows Desktop, Web (nothreads), Windows Server presets; all boot |
 | Hosting (playit.gg) | Done | `tools/run_server.ps1` (ENet or WebSocket), `tools/serve_web.ps1`, [`docs/HOSTING.md`](docs/HOSTING.md); the lobby has a Port field for tunnelled public ports |
 
@@ -75,10 +77,11 @@ Each suite is a `SceneTree` script and exits non-zero on failure:
 ```powershell
 $godot = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 $suites = @(
-  'test_audio','test_chat','test_combat','test_consumables','test_effects','test_fp_camera',
-  'test_gathering','test_holding','test_inventory','test_isolation','test_limbs','test_lobby',
-  'test_lore','test_models','test_movement','test_movement_block','test_network','test_pause',
-  'test_player','test_plots','test_rig','test_save','test_sync','test_ui','test_vocation'
+  'test_alchemy','test_audio','test_chat','test_combat','test_consumables','test_effects',
+  'test_fp_camera','test_gathering','test_holding','test_inventory','test_isolation','test_limbs',
+  'test_lobby','test_lore','test_models','test_movement','test_movement_block','test_network',
+  'test_pause','test_player','test_plots','test_rig','test_save','test_shop','test_sync',
+  'test_town','test_ui','test_vocation'
 )
 foreach ($suite in $suites) {
   & $godot --headless --path . --script "res://tests/$suite.gd"
@@ -86,12 +89,13 @@ foreach ($suite in $suites) {
 }
 ```
 
-Current counts: `test_audio` 78, `test_chat` 24, `test_combat` 38, `test_consumables` 36,
-`test_effects` 40, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
-`test_inventory` 31, `test_isolation` 22, `test_limbs` 15, `test_lobby` 98, `test_lore` 322,
-`test_models` 40, `test_movement` 30, `test_movement_block` 15, `test_network` 41,
-`test_pause` 76, `test_player` 20, `test_plots` 86, `test_rig` 48, `test_save` 58,
-`test_sync` 68, `test_ui` 60, `test_vocation` 70 - **1432 assertions**.
+Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat` 47,
+`test_consumables` 36, `test_effects` 40, `test_fp_camera` 52, `test_gathering` 38,
+`test_holding` 26, `test_inventory` 31, `test_isolation` 22, `test_limbs` 15,
+`test_lobby` 98, `test_lore` 322, `test_models` 41, `test_movement` 30,
+`test_movement_block` 15, `test_network` 41, `test_pause` 76, `test_player` 20,
+`test_plots` 86, `test_rig` 48, `test_save` 58, `test_shop` 29, `test_sync` 68,
+`test_town` 51, `test_ui` 60, `test_vocation` 70 - **1548 assertions**.
 
 ### Continuous integration
 
@@ -100,9 +104,9 @@ Current counts: `test_audio` 78, `test_chat` 24, `test_combat` 38, `test_consuma
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-25 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+28 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1432). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1548). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -215,10 +219,11 @@ scripts/
   multiplayer/           Network.gd (ENet / WebSocket abstraction)
   player/                PlayerController, PlayerStats, PlayerAnimator, SwingWeapon, HeldItem, FpArms
   systems/               Gathering, Inventory, Combat, Plot
-  ui/                    HUD, InventoryUI, ChatUI, VocationUI, LobbyUI, PauseMenu, BuildMode
-  world/                 MushroomNode, Enemy, PlotSign, VerdantBloom
+  ui/                    HUD, InventoryUI, ChatUI, VocationUI, LobbyUI, PauseMenu, BuildMode,
+                         ShopUI, AlchemyUI, RepairUI, PlotBoardUI
+  world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   25 headless suites, net_harness, capture_frame, network proofs
+tests/                   28 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -473,3 +478,11 @@ back on for tools and tests.
     smoke runs cover two clients.
 12. **Web build is single-threaded** (nothreads variant, no GDExtension). It boots and
     renders, but expect lower performance than desktop.
+13. **Area travel is offline-only.** The town gate frees and re-instances the `World` node,
+    which is not replicated. In a networked session `Main.enter_area` refuses, and a client's
+    request is answered by the server with the same denial, so every peer stays in town.
+14. **Two potions have effects nothing applies.** Armour Patch (`repair_armor`) and Nighteye
+    Draught (`vision +1.0`) stay in `Lore.POTIONS` and show in the shop and alchemy panels, but
+    there is no armour system and no darkness to see through. Their rows carry a
+    `(needs equipment)` / `(needs darkness)` tag and both Buy and Brew are disabled, so no gold
+    is spent on a no-op.

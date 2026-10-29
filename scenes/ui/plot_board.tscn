@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/PlotBoardUI.gd" id="1_board"]
+[ext_resource type="PackedScene" path="res://scenes/ui/station_common.tscn" id="2_common"]
+
+[node name="PlotBoardUI" type="CanvasLayer" groups=["station_panel"]]
+layer = 24
+visible = false
+script = ExtResource("1_board")
+
+[node name="Station" parent="." instance=ExtResource("2_common")]

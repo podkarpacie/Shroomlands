@@ -96,6 +96,10 @@ signal landed(impact_speed: float)
 ## synchronizer, so `PlayerAnimator` plays `attack` on every peer rather than on
 ## the owner alone. It only ever grows; nothing compares it to a timestamp.
 @export var swing_seq: int = 0
+## Weapon wear, 0..100. `CombatSystem` takes one point per evaluated swing and
+## halves the damage once it reaches 0; the Repair Bench restores it. Deliberately
+## a single integer: no per-weapon equipment exists yet.
+@export_range(0, 100) var weapon_condition: int = 100
 
 var is_sprinting: bool:
 	get:

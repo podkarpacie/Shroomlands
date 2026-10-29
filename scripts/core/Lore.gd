@@ -548,6 +548,17 @@ const RARITY_ORDER := {
 	"epic": 2,
 	"legendary": 3,
 }
+## Shop base value for one mushroom of a rarity. Vendors buy in bulk and pay
+## less than the alchemy fee, so foraging is worth the walk but not a gold farm.
+const MUSHROOM_VALUES := {
+	"common": 5,
+	"rare": 20,
+	"epic": 60,
+	"legendary": 150,
+}
+## A bought potion costs this multiple of the fee the Alchemy Table charges for
+## the same recipe: the vendor's margin for doing the brewing for you.
+const POTION_SHOP_MARKUP := 3
 
 
 func get_mushroom(id: String) -> Dictionary:
@@ -594,6 +605,20 @@ func mushrooms_in_layer(layer: int) -> Array[String]:
 func potion_for(mushroom_id: String) -> String:
 	var brew: Dictionary = get_mushroom(mushroom_id).get("brew", {})
 	return str(brew.get("potion", ""))
+
+
+## Gold a shop pays for one mushroom of `rarity`; 0 for an unknown tier.
+func mushroom_value(rarity: String) -> int:
+	return int(MUSHROOM_VALUES.get(rarity, 0))
+
+
+## Gold the shop charges for `potion_id` (`fee x POTION_SHOP_MARKUP`); 0 when the
+## id is not a potion.
+func potion_price(potion_id: String) -> int:
+	var potion := get_potion(potion_id)
+	if potion.is_empty():
+		return 0
+	return int(potion.get("fee", 0)) * POTION_SHOP_MARKUP
 
 
 ## Rarity of an item: a mushroom's own tier, or the tier of the mushroom a

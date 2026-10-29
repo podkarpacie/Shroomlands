@@ -28,6 +28,7 @@ const LANDMARK_MIN_RADIUS := 55.0
 const LANDMARK_MAX_RADIUS := 150.0
 const SPORE_BOX := Vector3(24.0, 2.8, 24.0)
 
+@export var display_name := "Verdant Bloom"
 @export var scatter_seed := 1337
 @export var decor_count := 90
 @export var landmark_count := 36
