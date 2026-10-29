@@ -6,7 +6,7 @@ Status: MVP shipped, models integrated, toolchain extended. `main` = `c31ed8b`, 
 Shroomlands MVP — 3D multiplayer survival RPG, Godot 4.7.2, GDScript only. Spec: `docs/MVP_SPEC.md`.
 
 ## Current state
-- **20 test suites / 911 assertions green**, all exit 0. Two real-process multiplayer proofs
+- **22 test suites / 1036 assertions green**, all exit 0. Two real-process multiplayer proofs
   (ENet 2-process, WebSocket 3-process) pass. CI runs the same suites on every push.
 - **Exports verified**: Windows 105 MB (Forward+, launches and closes clean), Web 39.5 MB wasm
   (boots in Firefox from plain `http.server`, Compatibility/WebGL2).
@@ -45,6 +45,18 @@ My line contributed the model pipeline, the 64×64 atlas fix, test isolation, an
 - **Limb animation**: club-carry pose (40 % swing + forward angle), held-item carry pose for the left
   arm, turn banking, and `stepped` → footstep cue synced to the gait phase. Still procedural — the
   models have no skeleton (`animations=0, skins=0`), so no authored clips are possible yet.
+
+- **The player is now a real rig.** `assets/models/player_rigged.gltf` — a 20-bone Blockbench
+  humanoid with six keyframed clips (`idle`, `walk`, `run`, `attack`, `draw`, `holster`).
+  `PlayerAnimator.gd` selects the locomotion clip from **measured position deltas** (so replicated
+  bodies animate), plays one-shots from a replicated `swing_seq`, and triggers real **draw/holster**
+  clips when `held_item` changes. The exporter writes no skin (`skins=0`) — motion is rigid per
+  segment, which suits box art. Editable source: `assets/models/source/player_rigged.bbmodel`.
+  The Blightling still uses procedural `LimbAnimator`.
+- **Pause menu** (Esc): Resume / Settings / Controls / Players / Quit to Menu / Quit Game.
+  Settings shared with the lobby via `settings.cfg`; controls generated from `InputMap`; the tree
+  pauses only OFFLINE (networked peers keep simulating and show a hint); Escape priority runs
+  menu → chat → satchel → build mode.
 
 ## Known gaps
 - No anti-cheat: peers report their own HP, gold, inventory, position; server validates shape
