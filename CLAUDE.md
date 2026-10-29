@@ -6,6 +6,8 @@ from fungi and mycelium — no ordinary trees, grass or metal ore" (`Lore.WORLD_
 damaged the First Mycelium; someone deliberately caused the Great Blight. Godot 4.7.2,
 **GDScript only**, one biome (Verdant Bloom), 2–32 players over ENet/UDP (desktop) or
 WebSocket/TCP (browsers + desktop), Windows and Web exports. This is the single-biome MVP.
+Esc opens an in-game pause menu (Resume / Settings / Controls / Players / Quit to Menu / Quit
+Game) that shares the lobby's `settings.cfg`; it pauses the tree only offline.
 
 ## Read in this order
 
@@ -24,7 +26,7 @@ Autoloads: `Lore`, `EventBus`, `Audio`, `Game`, `SaveSystem`, `Network` (+ edito
 ```powershell
 $g = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
 
-# All 18 test suites - each must exit 0 (867 assertions).
+# All 22 test suites - each must exit 0 (1036 assertions).
 # test_env.gd is the isolation helper, not a suite: run on its own it exits 1.
 Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | ForEach-Object {
   $n = $_.BaseName
@@ -50,18 +52,18 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
 - Will the `EventBus`-driven UI scale, or is it implicit coupling between systems and panels?
 - Is the `MultiplayerSynchronizer` usage correct for late join (spawn state, authority, the
   `resources/net_*.tres` replication configs)?
-- Are the 18 suites covering **behaviour** or just structure? Look for assertions that would
+- Are the 22 suites covering **behaviour** or just structure? Look for assertions that would
   fail on a regression — start with `test_sync`, `test_plots`, `test_save`, `test_isolation`.
 
-## Two explicit notes
+## Explicit notes
 
-- **Models exist, but nothing references them yet.** `assets/models/` holds four glTF models
-  authored in Blockbench 5.2.2 and exported through `blockbench-mcp`, already imported by Godot
-  without errors:
+- **Models are wired in.** `assets/models/` holds five glTF models authored in Blockbench 5.2.2
+  and exported through `blockbench-mcp`, already imported by Godot without errors:
 
   | File | Height | Contents |
   | --- | --- | --- |
-  | `assets/models/player.gltf` | 1.80 m | mushroom humanoid: crimson domed cap, cream stem body, arms/hands, dark eyes |
+  | `assets/models/player_rigged.gltf` | 1.80 m | rigged mushroom humanoid: crimson domed cap, cream stem body, arms/hands, dark eyes; 20 bones, six keyframed clips |
+  | `assets/models/player.gltf` | 1.80 m | static pre-rig mushroom humanoid; no scene instantiates it any more |
   | `assets/models/blightling.gltf` | 1.50 m | hostile fungal creature: squat olive body, violet thorned cap, glowing orange eyes, claws |
   | `assets/models/glowcap.gltf` | 0.57 m | small teal-capped glowing mushroom, cream stem |
   | `assets/models/emberstem.gltf` | 0.74 m | orange conical cap, cream stem, small skirt ring |
@@ -70,6 +72,17 @@ The 180 MB engine binary is **not** committed (`.gitignore`d): install Godot 4.7
   `tests/test_models.gd`; `docs/screenshots/` predates this and still shows primitives. Blockbench
   exports in metres (16 units = 1 m), so they need no scaling on import. Regeneration recipe and
   wiring notes: `README.md` → *3D models*.
+- **The player is keyframed, the blightling is procedural.** `player.tscn` instances
+  `player_rigged.gltf`; `scripts/player/PlayerAnimator.gd` drives its imported `AnimationPlayer`
+  through six clips — `idle`, `walk`, `run` (gaits, forced to `LOOP_LINEAR` at runtime) and
+  `attack`, `draw`, `holster` (one-shots). Gait comes from measured position deltas, not
+  `velocity`, so replicated players animate too; `attack` is replicated via `swing_seq` and
+  `draw`/`holster` fire on `held_item` transitions, so remote peers see equip and swings. The
+  exporter writes **no skin** (`skins=0`): the 20 bones are plain nodes with the cube meshes
+  parented to them, so animation is rigid per segment (no joint deformation). Editable source:
+  `assets/models/source/player_rigged.bbmodel`. The enemy has no rig and still uses
+  `scripts/world/LimbAnimator.gd`; do not add `LimbAnimator` back to the player, it would fight
+  `PlayerAnimator`.
 - **Verification rules.** Never trust an OS screenshot on Windows at 150 % DPI scaling — a Win32
   capture is a top-left *crop* of the real frame; use `tests/capture_frame.gd` (in-engine
   viewport, windowed, never `--headless`). Every suite must exit `0`; see `README.md` → *Tests*.
