@@ -56,7 +56,9 @@ func _check_player() -> void:
 		model.get_node_or_null("Body") == null and model.get_node_or_null("Cap") == null
 	)
 	var meshes := model.find_children("*", "MeshInstance3D", true, false)
-	_check("player model has its 15 cube meshes (%d)" % meshes.size(), meshes.size() == 15)
+	# 21 cubes: the rigged body, chest, head, 2 eyes, 4 cap rings, 2 upper arms,
+	# 2 lower arms, 2 hands, 2 upper legs, 2 lower legs and 2 feet.
+	_check("player model has its 21 cube meshes (%d)" % meshes.size(), meshes.size() == 21)
 
 	# Feet on the bottom of the 1.8 m capsule, head at the top: otherwise the
 	# model floats or sinks and the whole camera rig reads wrong.
@@ -71,8 +73,8 @@ func _check_player() -> void:
 	# The controller faces the move direction with -Z, so the eyes (and the
 	# front of the model) must be on the -Z side of the body.
 	var eye := model.find_child("eye_l", true, false) as Node3D
-	var torso := model.find_child("torso_up", true, false) as Node3D
-	_check("player model has eye_l and torso_up nodes", eye != null and torso != null)
+	var torso := model.find_child("body_chest", true, false) as Node3D
+	_check("player model has eye_l and body_chest nodes", eye != null and torso != null)
 	if eye != null and torso != null:
 		_check(
 			"the eyes face -Z, the controller's forward",

@@ -44,11 +44,13 @@ func _run() -> void:
 
 	var held := player.get_node_or_null("HeldItem")
 	var inventory := player.get_node_or_null("InventorySystem")
-	var hand_l := player.find_child("hand_l", true, false) as Node3D
-	var hand_r := player.find_child("hand_r", true, false) as Node3D
+	# The rigged model's hands are bone nodes, and the held prop hangs off the
+	# left one; the club hangs off the right.
+	var hand_l := player.find_child("hand_left2", true, false) as Node3D
+	var hand_r := player.find_child("hand_right2", true, false) as Node3D
 	_check("the player has a HeldItem node", held != null)
 	_check("the player has an InventorySystem", inventory != null)
-	_check("the model has hand_l and hand_r", hand_l != null and hand_r != null)
+	_check("the model has hand_left2 and hand_right2", hand_l != null and hand_r != null)
 	if held == null or inventory == null or hand_l == null or hand_r == null:
 		_finish()
 		return

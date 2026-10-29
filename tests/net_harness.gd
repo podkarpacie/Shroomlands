@@ -126,6 +126,7 @@ func _run() -> void:
 						_walk_proved = _walked_away()
 						_send_chat()
 						_send_loot()
+						_send_swing()
 						walk_state = 2
 						_provoke_frame = 0
 				2:
@@ -207,6 +208,9 @@ func _finish() -> void:
 	# The client's selected slot holds the loot it just gathered, so the host's
 	# line proves the replicated `held_item` reached the other peer.
 	print("HELD_ITEMS %s" % _held_string(players))
+	# The host's line shows the client's body carrying the swing the client made,
+	# which is the only way another peer learns that a swing happened.
+	print("SWING_SEQ %s" % _sequence_string(players))
 	if _mode == "DEDICATED":
 		# Boot check by default; with `--net-expect-players=N` it waits for the
 		# clients and proves the server spawned one body per connected peer.
@@ -330,6 +334,15 @@ func _held_string(players: Array[Node]) -> String:
 	return ";".join(parts) if not parts.is_empty() else "-"
 
 
+## `peer:swing_seq` per body, `-` for an empty roster. Only the peer that swung
+## ever bumps its own counter, so the host's line shows the client's swing.
+func _sequence_string(players: Array[Node]) -> String:
+	var parts := PackedStringArray()
+	for player in players:
+		parts.append("%s:%d" % [player.name, int(player.get(&"swing_seq"))])
+	return ";".join(parts) if not parts.is_empty() else "-"
+
+
 func _find_local_player() -> Node3D:
 	for node in get_nodes_in_group(&"player"):
 		if node is Node3D and node.is_multiplayer_authority():
@@ -381,6 +394,17 @@ func _send_loot() -> void:
 	print("INV_SEND id=%s count=%d leftover=%d" % [
 		String(LOOT_ID), LOOT_COUNT - leftover, leftover
 	])
+
+
+## JOIN only: one real swing through `CombatSystem`, so the counter the client
+## bumps has to replicate for the host to log it.
+func _send_swing() -> void:
+	if _local_player == null or not is_instance_valid(_local_player):
+		return
+	var combat := _local_player.get_node_or_null("CombatSystem")
+	if combat == null or not combat.has_method(&"try_attack"):
+		return
+	combat.call(&"try_attack", false)
 
 
 ## JOIN only: the client owns its body, so it can step it into a creature's

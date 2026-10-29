@@ -1,21 +1,22 @@
 extends Node3D
 ## The item in the selected hotbar slot, held in the left hand.
 ##
-## The glTF character has no skeleton, so — like `SwingWeapon` — this node is a
-## sibling of the model. Every frame it takes the *position* from `hand_l` and the
-## *orientation* from the body's facing yaw alone: `LimbAnimator` pitches forward
-## and rolls that arm outward to carry a prop, and inheriting the hand's basis used
-## to lay the mushroom flat on its side. The owner resolves its own selection
-## through `InventorySystem` and writes the id to the replicated `held_item` on the
-## player root; every other peer only renders that value. That is deliberate: a
-## remote inventory is never applied to a local `InventorySystem`, so a peer must
-## not try to resolve another player's slot.
+## The rigged character keeps its hands as plain bone nodes (no skin), so — like
+## `SwingWeapon` — this node is a sibling of the model. Every frame it takes the
+## *position* from `hand_left2` and the *orientation* from the body's facing yaw
+## alone: the `walk`/`run` clips swing that arm back and forth, and inheriting the
+## hand's basis used to lay the mushroom flat on its side. The owner resolves its
+## own selection through `InventorySystem` and writes the id to the replicated
+## `held_item` on the player root; every other peer only renders that value. That
+## is deliberate: a remote inventory is never applied to a local `InventorySystem`,
+## so a peer must not try to resolve another player's slot.
 ##
 ## Only `glowcap` and `emberstem` ship a model. Any other id keeps the
 ## authoritative `held_item` value and draws nothing — a missing model is not a
 ## reason to build a placeholder mushroom.
 
-const HAND_NAME := &"hand_l"
+## The animated left-hand bone; `hand_left` (the mesh) is its child.
+const HAND_NAME := &"hand_left2"
 ## Held ids with a model. A mushroom without one is simply absent here.
 const MODELS := {
 	&"glowcap": "res://assets/models/glowcap.gltf",
@@ -24,10 +25,12 @@ const MODELS := {
 ## Height of the prop in metres. The source models are 0.57 m and 0.74 m tall,
 ## so both are normalised to a hand-sized mushroom instead of dwarfing the body.
 const HELD_HEIGHT := 0.22
-## The hand mesh's origin is its Blockbench min corner, so this offset puts the
-## prop's base just above the middle of the fist and on its outer side. Local to
-## `hand_l`, in metres.
-const HAND_GRIP := Vector3(0.02, 0.105, 0.09)
+## `hand_left2` is the wrist pivot and the fist cube hangs below and outboard of
+## it (21 cm wide, so a prop parked in its middle is swallowed by the arm). The
+## grip therefore sits on the fist's top-back-outer corner: 10 cm outboard, just
+## above the wrist, and 12 cm behind the hand — the side the third-person camera
+## looks from. Local to the hand, in metres.
+const HAND_GRIP := Vector3(-0.10, 0.01, 0.12)
 ## Lean the upright prop away from the torso (-X, the left side) and a touch
 ## forward (-Z), a few degrees so it does not look mechanically perfect. Applied
 ## in the body's yaw frame, never in the hand's.

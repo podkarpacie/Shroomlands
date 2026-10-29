@@ -210,9 +210,11 @@ func _check_camera() -> void:
 
 
 func _check_animation() -> void:
-	var leg := _player.find_child("leg_l", true, false) as Node3D
-	var arm := _player.find_child("arm_l", true, false) as Node3D
-	_check("the model has leg_l and arm_l", leg != null and arm != null)
+	# The rigged model's bones, which `PlayerAnimator` drives from the imported
+	# `idle`/`walk`/`run` clips.
+	var leg := _player.find_child("leg_upper_left2", true, false) as Node3D
+	var arm := _player.find_child("arm_upper_left2", true, false) as Node3D
+	_check("the model has leg_upper_left2 and arm_upper_left2", leg != null and arm != null)
 	if leg == null or arm == null:
 		return
 	await _frames(30)

@@ -1,14 +1,18 @@
 extends Node3D
-## The player's visible mycelium club. The glTF character has no skeleton, so the
-## club is a sibling of the model (not a child of it) and copies `hand_r`'s world
-## transform every frame. That keeps the club out of the model's mesh count while
-## still following the procedural arm swing exactly.
+## The player's visible mycelium club. The rigged glTF character keeps its hands
+## as plain bone nodes (no skin), so the club is a sibling of the model rather
+## than a child of it: every frame it copies `hand_right2`'s world transform,
+## which the `walk`/`run`/`attack` clips animate. That keeps the club out of the
+## model's mesh count while still following the authored arm swing exactly.
 ##
 ## The club is the player's weapon, not an inventory item: it stays in the right
 ## hand whatever `held_item` says. An empty hotbar slot or a mushroom in the left
 ## hand must not remove it.
 
-const HAND_NAME := &"hand_r"
+## The animated right-hand bone. Blockbench exports the bone node next to the
+## cube it drives, so `hand_right` (the mesh) is its child; the bone is the one
+## the clips target and the one that carries the hand's frame.
+const HAND_NAME := &"hand_right2"
 
 var _hand: Node3D = null
 var _club: Node3D = null

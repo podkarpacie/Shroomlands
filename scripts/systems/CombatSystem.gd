@@ -117,6 +117,10 @@ func _swing(heavy: bool) -> void:
 
 	# The swing animation starts even on a miss; damage is resolved immediately
 	# so the HP bar and the arm never lie about what happened.
+	# The counter is what every other peer watches: `PlayerAnimator` plays
+	# `attack` locally on this call, and from `swing_seq` everywhere else.
+	if "swing_seq" in _body:
+		_body.set(&"swing_seq", int(_body.get(&"swing_seq")) + 1)
 	var animator := _body.get_node_or_null("Animator")
 	if animator != null and animator.has_method(&"play_attack"):
 		animator.call(&"play_attack", heavy)

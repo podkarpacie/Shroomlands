@@ -13,6 +13,7 @@ extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const CAPTURE_PATH := "res://tests/_capture.png"
+const WALK_CAPTURE_PATH := "res://tests/_capture_walk.png"
 const HELD_CAPTURE_PATH := "res://tests/_capture_held.png"
 const INVENTORY_CAPTURE_PATH := "res://tests/_capture_inventory.png"
 const GATHER_CAPTURE_PATH := "res://tests/_capture_gather.png"
@@ -77,6 +78,9 @@ func _run() -> void:
 	_dump("AT 30 PHYSICS FRAMES")
 	await _save(CAPTURE_PATH)
 
+	# --- the same body mid-stride ------------------------------------------
+	await _capture_walk()
+
 	# --- inventory panel ----------------------------------------------------
 	var inventory_ui := main.get_node_or_null("InventoryUI")
 	_check("InventoryUI exists under Main", inventory_ui != null)
@@ -103,6 +107,7 @@ func _run() -> void:
 
 	print("\ncapture files:")
 	print("  normal:    %s" % ProjectSettings.globalize_path(CAPTURE_PATH))
+	print("  walk:      %s" % ProjectSettings.globalize_path(WALK_CAPTURE_PATH))
 	print("  held:      %s" % ProjectSettings.globalize_path(HELD_CAPTURE_PATH))
 	print("  inventory: %s" % ProjectSettings.globalize_path(INVENTORY_CAPTURE_PATH))
 	print("  gather:    %s" % ProjectSettings.globalize_path(GATHER_CAPTURE_PATH))
@@ -321,6 +326,38 @@ func _vec(v: Vector3) -> String:
 
 func _vec2(v: Vector2) -> String:
 	return "(%.3f, %.3f)" % [v.x, v.y]
+
+
+## Walking still. The rig has to be mid-gait, not frozen in its idle pose: the
+## walk clip is selected and the swing leg actually travels over the shot.
+func _capture_walk() -> void:
+	var rig := _player.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	_check("the player's rig has an AnimationPlayer", rig != null)
+	var leg := _player.find_child("leg_upper_left2", true, false) as Node3D
+	_check("the rig has its leg_upper_left2 bone", leg != null)
+	if rig == null or leg == null:
+		return
+
+	Input.action_press(&"move_forward")
+	var low := 99.0
+	var high := -99.0
+	var deadline := Time.get_ticks_msec() + 500
+	while Time.get_ticks_msec() < deadline:
+		await physics_frame
+		low = minf(low, leg.rotation.x)
+		high = maxf(high, leg.rotation.x)
+	await _save(WALK_CAPTURE_PATH)
+	Input.action_release(&"move_forward")
+	print("rig clip while walking: %s" % String(rig.current_animation))
+	_check("walking selects the walk clip", rig.current_animation == &"walk")
+	_check(
+		"the walk clip swings the leg (%.2f rad of travel)" % (high - low),
+		high - low > 0.15
+	)
+
+	# Stand still again, so every later still starts from the resting pose.
+	for _frame in 30:
+		await physics_frame
 
 
 ## Second held-item still. The seeded inventory already puts a glowcap in slot 0

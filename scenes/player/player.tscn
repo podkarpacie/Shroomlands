@@ -7,8 +7,8 @@
 [ext_resource type="SceneReplicationConfig" path="res://resources/net_replication.tres" id="5_replication"]
 [ext_resource type="Script" path="res://scripts/systems/CombatSystem.gd" id="6_combat"]
 [ext_resource type="SceneReplicationConfig" path="res://resources/net_vitals.tres" id="7_vitals"]
-[ext_resource type="PackedScene" path="res://assets/models/player.gltf" id="8_model"]
-[ext_resource type="Script" path="res://scripts/world/LimbAnimator.gd" id="9_animator"]
+[ext_resource type="PackedScene" path="res://assets/models/player_rigged.gltf" id="8_model"]
+[ext_resource type="Script" path="res://scripts/player/PlayerAnimator.gd" id="9_animator"]
 [ext_resource type="Script" path="res://scripts/player/SwingWeapon.gd" id="10_weapon"]
 [ext_resource type="Script" path="res://scripts/player/HeldItem.gd" id="11_held_item"]
 

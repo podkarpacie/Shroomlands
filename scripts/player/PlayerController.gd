@@ -61,6 +61,10 @@ signal landed(impact_speed: float)
 ## Replicated by the body's synchronizer: a peer never needs another player's
 ## `InventorySystem` to know what that player is holding.
 @export var held_item: StringName = &""
+## Counter the attacker bumps on every evaluated swing. Replicated by the body's
+## synchronizer, so `PlayerAnimator` plays `attack` on every peer rather than on
+## the owner alone. It only ever grows; nothing compares it to a timestamp.
+@export var swing_seq: int = 0
 
 var is_sprinting: bool:
 	get:
