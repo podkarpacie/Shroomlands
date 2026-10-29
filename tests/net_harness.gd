@@ -3,7 +3,7 @@ extends SceneTree
 ## with `--net-join=127.0.0.1`; both load `main.tscn`, print a NET status line
 ## every second and a final NET_RESULT line. The client walks forward for one
 ## second so the server must receive a non-spawn position for its peer, then it
-## steps next to a creature (the server's AI bites), adds three glowcaps through
+## steps next to a creature (the server's AI bites), adds three konops through
 ## the real `InventorySystem`, and reports its HP/level/gold to the server.
 ##
 ## `--net-transport=enet|websocket` (default: one chosen by `Network`) selects
@@ -27,8 +27,8 @@ const MIN_ENEMIES := 4
 ## it, which is the networked chat proof `run_network_test.ps1` greps for.
 const CHAT_TEXT := "hello from client"
 ## Items the client gathers after the walk; the host must log `INV_RECV` with
-## this many glowcaps, which proves the inventory reached the server.
-const LOOT_ID := &"glowcap"
+## this many konops, which proves the inventory reached the server.
+const LOOT_ID := &"konop"
 const LOOT_COUNT := 3
 ## Frames to wait after the walk before stepping into a creature's reach, so the
 ## replicated position has settled before the server's AI looks at it.
@@ -380,7 +380,7 @@ func _send_chat() -> void:
 	_chat_sent = true
 
 
-## JOIN only: three glowcaps through the real `InventorySystem`, so the server's
+## JOIN only: three konops through the real `InventorySystem`, so the server's
 ## `INV_RECV` line proves an inventory change crossed the wire.
 func _send_loot() -> void:
 	if _inventory_sent or _local_player == null or not is_instance_valid(_local_player):

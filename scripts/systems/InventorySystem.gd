@@ -259,9 +259,9 @@ func _sort_entry(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _sort_rank(id: StringName) -> int:
-	var mushroom := Lore.get_mushroom(str(id))
-	if not mushroom.is_empty():
-		return Lore.rarity_rank(str(mushroom.get("rarity", "")))
+	var rarity := Lore.item_rarity(str(id))
+	if not rarity.is_empty():
+		return Lore.rarity_rank(rarity)
 	if Lore.RESOURCES.has(str(id)):
 		return 20
 	return 40
@@ -293,6 +293,69 @@ func drop_slot(index: int, drop_all := false) -> Dictionary:
 	EventBus.item_removed.emit(String(id), dropped)
 	_changed(index)
 	return {"id": id, "count": dropped}
+
+
+## Eats one mushroom or drinks one potion from `index`. Consumes exactly one
+## item and applies its `Lore` effect to the body's `Stats`; returns false (and
+## changes nothing) for an empty slot, a resource, an unknown id, or a body
+## without stats. Toxicity is charged as a one-off HP loss after the effect,
+## through the normal damage path so it can kill.
+func use_slot(index: int) -> bool:
+	_ensure_slots()
+	if index < 0 or index >= SLOT_COUNT:
+		return false
+	var slot: Dictionary = slots[index]
+	if slot.is_empty() or int(slot.get("count", 0)) <= 0:
+		return false
+	var id := StringName(slot.get("id", &""))
+	var stats := _stats()
+	if stats == null or bool(stats.call(&"is_dead")):
+		return false
+
+	var mushroom := Lore.get_mushroom(str(id))
+	var potion := Lore.get_potion(str(id))
+	var effect: Dictionary
+	var message: String
+	if not mushroom.is_empty():
+		effect = mushroom.get("eat", {})
+		message = "You eat %s" % Lore.item_display_name(str(id))
+	elif not potion.is_empty():
+		effect = potion.get("effect", {})
+		message = "You drink %s" % Lore.item_display_name(str(id))
+	else:
+		EventBus.toast_requested.emit(
+			"%s is not edible" % Lore.item_display_name(str(id))
+		)
+		return false
+
+	_consume_one(index, id)
+	stats.call(&"apply_effect", effect)
+	var toxicity := int(mushroom.get("toxicity", 0))
+	if toxicity > 0:
+		stats.call(&"take_damage", float(toxicity))
+		message += "  ·  toxic"
+	EventBus.toast_requested.emit(message)
+	return true
+
+
+## Removes exactly one item from `index`, keeping the rest of the stack in place.
+func _consume_one(index: int, id: StringName) -> void:
+	var held := int((slots[index] as Dictionary).get("count", 0))
+	slots[index] = {} if held <= 1 else {"id": id, "count": held - 1}
+	EventBus.item_removed.emit(String(id), 1)
+	_changed(index)
+
+
+## The body's vitals component. `use_slot` needs one to apply an effect to; a
+## standalone inventory (tooling, tests) simply refuses to consume.
+func _stats() -> Node:
+	var body := get_parent()
+	if body == null:
+		return null
+	var stats := body.get_node_or_null("Stats")
+	if stats != null and stats.has_method(&"apply_effect"):
+		return stats
+	return null
 
 
 ## Compact save shape: only occupied slots, as `{"slots": {"0": [id, count]}}`.
@@ -354,7 +417,7 @@ func _changed(index: int) -> void:
 
 
 func _warn_unknown(id: StringName) -> void:
-	if Lore.is_mushroom(str(id)) or Lore.RESOURCES.has(str(id)):
+	if Lore.is_mushroom(str(id)) or Lore.is_potion(str(id)) or Lore.RESOURCES.has(str(id)):
 		return
 	if _warned_unknown.has(id):
 		return

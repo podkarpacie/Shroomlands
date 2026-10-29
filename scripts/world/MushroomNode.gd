@@ -8,16 +8,17 @@ extends StaticBody3D
 ## it, so a mushroom can never collapse the third-person camera. The player
 ## walks through mushrooms instead of snagging on them.
 
-## Drop `res://assets/models/<mushroom_id>.gltf` in and that species uses the
-## model automatically; a species without one keeps the primitive stem + cap.
-const MODEL_DIR := "res://assets/models/"
+## Every designed species ships `res://assets/models/mushrooms/<id>.gltf`; this
+## node loads it automatically. A species without one keeps the primitive
+## stem + cap, so an unknown id still renders.
+const MODEL_DIR := "res://assets/models/mushrooms/"
 const ModelGlow := preload("res://scripts/world/ModelGlow.gd")
 ## How strongly a species' cap glows (see ModelGlow).
 const GLOW_ENERGY := 1.6
 
 ## Species placed by this node; unknown ids still harvest (they just have no
 ## Lore name, colour or regrow entry).
-@export var mushroom_id: StringName = &"glowcap"
+@export var mushroom_id: StringName = &"konop"
 @export var harvest_seconds := 1.2
 @export var yield_min := 1
 @export var yield_max := 2
@@ -126,7 +127,7 @@ func _show_visuals(shown: bool) -> void:
 	_cap.visible = shown
 
 
-## Cap colour comes from the species rarity, so a sunheart reads at a glance.
+## Cap colour comes from the species rarity, so a legendary fury reads at a glance.
 func _apply_visuals() -> void:
 	var mushroom := Lore.get_mushroom(str(mushroom_id))
 	var material := StandardMaterial3D.new()

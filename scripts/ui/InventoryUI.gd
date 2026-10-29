@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Toggleable 6x8 satchel with icons, a live 3D item preview, tooltips, sorting,
-## drag-and-drop and right-click dropping.
+## drag-and-drop, right-click dropping and double-click eating/drinking.
 ##
 ## The panel is a pure view: every mutation goes through `InventorySystem`, and
 ## the grid refreshes only when `EventBus.inventory_changed` fires. While open it
@@ -47,7 +47,10 @@ class Slot:
 			ui.call(&"_drop_from_slot", index)
 			accept_event()
 		elif button.button_index == MOUSE_BUTTON_LEFT:
-			ui.call(&"_select_slot", index)
+			if button.double_click:
+				ui.call(&"_use_slot", index)
+			else:
+				ui.call(&"_select_slot", index)
 
 
 @onready var _dim: ColorRect = $Root/Dim
@@ -311,6 +314,7 @@ func _update_slot(slot: Slot) -> void:
 	slot.icon.texture = ItemVisuals.icon(id) if filled else null
 	slot.icon.visible = filled
 	slot.name_label.text = ItemVisuals.display_name(String(id)) if filled else ""
+	slot.name_label.add_theme_color_override("font_color", rarity)
 	slot.count_label.text = str(count) if filled else ""
 	slot.rarity.color = rarity if filled else Color(0, 0, 0, 0)
 	slot.tooltip_text = (
@@ -452,6 +456,17 @@ func _drop_from_slot(index: int) -> void:
 	if _inventory == null:
 		return
 	_inventory.call(&"drop_slot", index)
+	_refresh()
+
+
+## Double-click: eat a mushroom or drink a potion through `InventorySystem`,
+## which owns the consume + effect + toast path.
+func _use_slot(index: int) -> void:
+	_bind_inventory()
+	if _inventory == null or not _inventory.has_method(&"use_slot"):
+		return
+	_inventory.call(&"use_slot", index)
+	_selected = index
 	_refresh()
 
 

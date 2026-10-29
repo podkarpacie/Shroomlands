@@ -120,22 +120,22 @@ func _check_vitals_synchronizer(player: Node3D, stats: Node) -> void:
 
 
 func _check_inventory_payload(main: Node, inventory: Node, max_stack: int) -> void:
-	inventory.call(&"add_item", &"glowcap", 3)
+	inventory.call(&"add_item", &"konop", 3)
 	var good: Array = inventory.call(&"to_sync_payload")
 	_check("a payload holds one entry per slot (%d)" % good.size(), good.size() == 48)
 	_check("a payload of the owner's own slots is accepted", bool(main.call(&"validate_inventory_payload", good)))
-	_check("the payload carries the gathered stack", _count_glowcap(good) == 3)
+	_check("the payload carries the gathered stack", _count_konop(good) == 3)
 
 	_check_rejects(main, good, "a truncated payload", func(payload: Array) -> void: payload.pop_back())
 	_check_rejects(main, good, "an oversized payload", func(payload: Array) -> void: payload.append({}))
-	_check_rejects(main, good, "a non-dictionary slot", func(payload: Array) -> void: payload[0] = "glowcap")
-	_check_rejects(main, good, "a slot with no count", func(payload: Array) -> void: payload[0] = {"id": &"glowcap"})
+	_check_rejects(main, good, "a non-dictionary slot", func(payload: Array) -> void: payload[0] = "konop")
+	_check_rejects(main, good, "a slot with no count", func(payload: Array) -> void: payload[0] = {"id": &"konop"})
 	_check_rejects(main, good, "an id with no Lore entry", func(payload: Array) -> void: payload[0] = {"id": &"moonrock", "count": 1})
 	_check_rejects(main, good, "a non-string id", func(payload: Array) -> void: payload[0] = {"id": 7, "count": 1})
-	_check_rejects(main, good, "a negative count", func(payload: Array) -> void: payload[0] = {"id": &"glowcap", "count": -4})
-	_check_rejects(main, good, "a non-numeric count", func(payload: Array) -> void: payload[0] = {"id": &"glowcap", "count": "many"})
+	_check_rejects(main, good, "a negative count", func(payload: Array) -> void: payload[0] = {"id": &"konop", "count": -4})
+	_check_rejects(main, good, "a non-numeric count", func(payload: Array) -> void: payload[0] = {"id": &"konop", "count": "many"})
 	_check_rejects(main, good, "a count above MAX_STACK", func(payload: Array) -> void:
-		payload[0] = {"id": &"glowcap", "count": max_stack + 1})
+		payload[0] = {"id": &"konop", "count": max_stack + 1})
 
 	# A rejected payload must leave nothing behind, an accepted one must become
 	# a mirror — and neither may touch this peer's own inventory.
@@ -149,13 +149,13 @@ func _check_inventory_payload(main: Node, inventory: Node, max_stack: int) -> vo
 	_check("_accept_inventory stores a valid payload", bool(main.call(&"_accept_inventory", 2, good)))
 	var mirror: Array = main.call(&"get_remote_inventory", 2)
 	_check("the mirror holds the same slot count (%d)" % mirror.size(), mirror.size() == 48)
-	_check("the mirror holds the reported glowcaps", _count_glowcap(mirror) == 3)
+	_check("the mirror holds the reported konops", _count_konop(mirror) == 3)
 
 	main.call(&"receive_inventory", 9, good)
-	_check("a broadcast mirror is stored too", _count_glowcap(main.call(&"get_remote_inventory", 9) as Array) == 3)
+	_check("a broadcast mirror is stored too", _count_konop(main.call(&"get_remote_inventory", 9) as Array) == 3)
 	_check(
 		"a remote mirror never enters the local inventory",
-		int(inventory.call(&"count_item", &"glowcap")) == 3
+		int(inventory.call(&"count_item", &"konop")) == 3
 	)
 	_check("an unknown peer has no mirror", (main.call(&"get_remote_inventory", 77) as Array).is_empty())
 
@@ -166,12 +166,12 @@ func _check_rejects(main: Node, good: Array, label: String, mutate: Callable) ->
 	_check("%s is rejected" % label, not bool(main.call(&"validate_inventory_payload", payload)))
 
 
-func _count_glowcap(payload: Array) -> int:
+func _count_konop(payload: Array) -> int:
 	var total := 0
 	for entry: Variant in payload:
 		if entry is Dictionary:
 			var slot: Dictionary = entry
-			if StringName(slot.get("id", &"")) == &"glowcap":
+			if StringName(slot.get("id", &"")) == &"konop":
 				total += int(slot.get("count", 0))
 	return total
 
@@ -212,12 +212,12 @@ func _check_roster(main: Node, _network: Node, _constants: Dictionary, stats: No
 ## The server records a report against the *connection* that sent it, never
 ## against an id in the payload, so no client can edit somebody else's entry.
 func _check_roster_sovereignty(main: Node, network: Node, constants: Dictionary) -> void:
-	main.call(&"_merge_progress", 2, 999, ["glowcap", "moonrock", "glowcap"], "knight")
+	main.call(&"_merge_progress", 2, 999, ["konop", "moonrock", "konop"], "knight")
 	var reported: Dictionary = main.call(&"get_peer_progress", 2)
 	_check("a report records the gold (999)", int(reported.get("gold", -1)) == 999)
 	_check(
 		"a report drops ids with no Lore entry",
-		(reported.get("discovered", []) as Array) == ["glowcap"]
+		(reported.get("discovered", []) as Array) == ["konop"]
 	)
 	_check("a report records a known vocation", String(reported.get("vocation", "")) == "knight")
 
@@ -230,7 +230,7 @@ func _check_roster_sovereignty(main: Node, network: Node, constants: Dictionary)
 	# and must not be able to write another peer's entry.
 	var previous := int(network.get(&"mode"))
 	network.set(&"mode", int(constants["SERVER"]))
-	main.call(&"report_progress", 500, ["emberstem"], "ranger")
+	main.call(&"report_progress", 500, ["shitake"], "ranger")
 	network.set(&"mode", previous)
 	var untouched: Dictionary = main.call(&"get_peer_progress", 2)
 	_check("a local progression report is ignored", int(untouched.get("gold", -1)) == 999)

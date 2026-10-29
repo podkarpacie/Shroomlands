@@ -148,7 +148,7 @@ func _swing(heavy: bool) -> void:
 		var is_crit := _rng.randf() < crit_chance
 		var amount := (heavy_damage if heavy else light_damage) * (
 			crit_multiplier if is_crit else 1.0
-		)
+		) * _outgoing_damage_multiplier()
 		if enemy.has_method(&"take_damage"):
 			# The creature emits `EventBus.enemy_hit` when it applies the loss,
 			# so a hit is reported exactly once whichever system caused it.
@@ -166,6 +166,14 @@ func _swing(heavy: bool) -> void:
 	if last_hit_count > 0:
 		if _body.has_method(&"add_camera_shake"):
 			_body.call(&"add_camera_shake", 0.16 if heavy else 0.09)
+
+
+## The attacking body's outgoing damage multiplier (Weapon Oil, Fury). A body
+## without Stats still swings for its base damage.
+func _outgoing_damage_multiplier() -> float:
+	if _stats != null and _stats.has_method(&"damage_multiplier"):
+		return maxf(float(_stats.call(&"damage_multiplier")), 0.0)
+	return 1.0
 
 
 ## Walks up from a body or Area3D collider to the creature that owns it.

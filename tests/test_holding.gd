@@ -55,21 +55,21 @@ func _run() -> void:
 		_finish()
 		return
 
-	# --- glowcap: a model that exists ---------------------------------------
-	inventory.call(&"set_slot", 0, &"glowcap", 2)
+	# --- Konop: a model that exists ---------------------------------------
+	inventory.call(&"set_slot", 0, &"konop", 2)
 	bus.emit_signal(&"hotbar_selected", 0)
 	await process_frame
 	_check(
-		"selecting a glowcap slot sets held_item to glowcap (%s)" % _held(player),
-		_held(player) == &"glowcap"
+		"selecting a Konop slot sets held_item to Konop (%s)" % _held(player),
+		_held(player) == &"konop"
 	)
 	var visible := _visible_visuals(held)
-	_check("the glowcap has exactly one held visual (%d)" % visible.size(), visible.size() == 1)
+	_check("the Konop has exactly one held visual (%d)" % visible.size(), visible.size() == 1)
 	if visible.size() == 1:
 		var visual := visible[0] as Node3D
 		var box := _world_bounds(visual)
 		_check(
-			"the held glowcap is hand-sized (%.2f m tall)" % box.size.y,
+			"the held Konop is hand-sized (%.2f m tall)" % box.size.y,
 			box.size.y > 0.15 and box.size.y < 0.30
 		)
 		var centre := box.get_center()
@@ -86,42 +86,55 @@ func _run() -> void:
 	_check("selecting an empty slot clears held_item (%s)" % _held(player), _held(player) == &"")
 	_check("an empty slot shows no held visual", _visible_visuals(held).is_empty())
 
-	# --- emberstem: the model swaps instead of stacking ---------------------
-	inventory.call(&"set_slot", 1, &"emberstem", 1)
+	# --- Shitake: the model swaps instead of stacking ---------------------
+	inventory.call(&"set_slot", 1, &"shitake", 1)
 	bus.emit_signal(&"hotbar_selected", 1)
 	await process_frame
 	_check(
-		"switching to emberstem sets held_item (%s)" % _held(player),
-		_held(player) == &"emberstem"
+		"switching to Shitake sets held_item (%s)" % _held(player),
+		_held(player) == &"shitake"
 	)
 	var swapped := _visible_visuals(held)
-	_check("emberstem shows exactly one visual (%d)" % swapped.size(), swapped.size() == 1)
+	_check("Shitake shows exactly one visual (%d)" % swapped.size(), swapped.size() == 1)
 	_check(
-		"the cached glowcap is hidden, not stacked (%d child, %d visible)" % [
+		"the cached Konop is hidden, not stacked (%d child, %d visible)" % [
 			held.get_child_count(), swapped.size()
 		],
 		held.get_child_count() == 2
 	)
 	if swapped.size() == 1:
 		_check(
-			"the visible visual is the emberstem model (%s)" % String(swapped[0].name),
-			String(swapped[0].name).contains("Emberstem")
+			"the visible visual is the Shitake model (%s)" % String(swapped[0].name),
+			String(swapped[0].name).contains("Shitake")
 		)
-		var glowcap_visual := held.get_node_or_null("HeldGlowcap") as Node3D
+		var konop_visual := held.get_node_or_null("HeldKonop") as Node3D
 		_check(
-			"the glowcap visual is cached but hidden",
-			glowcap_visual != null and not glowcap_visual.visible
+			"the Konop visual is cached but hidden",
+			konop_visual != null and not konop_visual.visible
 		)
 
-	# --- venomveil: a mushroom without a model ------------------------------
-	inventory.call(&"set_slot", 2, &"venomveil", 1)
+	# --- ghostcap: a mushroom without a model ------------------------------
+	inventory.call(&"set_slot", 2, &"ghostcap", 1)
 	bus.emit_signal(&"hotbar_selected", 2)
 	await process_frame
 	_check(
 		"a model-less mushroom still sets held_item (%s)" % _held(player),
-		_held(player) == &"venomveil"
+		_held(player) == &"ghostcap"
 	)
 	_check("a model-less mushroom draws nothing", _visible_visuals(held).is_empty())
+
+	# --- a potion: no model of its own, a tinted fallback -------------------
+	inventory.call(&"set_slot", 3, &"konop_draught", 1)
+	bus.emit_signal(&"hotbar_selected", 3)
+	await process_frame
+	_check(
+		"a potion still sets held_item (%s)" % _held(player),
+		_held(player) == &"konop_draught"
+	)
+	_check(
+		"a potion draws one tinted fallback (%d)" % _visible_visuals(held).size(),
+		_visible_visuals(held).size() == 1
+	)
 
 	# --- the remote body: replicated value only ----------------------------
 	var remote := packed.instantiate() as Node3D
@@ -136,7 +149,7 @@ func _run() -> void:
 	if remote_held == null or remote_inventory == null:
 		_finish()
 		return
-	remote_inventory.call(&"set_slot", 0, &"glowcap", 3)
+	remote_inventory.call(&"set_slot", 0, &"konop", 3)
 	bus.emit_signal(&"hotbar_selected", 0)
 	await process_frame
 	_check(
@@ -146,7 +159,7 @@ func _run() -> void:
 	_check("its own selection draws nothing", _visible_visuals(remote_held).is_empty())
 
 	# A peer only ever receives the id; that value has to render.
-	remote.set(&"held_item", &"glowcap")
+	remote.set(&"held_item", &"konop")
 	await process_frame
 	_check(
 		"a replicated held_item renders in the remote hand",

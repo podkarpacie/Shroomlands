@@ -332,7 +332,7 @@ func _accept_inventory(peer_id: int, slots: Array) -> bool:
 	if peer_id <= 0 or not validate_inventory_payload(slots):
 		return false
 	_remote_inventories[peer_id] = slots.duplicate(true)
-	print("INV_RECV peer=%d glowcap=%d" % [peer_id, _count_items(slots, &"glowcap")])
+	print("INV_RECV peer=%d konop=%d" % [peer_id, _count_items(slots, &"konop")])
 	if Network.mode == Network.SERVER:
 		receive_inventory.rpc(peer_id, slots)
 	return true
@@ -353,7 +353,12 @@ func validate_inventory_payload(slots: Array) -> bool:
 		var raw_id: Variant = slot.get("id", null)
 		if not (raw_id is String or raw_id is StringName):
 			return false
-		if not Lore.is_mushroom(str(raw_id)) and not Lore.RESOURCES.has(str(raw_id)):
+		var known := (
+			Lore.is_mushroom(str(raw_id))
+			or Lore.is_potion(str(raw_id))
+			or Lore.RESOURCES.has(str(raw_id))
+		)
+		if not known:
 			return false
 		var raw_count: Variant = slot.get("count", null)
 		if not (raw_count is int or raw_count is float):

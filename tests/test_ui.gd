@@ -99,8 +99,8 @@ func _run() -> void:
 		return
 
 	# --- hotbar mirrors the inventory --------------------------------------
-	var leftover := int(inventory.call(&"add_item", &"glowcap", 5))
-	_check("adding 5 glowcap fits the inventory", leftover == 0)
+	var leftover := int(inventory.call(&"add_item", &"konop", 5))
+	_check("adding 5 konop fits the inventory", leftover == 0)
 
 	var hud_slot := hud.get_node_or_null("Root/Hotbar/Slot0")
 	_check("HUD hotbar slot 0 exists", hud_slot != null)
@@ -117,10 +117,19 @@ func _run() -> void:
 		if name_label != null:
 			_check(
 				"hotbar slot 0 shows the item name (%s)" % name_label.text,
-				name_label.text.to_lower().contains("glowcap")
+				name_label.text.to_lower().contains("konop")
 			)
 		if count_label != null:
 			_check("hotbar slot 0 shows the stack count (%s)" % count_label.text, count_label.text == "5")
+		if name_label != null:
+			var lore: Node = root.get_node_or_null("Lore")
+			var common := Color.WHITE
+			if lore != null:
+				common = lore.call(&"rarity_color", "common") as Color
+			_check(
+				"the hotbar name uses the rarity colour (%s)" % name_label.get_theme_color("font_color"),
+				name_label.get_theme_color("font_color") == common
+			)
 
 	if grid != null:
 		var grid_slot := grid.get_node_or_null("Slot0")
@@ -132,7 +141,7 @@ func _run() -> void:
 		if grid_name != null:
 			_check(
 				"inventory slot 0 shows the item name (%s)" % grid_name.text,
-				grid_name.text.to_lower().contains("glowcap")
+				grid_name.text.to_lower().contains("konop")
 			)
 		else:
 			_check("inventory slot 0 has a name label", false)
@@ -191,7 +200,7 @@ func _run() -> void:
 		_check("gather bar appears while gathering", gather_bar.is_visible_in_tree())
 		_check("gather bar value is 0.5 (%.2f)" % gather_bar.value, is_equal_approx(gather_bar.value, 0.5))
 		_check("gather bar max is 1.2 (%.2f)" % gather_bar.max_value, is_equal_approx(gather_bar.max_value, 1.2))
-		bus.emit_signal(&"gather_finished", "glowcap")
+		bus.emit_signal(&"gather_finished", "konop")
 		await process_frame
 		_check("gather bar hides on gather_finished", not gather_bar.is_visible_in_tree())
 
@@ -200,15 +209,51 @@ func _run() -> void:
 	_check("HUD has an interaction prompt label", prompt_label != null)
 	if prompt_label != null:
 		_check("interaction prompt starts hidden", not prompt_label.is_visible_in_tree())
-		bus.emit_signal(&"interaction_prompt_changed", "Gather Glowcap  [E]")
+		bus.emit_signal(&"interaction_prompt_changed", "Gather Konop  [E]")
 		await process_frame
 		_check(
 			"interaction prompt follows the signal (%s)" % prompt_label.text,
-			prompt_label.is_visible_in_tree() and prompt_label.text.contains("Glowcap")
+			prompt_label.is_visible_in_tree() and prompt_label.text.contains("Konop")
 		)
 		bus.emit_signal(&"interaction_prompt_changed", "")
 		await process_frame
 		_check("an empty prompt hides the label", not prompt_label.is_visible_in_tree())
+
+	# --- buff row -----------------------------------------------------------
+	var buff_row := hud.find_child("BuffRow", true, false) as VBoxContainer
+	_check("HUD has a buff row under the vitals", buff_row != null)
+	var stats: Variant = player.get_node_or_null("Stats")
+	_check("the player has Stats for the buff row", stats != null)
+	if buff_row != null and stats != null:
+		_check("the buff row starts hidden", not buff_row.visible)
+		stats.call(&"apply_effect", {"buff": {"id": "hud_test", "duration": 30.0}})
+		await process_frame
+		_check(
+			"a buff shows one pill (%d)" % buff_row.get_child_count(),
+			buff_row.visible and buff_row.get_child_count() == 1
+		)
+		var pill_label: Label = null
+		if buff_row.get_child_count() > 0:
+			pill_label = buff_row.get_child(0).find_child("Label", true, false) as Label
+		_check(
+			"the pill names the buff (%s)" % (pill_label.text if pill_label != null else ""),
+			pill_label != null and pill_label.text.contains("Hud Test")
+		)
+		stats.call(&"apply_effect", {"poison": {"damage": 1.0, "duration": 30.0}})
+		await process_frame
+		_check("poison adds a second pill (%d)" % buff_row.get_child_count(), buff_row.get_child_count() == 2)
+		var poison_pill := buff_row.get_node_or_null("BuffPill_poison") as Control
+		var poison_label: Label = null
+		if poison_pill != null:
+			poison_label = poison_pill.find_child("Label", true, false) as Label
+		_check(
+			"the poison pill uses the danger colour",
+			poison_label != null
+				and poison_label.get_theme_color("font_color") == Color(0.92, 0.18, 0.18)
+		)
+		stats.call(&"apply_effect", {"cleanse": true})
+		await process_frame
+		_check("cleanse removes the poison pill", buff_row.get_node_or_null("BuffPill_poison") == null)
 
 	_finish()
 

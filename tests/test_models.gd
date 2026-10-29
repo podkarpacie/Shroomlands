@@ -142,26 +142,26 @@ func _check_mushroom_node() -> void:
 
 	# Untyped on purpose: `class_name` types do not resolve under `--script`,
 	# where `as MushroomNode` would silently give null.
-	var glowcap: Node = scene.instantiate()
-	_check("mushroom_node.tscn instantiates", glowcap != null)
-	if glowcap == null:
+	var konop: Node = scene.instantiate()
+	_check("mushroom_node.tscn instantiates", konop != null)
+	if konop == null:
 		return
-	glowcap.set(&"mushroom_id", &"glowcap")
-	glowcap.name = "ModelGlowcap"
-	root.add_child(glowcap)
+	konop.set(&"mushroom_id", &"konop")
+	konop.name = "ModelKonop"
+	root.add_child(konop)
 	await physics_frame
-	var model := glowcap.get_node_or_null("Model") as Node3D
-	_check("glowcap uses assets/models/glowcap.gltf", model != null)
+	var model := konop.get_node_or_null("Model") as Node3D
+	_check("konop uses assets/models/mushrooms/konop.gltf", model != null)
 	_check(
-		"glowcap hides its primitive stem and cap",
-		not (glowcap.get_node("Stem") as Node3D).visible and not (glowcap.get_node("Cap") as Node3D).visible
+		"konop hides its primitive stem and cap",
+		not (konop.get_node("Stem") as Node3D).visible and not (konop.get_node("Cap") as Node3D).visible
 	)
-	_check("glowcap model is visible", model != null and model.visible)
-	glowcap.call(&"harvest")
-	_check("a harvested glowcap disappears", model != null and not model.visible)
-	glowcap.call(&"_set_depleted", false)
-	_check("a regrown glowcap is back", model != null and model.visible)
-	glowcap.queue_free()
+	_check("konop model is visible", model != null and model.visible)
+	konop.call(&"harvest")
+	_check("a harvested konop disappears", model != null and not model.visible)
+	konop.call(&"_set_depleted", false)
+	_check("a regrown konop is back", model != null and model.visible)
+	konop.queue_free()
 
 	# A species with no model keeps working with the primitive fallback.
 	var unknown: Node = scene.instantiate()

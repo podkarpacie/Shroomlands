@@ -196,10 +196,10 @@ func _check_attack() -> void:
 ## on any peer that only sees the replicated value.
 func _check_held_item() -> void:
 	_check("the hand starts empty", StringName(_player.get(&"held_item")) == &"")
-	_player.set(&"held_item", &"glowcap")
+	_player.set(&"held_item", &"konop")
 	await _wait(0.08)
 	_check(
-		"taking a glowcap plays draw (%s)" % String(_clips.current_animation),
+		"taking a konop plays draw (%s)" % String(_clips.current_animation),
 		_clips.current_animation == &"draw"
 	)
 	await _wait(DRAW_TAIL)

@@ -22,6 +22,9 @@ const PLOT_STATUS_INTERVAL := 0.25
 ## How long a toast stays on screen.
 const TOAST_SECONDS := 2.6
 const SECONDS_PER_HOUR := 3600.0
+## Top-left offset of the buff pills, directly under the vitality card.
+const BUFF_ROW_POSITION := Vector2(18.0, 134.0)
+const BUFF_ROW_WIDTH := 310.0
 
 @onready var _vitals_backdrop: Panel = $Root/VitalsBackdrop
 @onready var _progression_backdrop: Panel = $Root/ProgressionBackdrop
@@ -78,6 +81,7 @@ var _damage_flash_left := 0.0
 var _toast_panel: PanelContainer = null
 var _toast_label: Label = null
 var _toast_timer: Timer = null
+var _buff_row: VBoxContainer = null
 var _plot_system_ref: Node = null
 var _plot_status_left := 0.0
 
@@ -87,6 +91,7 @@ func _ready() -> void:
 	_build_hotbar()
 	_style_static_nodes()
 	_build_feedback_nodes()
+	_build_buff_row()
 	_apply_initial_state()
 	_connect_signals()
 	_vocation_button.pressed.connect(_on_vocation_pressed)
@@ -454,6 +459,58 @@ func _build_feedback_nodes() -> void:
 	add_child(_toast_timer)
 
 
+## Compact row of active-effect pills under the vitality card: one per buff with
+## its name and remaining seconds. Hidden while nothing is active. Poison is
+## shown in the danger colour so a DoT never reads as a buff.
+func _build_buff_row() -> void:
+	var root := $Root as Control
+	_buff_row = VBoxContainer.new()
+	_buff_row.name = "BuffRow"
+	_buff_row.position = BUFF_ROW_POSITION
+	_buff_row.size = Vector2(BUFF_ROW_WIDTH, 1.0)
+	_buff_row.add_theme_constant_override("separation", 4)
+	_buff_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_buff_row.visible = false
+	root.add_child(_buff_row)
+
+
+func _on_buffs_changed() -> void:
+	_refresh_buffs()
+
+
+func _refresh_buffs() -> void:
+	if _buff_row == null:
+		return
+	for child: Node in _buff_row.get_children():
+		_buff_row.remove_child(child)
+		child.queue_free()
+	var stats := _stats_node()
+	var buffs: Array = []
+	if stats != null and stats.has_method(&"get_buffs"):
+		buffs = stats.call(&"get_buffs")
+	for buff: Dictionary in buffs:
+		_buff_row.add_child(_buff_pill(buff))
+	_buff_row.visible = not buffs.is_empty()
+	if not buffs.is_empty():
+		_buff_row.reset_size()
+
+
+func _buff_pill(buff: Dictionary) -> PanelContainer:
+	var harmful := bool(buff.get("harmful", false))
+	var colour := UITheme.DANGEROUS if harmful else UITheme.ACCENT_SOFT
+	var pill := PanelContainer.new()
+	pill.name = "BuffPill_%s" % str(buff.get("id", "effect"))
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_theme_stylebox_override("panel", UITheme.pill_style(UITheme.PANEL_DEEP, colour, 9))
+	var label := Label.new()
+	label.name = "Label"
+	var seconds := maxi(int(ceil(float(buff.get("time_left", 0.0)))), 0)
+	label.text = "%s   %ds" % [str(buff.get("name", "Effect")), seconds]
+	UITheme.style_label(label, 11, colour, 2)
+	pill.add_child(label)
+	return pill
+
+
 ## Edge-only vignette: strongest at the border and fully transparent across the
 ## middle 70 % of the screen, so a hit never tints the whole frame red.
 func _vignette_texture() -> ImageTexture:
@@ -495,11 +552,13 @@ func _apply_initial_state() -> void:
 		_on_xp_changed(int(stats.get("xp")), Game.xp_to_level(level))
 	_refresh_vocation_hint()
 	_refresh_hotbar()
+	_refresh_buffs()
 
 
 func _connect_signals() -> void:
 	_track(EventBus.hp_changed, _on_hp_changed)
 	_track(EventBus.stamina_changed, _on_stamina_changed)
+	_track(EventBus.buffs_changed, _on_buffs_changed)
 	_track(EventBus.xp_changed, _on_xp_changed)
 	_track(EventBus.level_changed, _on_level_changed)
 	_track(EventBus.gold_changed, _on_gold_changed)
@@ -837,6 +896,7 @@ func _refresh_hotbar() -> void:
 		_slot_icons[index].texture = ItemVisuals.icon(id) if filled else null
 		_slot_icons[index].visible = filled
 		_slot_names[index].text = display
+		_slot_names[index].add_theme_color_override("font_color", colour)
 		_slot_counts[index].text = str(count) if filled else ""
 		_slot_rarity[index].color = colour if filled else Color(0, 0, 0, 0)
 		_slot_panels[index].tooltip_text = (

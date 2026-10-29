@@ -11,19 +11,18 @@ extends Node3D
 ## is deliberate: a remote inventory is never applied to a local `InventorySystem`,
 ## so a peer must not try to resolve another player's slot.
 ##
-## Only `glowcap` and `emberstem` ship a model. Any other id keeps the
-## authoritative `held_item` value and draws nothing — a missing model is not a
-## reason to build a placeholder mushroom.
+## Every designed species ships a model at `assets/models/mushrooms/<id>.gltf`,
+## so any mushroom id in the selected slot is drawn. A potion has no model of
+## its own and uses `ItemVisuals`' tinted bottle instead; an id with neither is
+## simply not drawn. A missing model is not a reason to build a placeholder.
 
 ## The animated left-hand bone; `hand_left` (the mesh) is its child.
 const HAND_NAME := &"hand_left2"
-## Held ids with a model. A mushroom without one is simply absent here.
-const MODELS := {
-	&"glowcap": "res://assets/models/glowcap.gltf",
-	&"emberstem": "res://assets/models/emberstem.gltf",
-}
-## Height of the prop in metres. The source models are 0.57 m and 0.74 m tall,
-## so both are normalised to a hand-sized mushroom instead of dwarfing the body.
+## Directory of the per-species glTF models, keyed by mushroom id.
+const MODEL_DIR := "res://assets/models/mushrooms/"
+## Height of the prop in metres. Every species model has a different build, so
+## the wrapper normalises each one to a hand-sized mushroom instead of letting a
+## tall cap dwarf the body.
 const HELD_HEIGHT := 0.22
 ## `hand_left2` is the wrist pivot and the fist cube hangs below and outboard of
 ## it (21 cm wide, so a prop parked in its middle is swallowed by the arm). The
@@ -136,8 +135,10 @@ func _on_inventory_changed() -> void:
 func _show(id: StringName) -> void:
 	_shown = id
 	for key: StringName in _visuals:
-		(_visuals[key] as Node3D).visible = key == id
-	if id == &"" or not MODELS.has(id):
+		var cached := _visuals[key] as Node3D
+		if cached != null:
+			cached.visible = key == id
+	if id == &"":
 		return
 	var visual := _visual_for(id)
 	if visual != null:
@@ -147,14 +148,13 @@ func _show(id: StringName) -> void:
 func _visual_for(id: StringName) -> Node3D:
 	if _visuals.has(id):
 		return _visuals[id] as Node3D
-	var packed := load(String(MODELS[id])) as PackedScene
-	if packed == null:
-		return null
-	var model := packed.instantiate() as Node3D
+	var model := _build_source(id)
 	if model == null:
+		_visuals[id] = null
 		return null
 	var visual := Node3D.new()
 	visual.name = "Held%s" % String(id).capitalize()
+	visual.visible = false
 	add_child(visual)
 	visual.add_child(model)
 
@@ -175,6 +175,19 @@ func _visual_for(id: StringName) -> Node3D:
 
 	_visuals[id] = visual
 	return visual
+
+
+## The raw model for an id: the species glTF when it exists, otherwise the
+## tinted bottle `ItemVisuals` builds for a potion. Null for anything else.
+func _build_source(id: StringName) -> Node3D:
+	var path := "%s%s.gltf" % [MODEL_DIR, id]
+	if ResourceLoader.exists(path):
+		var packed := load(path) as PackedScene
+		if packed != null:
+			return packed.instantiate() as Node3D
+	if bool(Lore.call(&"is_potion", String(id))):
+		return ItemVisuals.build_model(String(id), HELD_HEIGHT)
+	return null
 
 
 ## Bounds of every mesh below `model`, in `model`'s own space.

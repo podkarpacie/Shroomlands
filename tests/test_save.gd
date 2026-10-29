@@ -70,12 +70,12 @@ func _run() -> void:
 	_game.set(&"gold", RICH_GOLD)
 	var discoveries: Dictionary = _game.get(&"discovered_mushrooms")
 	discoveries.clear()
-	for id: String in ["glowcap", "emberstem", "sunheart"]:
+	for id: String in ["konop", "shitake", "celtus"]:
 		discoveries[id] = true
 	_game.set(&"chosen_vocation", &"ranger")
-	inventory.call(&"add_item", &"glowcap", 5)
-	inventory.call(&"add_item", &"emberstem", 12)
-	inventory.call(&"add_item", &"venomveil", 3)
+	inventory.call(&"add_item", &"konop", 5)
+	inventory.call(&"add_item", &"shitake", 12)
+	inventory.call(&"add_item", &"bedak", 3)
 	var expected_inventory: Dictionary = inventory.call(&"to_dict")
 	# Set last: physics would pull a body that is left standing in the air.
 	_player.global_position = RICH_POSITION
@@ -128,19 +128,19 @@ func _run() -> void:
 	var loaded_discoveries: Dictionary = _game.get(&"discovered_mushrooms")
 	_check("three discoveries round-trip (%d)" % loaded_discoveries.size(),
 		loaded_discoveries.size() == 3
-			and loaded_discoveries.has("glowcap")
-			and loaded_discoveries.has("emberstem")
-			and loaded_discoveries.has("sunheart"))
+			and loaded_discoveries.has("konop")
+			and loaded_discoveries.has("shitake")
+			and loaded_discoveries.has("celtus"))
 	_check("inventory round-trips exactly",
 		(inventory.call(&"to_dict") as Dictionary) == expected_inventory)
-	_check("the item stacks survive (glowcap %d, emberstem %d, venomveil %d)" % [
-			int(inventory.call(&"count_item", &"glowcap")),
-			int(inventory.call(&"count_item", &"emberstem")),
-			int(inventory.call(&"count_item", &"venomveil")),
+	_check("the item stacks survive (konop %d, shitake %d, bedak %d)" % [
+			int(inventory.call(&"count_item", &"konop")),
+			int(inventory.call(&"count_item", &"shitake")),
+			int(inventory.call(&"count_item", &"bedak")),
 		],
-		int(inventory.call(&"count_item", &"glowcap")) == 5
-			and int(inventory.call(&"count_item", &"emberstem")) == 12
-			and int(inventory.call(&"count_item", &"venomveil")) == 3)
+		int(inventory.call(&"count_item", &"konop")) == 5
+			and int(inventory.call(&"count_item", &"shitake")) == 12
+			and int(inventory.call(&"count_item", &"bedak")) == 3)
 	_check("position round-trips exactly (%s)" % _vec(_player.global_position),
 		_player.global_position.is_equal_approx(RICH_POSITION))
 	_check("the ranger bonus is applied once, not twice (walk %.2f)" % float(_player.get("walk_speed")),
@@ -178,8 +178,8 @@ func _run() -> void:
 		StringName(_game.get(&"chosen_vocation")) == &"ranger")
 	_check("garbage discoveries keep the last good set (%d)" % loaded_discoveries.size(),
 		(_game.get(&"discovered_mushrooms") as Dictionary).size() == 3)
-	_check("garbage inventory keeps the last good stacks (%d)" % int(inventory.call(&"count_item", &"glowcap")),
-		int(inventory.call(&"count_item", &"glowcap")) == 5)
+	_check("garbage inventory keeps the last good stacks (%d)" % int(inventory.call(&"count_item", &"konop")),
+		int(inventory.call(&"count_item", &"konop")) == 5)
 	_check("garbage position keeps the body where it was (%s)" % _vec(_player.global_position),
 		_player.global_position.is_equal_approx(RICH_POSITION))
 
@@ -191,14 +191,14 @@ func _run() -> void:
 		"hp": 80.0,
 		"stamina": 50.0,
 		"gold": 120,
-		"discovered_mushrooms": {"glowcap": true},
+		"discovered_mushrooms": {"konop": true},
 		"vocation": "",
 		"position": [0.0, 1.2, 0.0],
 	})
 	_check("an old save without 'inventory' loads", int(stats.get("level")) == 3)
 	_check("an old save restores gold (%d)" % int(_game.get(&"gold")), int(_game.get(&"gold")) == 120)
 	_check("a missing inventory key keeps the current bag",
-		int(inventory.call(&"count_item", &"glowcap")) == 5)
+		int(inventory.call(&"count_item", &"konop")) == 5)
 
 	# --- a close request saves the session --------------------------------
 	# The production path: `Main` registers autosave/close-save unconditionally,

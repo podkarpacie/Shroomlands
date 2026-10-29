@@ -29,15 +29,15 @@ func _run() -> void:
 
 	# --- stacking -----------------------------------------------------------
 	var inventory: Variant = _new_inventory(script)
-	_check("a fresh inventory is empty", int(inventory.call(&"count_item", &"glowcap")) == 0)
+	_check("a fresh inventory is empty", int(inventory.call(&"count_item", &"konop")) == 0)
 
-	var leftover := int(inventory.call(&"add_item", &"glowcap", 10))
+	var leftover := int(inventory.call(&"add_item", &"konop", 10))
 	_check("adding 10 returns no leftover", leftover == 0)
-	_check("adding 10 stores 10", int(inventory.call(&"count_item", &"glowcap")) == 10)
+	_check("adding 10 stores 10", int(inventory.call(&"count_item", &"konop")) == 10)
 
-	leftover = int(inventory.call(&"add_item", &"glowcap", 60))
+	leftover = int(inventory.call(&"add_item", &"konop", 60))
 	_check("adding 60 more returns no leftover", leftover == 0)
-	_check("total is 70", int(inventory.call(&"count_item", &"glowcap")) == 70)
+	_check("total is 70", int(inventory.call(&"count_item", &"konop")) == 70)
 
 	var first: Dictionary = inventory.call(&"get_slot", 0)
 	var second: Dictionary = inventory.call(&"get_slot", 1)
@@ -49,40 +49,40 @@ func _run() -> void:
 		"6 overflow into the second slot (%s x%d)" % [
 			str(second.get("id", &"")), int(second.get("count", 0))
 		],
-		StringName(second.get("id", &"")) == &"glowcap" and int(second.get("count", 0)) == 6
+		StringName(second.get("id", &"")) == &"konop" and int(second.get("count", 0)) == 6
 	)
 
 	# --- full inventory never loses items silently -------------------------
 	var filled: Variant = _new_inventory(script)
 	for index: int in slot_count:
-		filled.call(&"set_slot", index, &"emberstem", max_stack)
+		filled.call(&"set_slot", index, &"shitake", max_stack)
 	_check("48 full stacks read as is_full()", bool(filled.call(&"is_full")))
-	var overflow := int(filled.call(&"add_item", &"sunheart", 5))
+	var overflow := int(filled.call(&"add_item", &"fury", 5))
 	_check("adding 5 to a full inventory returns all 5 (%d)" % overflow, overflow == 5)
 	_check(
 		"existing 48*64 items survive the failed add",
-		int(filled.call(&"count_item", &"emberstem")) == slot_count * max_stack
+		int(filled.call(&"count_item", &"shitake")) == slot_count * max_stack
 	)
-	_check("no sunheart slipped in", int(filled.call(&"count_item", &"sunheart")) == 0)
+	_check("no fury slipped in", int(filled.call(&"count_item", &"fury")) == 0)
 
 	# --- removal ------------------------------------------------------------
 	var sparse: Variant = _new_inventory(script)
-	sparse.call(&"add_item", &"glowcap", 10)
-	var removed := int(sparse.call(&"remove_item", &"glowcap", 25))
+	sparse.call(&"add_item", &"konop", 10)
+	var removed := int(sparse.call(&"remove_item", &"konop", 25))
 	_check("removing 25 of 10 removes only 10 (%d)" % removed, removed == 10)
-	_check("count after over-removal is 0", int(sparse.call(&"count_item", &"glowcap")) == 0)
+	_check("count after over-removal is 0", int(sparse.call(&"count_item", &"konop")) == 0)
 
-	sparse.call(&"add_item", &"glowcap", 10)
-	removed = int(sparse.call(&"remove_item", &"glowcap", 4))
+	sparse.call(&"add_item", &"konop", 10)
+	removed = int(sparse.call(&"remove_item", &"konop", 4))
 	_check("removing 4 of 10 reports 4 (%d)" % removed, removed == 4)
-	_check("count after removal is 6", int(sparse.call(&"count_item", &"glowcap")) == 6)
+	_check("count after removal is 6", int(sparse.call(&"count_item", &"konop")) == 6)
 
 	# --- hotbar -------------------------------------------------------------
 	var hotbar: Array = inventory.call(&"hotbar_ids")
 	_check("hotbar_ids() has 8 entries (%d)" % hotbar.size(), hotbar.size() == 8)
 	_check(
 		"hotbar[0] is the first stack's id",
-		hotbar.size() > 0 and StringName(hotbar[0]) == &"glowcap"
+		hotbar.size() > 0 and StringName(hotbar[0]) == &"konop"
 	)
 	_check(
 		"an empty hotbar slot reports &\"\"",
@@ -102,7 +102,7 @@ func _run() -> void:
 	var restored_second: Dictionary = restored.call(&"get_slot", 1)
 	_check(
 		"round-trip keeps slot index and count",
-		StringName(restored_second.get("id", &"")) == &"glowcap"
+		StringName(restored_second.get("id", &"")) == &"konop"
 			and int(restored_second.get("count", 0)) == 6
 	)
 
@@ -115,7 +115,7 @@ func _run() -> void:
 			func(id: String, count: int) -> void: added_chunks.append([id, count])
 		)
 	var signalled: Variant = _new_inventory(script)
-	signalled.call(&"add_item", &"glowcap", 70)
+	signalled.call(&"add_item", &"konop", 70)
 	if bus != null:
 		var total := 0
 		for chunk: Array in added_chunks:
@@ -138,18 +138,18 @@ func _run() -> void:
 
 	# --- sorting ------------------------------------------------------------
 	var sortable: Variant = _new_inventory(script)
-	sortable.call(&"add_item", &"sunheart", 1)
-	sortable.call(&"add_item", &"glowcap", 2)
-	sortable.call(&"add_item", &"emberstem", 3)
+	sortable.call(&"add_item", &"fury", 1)
+	sortable.call(&"add_item", &"konop", 2)
+	sortable.call(&"add_item", &"shitake", 3)
 	sortable.call(&"sort_slots")
 	var sorted_first: Dictionary = sortable.call(&"get_slot", 0)
 	var sorted_second: Dictionary = sortable.call(&"get_slot", 1)
 	var sorted_third: Dictionary = sortable.call(&"get_slot", 2)
 	_check(
-		"sort_slots orders common mushrooms before a very rare one",
-		StringName(sorted_first.get("id", &"")) == &"emberstem"
-		and StringName(sorted_second.get("id", &"")) == &"glowcap"
-		and StringName(sorted_third.get("id", &"")) == &"sunheart"
+		"sort_slots orders common mushrooms before a legendary one",
+		StringName(sorted_first.get("id", &"")) == &"konop"
+		and StringName(sorted_second.get("id", &"")) == &"shitake"
+		and StringName(sorted_third.get("id", &"")) == &"fury"
 	)
 	_check(
 		"sort_slots compacts the stacks into the first slots",

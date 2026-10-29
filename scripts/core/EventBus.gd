@@ -16,6 +16,9 @@ signal hp_changed(current: float, max_hp: float)
 signal stamina_changed(current: float, max_stamina: float)
 signal xp_changed(current: int, needed: int)
 signal level_changed(new_level: int)
+## A timed effect was applied, refreshed, expired or its countdown advanced.
+## The HUD reads `PlayerStats.get_buffs()` when this fires.
+signal buffs_changed
 
 # Economy & world
 signal gold_changed(amount: int)

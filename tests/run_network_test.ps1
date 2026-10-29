@@ -5,7 +5,7 @@
     Starts a headless host and a headless client (separate OS processes) over
     ENet by default, or over TCP/WebSocket with `-Transport websocket`. The
     client walks for one second, steps it into a creature's reach, gathers
-    three glowcaps and reports its progression. Prints both logs and fails unless
+    three konops and reports its progression. Prints both logs and fails unless
     both sides report NET_RESULT players=2 walked=1, the client logged HP_DROP,
     the host's roster carries the client's real hp/level/gold, the client's
     inventory reached the server (INV_RECV), and neither log contains ERROR.
@@ -341,17 +341,17 @@ else {
     Write-Host ("HP proof: {0}" -f $hpProof)
 }
 
-# Inventory proof: the client's three glowcaps must arrive on the server.
+# Inventory proof: the client's three konops must arrive on the server.
 $invReceipt = $null
 foreach ($line in ($hostText -split "`r?`n")) {
-    if ($line -match '^INV_RECV peer=(\d+) glowcap=(\d+)') {
+    if ($line -match '^INV_RECV peer=(\d+) konop=(\d+)') {
         if ([int]$Matches[1] -ne 1 -and [int]$Matches[2] -eq 3) {
             $invReceipt = $line
         }
     }
 }
 if ($null -eq $invReceipt) {
-    $failures.Add("host log has no INV_RECV line reporting 3 glowcaps from the client")
+    $failures.Add("host log has no INV_RECV line reporting 3 konops from the client")
 }
 else {
     Write-Host ("Inventory proof: {0}" -f $invReceipt)
@@ -386,5 +386,5 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host ''
-Write-Host ("PASS  host and client both reached players=2 over $Transport with a synced walked position, the host received the chat line, the client took enemy damage (HP_DROP), the host roster carries the client's hp/level/gold, the client's 3 glowcaps reached the server (INV_RECV), both peers reported the same enemy count ($hostEnemies >= $minimumEnemies), and there were no errors")
+Write-Host ("PASS  host and client both reached players=2 over $Transport with a synced walked position, the host received the chat line, the client took enemy damage (HP_DROP), the host roster carries the client's hp/level/gold, the client's 3 konops reached the server (INV_RECV), both peers reported the same enemy count ($hostEnemies >= $minimumEnemies), and there were no errors")
 exit 0

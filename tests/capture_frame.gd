@@ -71,11 +71,11 @@ func _run() -> void:
 	# Seed the inventory so the hotbar and the 48-slot grid both show items.
 	var inventory := _player.get_node_or_null("InventorySystem")
 	if inventory != null:
-		inventory.call(&"add_item", &"glowcap", 5)
-		inventory.call(&"add_item", &"emberstem", 12)
-		inventory.call(&"add_item", &"venomveil", 3)
-		inventory.call(&"add_item", &"sunheart", 1)
-		inventory.call(&"add_item", &"geodecap", 2)
+		inventory.call(&"add_item", &"konop", 5)
+		inventory.call(&"add_item", &"shitake", 12)
+		inventory.call(&"add_item", &"bedak", 3)
+		inventory.call(&"add_item", &"celtus", 1)
+		inventory.call(&"add_item", &"borowik", 2)
 
 	_dump("AT 30 PHYSICS FRAMES")
 	await _save(CAPTURE_PATH)
@@ -364,9 +364,9 @@ func _capture_walk() -> void:
 		await physics_frame
 
 
-## Second held-item still. The seeded inventory already puts a glowcap in slot 0
+## Second held-item still. The seeded inventory already puts a konop in slot 0
 ## (the normal capture); switching the hotbar to slot 1 through the same signal
-## the HUD emits shows the emberstem without simulating input. The camera is left
+## the HUD emits shows the shitake without simulating input. The camera is left
 ## alone on purpose: the still has to read from the default behind-the-back view.
 func _capture_held_item() -> void:
 	var bus: Node = root.get_node_or_null("EventBus")
@@ -376,9 +376,9 @@ func _capture_held_item() -> void:
 	bus.emit_signal(&"hotbar_selected", 1)
 	await _wait_physics(4)
 	var held := StringName(_player.get(&"held_item"))
-	_check("the emberstem is held for its capture (%s)" % String(held), held == &"emberstem")
+	_check("the shitake is held for its capture (%s)" % String(held), held == &"shitake")
 	await _save(HELD_CAPTURE_PATH)
-	# Back to the glowcap for every later still.
+	# Back to the konop for every later still.
 	bus.emit_signal(&"hotbar_selected", 0)
 	await _wait_physics(2)
 

@@ -13,7 +13,8 @@ const ICON_SIZE := 128
 const PREVIEW_TARGET_SIZE := 1.15
 
 const MUSHROOM_IDS: Array[String] = [
-	"glowcap", "emberstem", "venomveil", "sunheart", "blightroot", "geodecap"
+	"konop", "shitake", "motoko", "borowik", "kazar", "kora",
+	"altak", "bedak", "celtus", "pesta", "fury",
 ]
 const RESOURCE_IDS: Array[String] = [
 	"mycelium_fiber", "hardened_mycelium", "spore_crystals",
@@ -21,15 +22,20 @@ const RESOURCE_IDS: Array[String] = [
 ]
 const BUILD_IDS: Array[String] = ["hut", "farm", "workshop", "chest"]
 
-## Rarity / identity colours. Matching `Lore.rarity_color` where a species has a
-## rarity, but kept here for resources and build pieces too.
+## Fallback tints for the painted icons and the procedural models. Names always
+## use the Lore rarity colour; these are species recognition only.
 const COLORS := {
-	"glowcap": Color(0.34, 0.90, 0.86),
-	"emberstem": Color(0.96, 0.46, 0.18),
-	"venomveil": Color(0.60, 0.30, 0.90),
-	"sunheart": Color(1.00, 0.78, 0.24),
-	"blightroot": Color(0.62, 0.06, 0.10),
-	"geodecap": Color(0.34, 0.64, 0.82),
+	"konop": Color(0.85, 0.83, 0.70),
+	"shitake": Color(0.68, 0.52, 0.34),
+	"motoko": Color(0.62, 0.74, 0.78),
+	"borowik": Color(0.62, 0.45, 0.26),
+	"kazar": Color(0.78, 0.28, 0.22),
+	"kora": Color(0.66, 0.56, 0.38),
+	"altak": Color(0.52, 0.44, 0.68),
+	"bedak": Color(0.55, 0.74, 0.34),
+	"celtus": Color(0.94, 0.92, 0.82),
+	"pesta": Color(0.60, 0.62, 0.32),
+	"fury": Color(0.72, 0.22, 0.16),
 	"mycelium_fiber": Color(0.82, 0.84, 0.72),
 	"hardened_mycelium": Color(0.48, 0.34, 0.20),
 	"spore_crystals": Color(0.32, 0.86, 0.72),
@@ -80,6 +86,23 @@ static func _mushroom_data(id: String) -> Dictionary:
 	return result if result is Dictionary else {}
 
 
+static func _potion_data(id: String) -> Dictionary:
+	var lore := _lore()
+	if lore == null:
+		return {}
+	var result: Variant = lore.call(&"get_potion", id)
+	return result if result is Dictionary else {}
+
+
+## Rarity tier of an item (a potion inherits its source mushroom's tier), or ""
+## when `Lore` has no tier for it.
+static func _rarity(id: String) -> String:
+	var lore := _lore()
+	if lore == null:
+		return ""
+	return str(lore.call(&"item_rarity", id))
+
+
 static func _resources() -> Dictionary:
 	var lore := _lore()
 	if lore == null:
@@ -102,11 +125,11 @@ static func display_name(id: String) -> String:
 
 
 static func color(id: String) -> Color:
-	var mushroom := _mushroom_data(id)
-	if not mushroom.is_empty():
+	var rarity := _rarity(id)
+	if not rarity.is_empty():
 		var lore := _lore()
 		if lore != null:
-			return lore.call(&"rarity_color", str(mushroom.get("rarity", "")))
+			return lore.call(&"rarity_color", rarity)
 	return COLORS.get(id, UITheme.TEXT)
 
 
@@ -115,10 +138,12 @@ static func kind(id: String) -> String:
 		return "Currency"
 	if BUILD_NAMES.has(id):
 		return "Structure"
+	var rarity := _rarity(id)
+	if not _potion_data(id).is_empty():
+		return "Potion  ·  %s" % rarity.capitalize() if not rarity.is_empty() else "Potion"
 	var lore := _lore()
 	if lore != null and bool(lore.call(&"is_mushroom", id)):
-		var rarity := str(_mushroom_data(id).get("rarity", "common")).replace("_", " ")
-		return "Mushroom  ·  %s" % rarity.capitalize()
+		return "Mushroom  ·  %s" % rarity.capitalize() if not rarity.is_empty() else "Mushroom"
 	if _resources().has(id):
 		return "Resource"
 	return "Curiosity"
@@ -141,6 +166,9 @@ static func description(id: String) -> String:
 	var mushroom := _mushroom_data(id)
 	if not mushroom.is_empty():
 		return str(mushroom.get("description", ""))
+	var potion := _potion_data(id)
+	if not potion.is_empty():
+		return str(potion.get("description", ""))
 	var resource: Dictionary = _resources().get(id, {})
 	if not resource.is_empty():
 		return str(resource.get("description", ""))
@@ -162,8 +190,9 @@ static func toxicity(id: String) -> int:
 	return int(_mushroom_data(id).get("toxicity", 0))
 
 
+## True when the item can be eaten raw: a mushroom with a non-empty `eat`.
 static func is_edible(id: String) -> bool:
-	return _mushroom_data(id).get("uses", []).has("food")
+	return not (_mushroom_data(id).get("eat", {}) as Dictionary).is_empty()
 
 
 ## The icon texture for a slot. Rendered icons live in `assets/ui/items/`; a
@@ -204,7 +233,7 @@ static func build_model(id: String, target_size := PREVIEW_TARGET_SIZE) -> Node3
 static func _model_scene(id: String) -> PackedScene:
 	if _scene_cache.has(id):
 		return _scene_cache[id] as PackedScene
-	var path := "res://assets/models/%s.gltf" % id
+	var path := "res://assets/models/mushrooms/%s.gltf" % id
 	if not ResourceLoader.exists(path):
 		_scene_cache[id] = null
 		return null
@@ -214,9 +243,12 @@ static func _model_scene(id: String) -> PackedScene:
 
 
 static func _procedural_model(id: String) -> Node3D:
+	if MUSHROOM_IDS.has(id):
+		return _mushroom(id)
+	var potion := _potion_data(id)
+	if not potion.is_empty():
+		return _potion(id, str(potion.get("from", "")))
 	match id:
-		"venomveil", "sunheart", "blightroot", "geodecap":
-			return _mushroom(id)
 		"mycelium_fiber":
 			return _fiber()
 		"hardened_mycelium":
@@ -242,27 +274,10 @@ static func _procedural_model(id: String) -> Node3D:
 static func _mushroom(id: String) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Model_%s" % id
-	var tint: Color = COLORS.get(id, Color(0.70, 0.52, 0.32))
+	var tint: Color = COLORS.get(id, color(id))
 	var stem_color := tint.lerp(Color(0.88, 0.84, 0.70), 0.62).darkened(0.10)
 	var cap_color := tint
-	var glow := 0.0
-	match id:
-		"venomveil":
-			stem_color = Color(0.58, 0.55, 0.72)
-			cap_color = Color(0.34, 0.12, 0.52)
-			glow = 0.55
-		"sunheart":
-			stem_color = Color(0.96, 0.84, 0.46)
-			cap_color = Color(1.00, 0.70, 0.16)
-			glow = 1.6
-		"blightroot":
-			stem_color = Color(0.34, 0.28, 0.24)
-			cap_color = Color(0.28, 0.02, 0.05)
-			glow = 0.35
-		"geodecap":
-			stem_color = Color(0.38, 0.44, 0.42)
-			cap_color = Color(0.26, 0.48, 0.62)
-			glow = 0.8
+	var glow := 0.35
 
 	var stem := _cylinder(0.16, 0.11, 0.64, stem_color, 8)
 	stem.position.y = 0.32
@@ -283,36 +298,33 @@ static func _mushroom(id: String) -> Node3D:
 	root.add_child(rim)
 
 	var spot_color := cap_color.lightened(0.35)
-	if id == "venomveil":
-		spot_color = Color(0.82, 0.45, 1.0)
-	elif id == "sunheart":
-		spot_color = Color(1.0, 0.95, 0.62)
-	elif id == "blightroot":
-		spot_color = Color(0.96, 0.18, 0.16)
-	elif id == "geodecap":
-		spot_color = Color(0.38, 0.95, 1.0)
 	for index in 5:
 		var angle := TAU * float(index) / 5.0 + 0.4
-		var spot := _sphere(0.045, 0.030, spot_color, 8, 4, 1.2 if glow > 0.0 else 0.0)
+		var spot := _sphere(0.045, 0.030, spot_color, 8, 4, 1.2)
 		spot.position = Vector3(cos(angle) * 0.22, 0.79 + sin(angle * 1.7) * 0.025, sin(angle) * 0.22)
 		root.add_child(spot)
+	return root
 
-	if id == "geodecap":
-		for index in 3:
-			var shard := _crystal(Color(0.34, 0.90, 1.0), 0.34 + index * 0.06)
-			var angle := TAU * float(index) / 3.0
-			shard.position = Vector3(cos(angle) * 0.19, 0.20, sin(angle) * 0.19)
-			shard.rotation.z = -0.35
-			shard.rotation.y = angle
-			root.add_child(shard)
-	elif id == "blightroot":
-		for index in 4:
-			var tendril := _cylinder(0.020, 0.012, 0.42, cap_color.lightened(0.10), 6)
-			var angle := TAU * float(index) / 4.0
-			tendril.position = Vector3(cos(angle) * 0.20, 0.20, sin(angle) * 0.20)
-			tendril.rotation.z = 0.50
-			tendril.rotation.y = angle
-			root.add_child(tendril)
+
+## A tinted bottle for a brewed potion: the fallback preview/held model when no
+## per-potion art exists.
+static func _potion(id: String, source_id: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Model_%s" % id
+	var tint: Color = color(source_id)
+	var glass := _cylinder(0.15, 0.19, 0.38, tint, 12)
+	glass.position.y = 0.22
+	glass.material_override = _mat(tint, 0.55, 0.22)
+	root.add_child(glass)
+	var shoulder := _sphere(0.15, 0.11, tint.lightened(0.16), 12, 4, 0.6)
+	shoulder.position.y = 0.44
+	root.add_child(shoulder)
+	var neck := _cylinder(0.055, 0.07, 0.16, tint.darkened(0.25), 10)
+	neck.position.y = 0.55
+	root.add_child(neck)
+	var cork := _cylinder(0.062, 0.062, 0.07, Color(0.72, 0.56, 0.32), 8)
+	cork.position.y = 0.66
+	root.add_child(cork)
 	return root
 
 
@@ -427,7 +439,7 @@ static func _building(id: String) -> Node3D:
 			root.add_child(_box(Vector3(1.16, 0.16, 0.86), Color(0.30, 0.20, 0.12), Vector3(0.0, 0.08, 0.0)))
 			for row in 3:
 				for col in 4:
-					var tiny := _mushroom("glowcap")
+					var tiny := _mushroom("konop")
 					tiny.scale = Vector3.ONE * 0.20
 					tiny.position = Vector3(-0.38 + col * 0.25, 0.16, -0.26 + row * 0.26)
 					root.add_child(tiny)
@@ -610,7 +622,7 @@ static func _bounds(model: Node3D) -> AABB:
 
 
 static func _paint_fallback(id: String) -> Texture2D:
-	var tint: Color = COLORS.get(id, Color(0.72, 0.78, 0.62))
+	var tint: Color = COLORS.get(id, color(id))
 	var image := Image.create_empty(ICON_SIZE, ICON_SIZE, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0.0, 0.0, 0.0, 0.0))
 	var center := Vector2(ICON_SIZE * 0.5, ICON_SIZE * 0.55)

@@ -106,66 +106,311 @@ const VOCATIONS := {
 	},
 }
 
+## The eleven designed species (`docs/ITEMS.md`). `layers` is the authoritative
+## depth list; `DEPTH_LAYERS.species` is derived from it. `eat` is applied by
+## `InventorySystem.use_slot`, `brew` names the Alchemy Table output.
+##
+## Effect shape (see `PlayerStats.apply_effect`): `heal`, `heal_full`,
+## `heal_over_time {amount, duration}`, `stamina`, `self_damage`, `cleanse`,
+## `poison {damage, duration}`, `buff {id, duration, max_hp_flat?,
+## max_stamina_flat?, damage_mult?, armor_mult?, vision?}`.
 const MUSHROOMS := {
-	"glowcap": {
-		"id": "glowcap",
-		"name": "Glowcap",
+	"konop": {
+		"id": "konop",
+		"name": "Konop",
 		"rarity": "common",
-		"biomes": ["verdant_bloom", "deep_mycelium"],
-		"description": "Illuminates dark areas. Used in lamps, vision potions and basic crafting.",
+		"layers": [1, 2, 3, 4, 5],
+		"description": "Pale, faintly sweet and found in every layer. The first mushroom every forager learns.",
 		"toxicity": 0,
-		"uses": ["light", "vision_potion", "basic_craft"],
-		"regrow_seconds": 45.0,
+		"regrow_seconds": 30.0,
+		"eat": {"heal": 15.0},
+		"brew": {"potion": "konop_draught", "fee": 5},
+		"uses": ["food", "healing"],
 	},
-	"emberstem": {
-		"id": "emberstem",
-		"name": "Emberstem",
+	"shitake": {
+		"id": "shitake",
+		"name": "Shitake",
 		"rarity": "common",
-		"biomes": ["verdant_bloom"],
-		"description": "Edible mushroom used for cooking and basic regeneration elixirs.",
+		"layers": [1, 2],
+		"description": "A dense cap from the shallows and the thicket. Cooking it makes the most of it.",
 		"toxicity": 0,
-		"uses": ["food", "regen_elixir"],
-		"regrow_seconds": 45.0,
+		"regrow_seconds": 40.0,
+		"eat": {"heal": 10.0, "stamina": 5.0},
+		"brew": {"potion": "hearty_stew", "fee": 5},
+		"uses": ["food", "slow_healing"],
 	},
-	"venomveil": {
-		"id": "venomveil",
-		"name": "Venomveil",
-		"rarity": "rare",
-		"biomes": ["violet_hollows", "crimson_rot"],
-		"description": "Base for poisons, toxic arrows and spore bombs. Requires proper processing.",
-		"toxicity": 4,
-		"uses": ["poison", "toxic_arrow", "spore_bomb"],
-		"regrow_seconds": 45.0,
-	},
-	"sunheart": {
-		"id": "sunheart",
-		"name": "Sunheart",
-		"rarity": "very_rare",
-		"biomes": ["pale_crown", "verdant_bloom"],
-		"description": "Used for powerful healing potions and Paladin equipment upgrades.",
+	"motoko": {
+		"id": "motoko",
+		"name": "Motoko",
+		"rarity": "common",
+		"layers": [1, 2],
+		"description": "A crisp little cap that dulls fatigue. Favoured by runners and woodcutters.",
 		"toxicity": 0,
-		"uses": ["powerful_heal", "paladin_upgrade"],
-		"regrow_seconds": 45.0,
+		"regrow_seconds": 40.0,
+		"eat": {"stamina": 20.0},
+		"brew": {"potion": "spore_tonic", "fee": 5},
+		"uses": ["food", "stamina"],
 	},
-	"blightroot": {
-		"id": "blightroot",
-		"name": "Blightroot",
-		"rarity": "dangerous",
-		"biomes": ["crimson_rot"],
-		"description": "Infected fungus used to create curses, mutation potions and Great Blight related gear.",
-		"toxicity": 8,
-		"uses": ["curse", "mutation", "blight_gear"],
-		"regrow_seconds": 45.0,
-	},
-	"geodecap": {
-		"id": "geodecap",
-		"name": "Geodecap",
+	"borowik": {
+		"id": "borowik",
+		"name": "Borowik",
 		"rarity": "rare",
-		"biomes": ["deep_mycelium"],
-		"description": "Mineral mushroom containing crystals and hard fibres. Mined by Harvesters, used by Artificers.",
+		"layers": [2, 3],
+		"description": "A heavy, meaty cap. Alchemists make a tonic for those who expect a long fight.",
+		"toxicity": 0,
+		"regrow_seconds": 90.0,
+		"eat": {
+			"buff": {"id": "borowik_vigor", "duration": 120.0, "max_hp_flat": 25.0},
+		},
+		"brew": {"potion": "ironblood_tonic", "fee": 15},
+		"uses": ["vigor", "tank"],
+	},
+	"kazar": {
+		"id": "kazar",
+		"name": "Kazar",
+		"rarity": "rare",
+		"layers": [2, 3],
+		"description": "Red-veined and bitter. Raw it burns; processed it is the first real weapon of the forest.",
+		"toxicity": 2,
+		"regrow_seconds": 90.0,
+		"eat": {"self_damage": 8.0},
+		"brew": {"potion": "weapon_oil", "fee": 15},
+		"uses": ["damage_buff", "weapon_oil"],
+	},
+	"kora": {
+		"id": "kora",
+		"name": "Kora",
+		"rarity": "rare",
+		"layers": [2, 3],
+		"description": "Ringed and woody. The Harvester's mushroom: alchemists turn it into armour repair.",
 		"toxicity": 1,
-		"uses": ["mineral", "artificer_craft", "hard_fiber"],
-		"regrow_seconds": 45.0,
+		"regrow_seconds": 120.0,
+		"eat": {},
+		"brew": {"potion": "armour_patch", "fee": 15},
+		"uses": ["armour_repair", "alchemy"],
+	},
+	"altak": {
+		"id": "altak",
+		"name": "Altak",
+		"rarity": "rare",
+		"layers": [2, 3, 4],
+		"description": "A dusky cap that clouds the eyes raw and opens them when brewed.",
+		"toxicity": 2,
+		"regrow_seconds": 120.0,
+		"eat": {
+			"buff": {"id": "altak_blur", "duration": 20.0, "vision": -0.5},
+		},
+		"brew": {"potion": "nighteye_draught", "fee": 15},
+		"uses": ["vision", "nighteye"],
+	},
+	"bedak": {
+		"id": "bedak",
+		"name": "Bedak",
+		"rarity": "rare",
+		"layers": [2, 3],
+		"description": "Warty and caustic. The base for spore bombs and a lesson in throwables.",
+		"toxicity": 4,
+		"regrow_seconds": 120.0,
+		"eat": {"poison": {"damage": 10.0, "duration": 8.0}},
+		"brew": {"potion": "spore_bomb", "fee": 20},
+		"uses": ["throwable", "toxin"],
+	},
+	"celtus": {
+		"id": "celtus",
+		"name": "Celtus",
+		"rarity": "epic",
+		"layers": [3, 4],
+		"description": "A pale halo of a cap. The panic button of the deep layers.",
+		"toxicity": 0,
+		"regrow_seconds": 240.0,
+		"eat": {"heal": 60.0, "cleanse": true},
+		"brew": {"potion": "elixir_of_renewal", "fee": 40},
+		"uses": ["healing", "cleanse"],
+	},
+	"pesta": {
+		"id": "pesta",
+		"name": "Pesta",
+		"rarity": "epic",
+		"layers": [3, 4],
+		"description": "Drooping and foul. High toxicity, and the antidote base for anyone with alchemy.",
+		"toxicity": 6,
+		"regrow_seconds": 240.0,
+		"eat": {"poison": {"damage": 15.0, "duration": 10.0}},
+		"brew": {"potion": "blight_flask", "fee": 30},
+		"uses": ["debuff", "toxin"],
+	},
+	"fury": {
+		"id": "fury",
+		"name": "Fury",
+		"rarity": "legendary",
+		"layers": [4, 5],
+		"description": "Ember-gold and hot to the touch. Legendary, and it will hurt you raw.",
+		"toxicity": 5,
+		"regrow_seconds": 600.0,
+		"eat": {
+			"self_damage": 20.0,
+			"buff": {
+				"id": "fury_rage",
+				"duration": 20.0,
+				"damage_mult": 1.5,
+				"armor_mult": 1.3,
+			},
+		},
+		"brew": {"potion": "fury_draught", "fee": 60},
+		"uses": ["rage", "risk_reward"],
+	},
+}
+
+## Alchemy Table outputs. One item id each, so the inventory needs no special
+## cases. `armour_patch` and `spore_bomb` are data-only until armour and
+## throwables exist; `use_slot` consumes them and their extra keys do nothing.
+const POTIONS := {
+	"konop_draught": {
+		"id": "konop_draught",
+		"name": "Konop Draught",
+		"from": "konop",
+		"fee": 5,
+		"effect": {"heal": 45.0},
+		"description": "A clean green draught that closes wounds fast.",
+	},
+	"hearty_stew": {
+		"id": "hearty_stew",
+		"name": "Hearty Stew",
+		"from": "shitake",
+		"fee": 5,
+		"effect": {"heal_over_time": {"amount": 30.0, "duration": 10.0}},
+		"description": "A slow, warming meal. Mends over time instead of all at once.",
+	},
+	"spore_tonic": {
+		"id": "spore_tonic",
+		"name": "Spore Tonic",
+		"from": "motoko",
+		"fee": 5,
+		"effect": {"stamina": 50.0},
+		"description": "A sharp, fizzy tonic that fills the lungs again.",
+	},
+	"ironblood_tonic": {
+		"id": "ironblood_tonic",
+		"name": "Ironblood Tonic",
+		"from": "borowik",
+		"fee": 15,
+		"effect": {
+			"buff": {"id": "ironblood", "duration": 180.0, "max_hp_flat": 50.0},
+		},
+		"description": "Thickens the blood for a while. Drink it before the fight, not during.",
+	},
+	"weapon_oil": {
+		"id": "weapon_oil",
+		"name": "Weapon Oil",
+		"from": "kazar",
+		"fee": 15,
+		"effect": {
+			"buff": {"id": "weapon_oil", "duration": 90.0, "damage_mult": 1.2},
+		},
+		"description": "Kazar rendered down to a caustic oil. Every swing lands harder.",
+	},
+	"armour_patch": {
+		"id": "armour_patch",
+		"name": "Armour Patch",
+		"from": "kora",
+		"fee": 15,
+		"effect": {"repair_armor": 0.4},
+		"description": "A fibrous paste that knits armour back together. No smith needed.",
+	},
+	"nighteye_draught": {
+		"id": "nighteye_draught",
+		"name": "Nighteye Draught",
+		"from": "altak",
+		"fee": 15,
+		"effect": {
+			"buff": {"id": "nighteye", "duration": 180.0, "vision": 1.0},
+		},
+		"description": "Turns the dark of the deep layers into a grey, readable half-light.",
+	},
+	"spore_bomb": {
+		"id": "spore_bomb",
+		"name": "Spore Bomb",
+		"from": "bedak",
+		"fee": 20,
+		"effect": {"throwable": "spore_cloud", "radius": 3.0},
+		"description": "A sealed caustic cap. Throw it and the cloud does the work.",
+	},
+	"elixir_of_renewal": {
+		"id": "elixir_of_renewal",
+		"name": "Elixir of Renewal",
+		"from": "celtus",
+		"fee": 40,
+		"effect": {"heal_full": true, "cleanse": true},
+		"description": "A full heal and a clean bloodstream. The Celtus spent for one moment.",
+	},
+	"blight_flask": {
+		"id": "blight_flask",
+		"name": "Blight Flask",
+		"from": "pesta",
+		"fee": 30,
+		"effect": {
+			"buff": {"id": "blight_flask", "duration": 15.0, "armor_mult": 0.7},
+		},
+		"description": "Blight vapours cling to the skin and dull every blow that lands.",
+	},
+	"fury_draught": {
+		"id": "fury_draught",
+		"name": "Fury Draught",
+		"from": "fury",
+		"fee": 60,
+		"effect": {
+			"buff": {
+				"id": "fury_draught",
+				"duration": 20.0,
+				"damage_mult": 1.5,
+				"armor_mult": 1.3,
+			},
+		},
+		"description": "All offence, no guard. Everything hurts more, including you.",
+	},
+}
+
+## The forest's five layers. `species` is the exact set derived from every
+## mushroom's `layers`, so the two can never drift apart.
+const DEPTH_LAYERS := {
+	"1": {
+		"id": 1,
+		"name": "The Shallows",
+		"level_range": [1, 10],
+		"species": ["konop", "shitake", "motoko"],
+		"danger": "Sparring enemies, teaching traps",
+	},
+	"2": {
+		"id": 2,
+		"name": "The Thicket",
+		"level_range": [10, 22],
+		"species": [
+			"altak", "bedak", "borowik", "kazar", "konop", "kora", "motoko", "shitake"
+		],
+		"danger": "Packs, first toxic blooms",
+	},
+	"3": {
+		"id": 3,
+		"name": "The Rotting Hollow",
+		"level_range": [22, 35],
+		"species": [
+			"altak", "bedak", "borowik", "celtus", "kazar", "konop", "kora", "pesta"
+		],
+		"danger": "Spore clouds, ambush",
+	},
+	"4": {
+		"id": 4,
+		"name": "The Gloomroot",
+		"level_range": [35, 50],
+		"species": ["altak", "celtus", "fury", "konop", "pesta"],
+		"danger": "Low light, elites",
+	},
+	"5": {
+		"id": 5,
+		"name": "The Pale Depths",
+		"level_range": [50, 100],
+		"species": ["fury", "konop"],
+		"danger": "Legendary spawns, raids",
 	},
 }
 
@@ -296,18 +541,23 @@ const PROGRESSION := {
 	},
 }
 
-## Spawn-table ordering: common first, dangerous last.
+## Spawn-table ordering: common first, legendary last.
 const RARITY_ORDER := {
 	"common": 0,
 	"rare": 1,
-	"very_rare": 2,
-	"dangerous": 3,
+	"epic": 2,
+	"legendary": 3,
 }
 
 
 func get_mushroom(id: String) -> Dictionary:
 	var mushroom: Dictionary = MUSHROOMS.get(id, {})
 	return mushroom
+
+
+func get_potion(id: String) -> Dictionary:
+	var potion: Dictionary = POTIONS.get(id, {})
+	return potion
 
 
 func get_vocation(id: String) -> Dictionary:
@@ -324,22 +574,45 @@ func is_mushroom(id: String) -> bool:
 	return MUSHROOMS.has(id)
 
 
-## Mushroom ids that spawn in a biome, ordered by rarity and then id so spawn
-## tables and the catalogue stay deterministic.
-func mushrooms_in_biome(biome_id: String) -> Array[String]:
+func is_potion(id: String) -> bool:
+	return POTIONS.has(id)
+
+
+## Mushroom ids that grow in a depth layer, ordered by rarity and then id so
+## spawn tables and the catalogue stay deterministic.
+func mushrooms_in_layer(layer: int) -> Array[String]:
 	var found: Array[String] = []
 	for id: String in MUSHROOMS:
-		var mushroom: Dictionary = MUSHROOMS[id]
-		var biomes: Array = mushroom.get("biomes", [])
-		if biomes.has(biome_id):
+		var layers: Array = MUSHROOMS[id].get("layers", [])
+		if layers.has(layer):
 			found.append(id)
 	found.sort_custom(_sort_by_rarity)
 	return found
 
 
+## The potion brewed from `mushroom_id`, or "" when it has no recipe.
+func potion_for(mushroom_id: String) -> String:
+	var brew: Dictionary = get_mushroom(mushroom_id).get("brew", {})
+	return str(brew.get("potion", ""))
+
+
+## Rarity of an item: a mushroom's own tier, or the tier of the mushroom a
+## potion was brewed from. "" for resources and unknown ids.
+func item_rarity(id: String) -> String:
+	var mushroom := get_mushroom(id)
+	if not mushroom.is_empty():
+		return str(mushroom.get("rarity", ""))
+	var potion := get_potion(id)
+	if not potion.is_empty():
+		return str(get_mushroom(str(potion.get("from", ""))).get("rarity", ""))
+	return ""
+
+
 func item_display_name(id: String) -> String:
 	if MUSHROOMS.has(id):
 		return str(MUSHROOMS[id]["name"])
+	if POTIONS.has(id):
+		return str(POTIONS[id]["name"])
 	if RESOURCES.has(id):
 		return str(RESOURCES[id]["name"])
 	return id
@@ -348,13 +621,13 @@ func item_display_name(id: String) -> String:
 func rarity_color(rarity: String) -> Color:
 	match rarity:
 		"common":
-			return Color(0.85, 0.85, 0.85)
+			return Color("#cfd8d0")
 		"rare":
-			return Color(0.35, 0.60, 1.00)
-		"very_rare":
-			return Color(0.72, 0.38, 1.00)
-		"dangerous":
-			return Color(0.92, 0.18, 0.18)
+			return Color("#4a86c8")
+		"epic":
+			return Color("#a25bd0")
+		"legendary":
+			return Color("#e08a2e")
 	return Color.WHITE
 
 

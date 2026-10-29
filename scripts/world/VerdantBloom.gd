@@ -10,10 +10,10 @@ extends Node3D
 
 const ModelGlow := preload("res://scripts/world/ModelGlow.gd")
 const DECOR_MODELS: Array[PackedScene] = [
-	preload("res://assets/models/glowcap.gltf"),
-	preload("res://assets/models/emberstem.gltf"),
+	preload("res://assets/models/mushrooms/konop.gltf"),
+	preload("res://assets/models/mushrooms/shitake.gltf"),
 ]
-const DECOR_NAMES: Array[String] = ["Glowcap", "Emberstem"]
+const DECOR_NAMES: Array[String] = ["Konop", "Shitake"]
 const DECOR_GLOW := 1.4
 ## Props are decoration only: keep them clear of the spawn point and the
 ## third-person camera's reach (arm length up to 8 m when zoomed out) so nothing

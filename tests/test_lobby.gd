@@ -465,10 +465,10 @@ func _write_probe_save() -> void:
 		"hp": 90.0,
 		"stamina": 70.0,
 		"gold": 340,
-		"discovered_mushrooms": {"glowcap": true},
+		"discovered_mushrooms": {"konop": true},
 		"vocation": "harvester",
 		"position": [4.0, 2.0, -6.0],
-		"inventory": {"slots": {"0": ["glowcap", 3]}},
+		"inventory": {"slots": {"0": ["konop", 3]}},
 		"saved_at": "2026-01-02 03:04:05",
 	})
 
