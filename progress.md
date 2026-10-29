@@ -7,9 +7,20 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **25 test suites / 1432 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **28 test suites / 1548 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
+
+## The town hub (done)
+- **Mycoria** — walled settlement, the spawn area, plot row just outside the north gate.
+- **Area switching**: `Main.enter_area()` swaps worlds without losing the HUD; offline-only in
+  multiplayer (a client asks the server and is refused, so a session cannot desync).
+- **Shop**: buy potions at fee × 3, sell mushrooms at rarity value (5/20/60/150 g).
+- **Alchemy Table**: brew 1 mushroom + fee into its potion — the potion data is finally usable.
+- **Repair Bench**: `weapon_condition` (0-100, −1 per swing, damage halved at 0) repaired at 2 g/point.
+- **Plot Board**: read-only plot summary.
+- Two potions are deliberately gated in the UI: `Armour Patch` needs an equipment system,
+  `Nighteye Draught` needs darkness. Their buttons are disabled rather than charging gold for nothing.
 
 ## Items — `docs/ITEMS.md` is the source of truth
 - 11 mushrooms: **Konop** (common, universal tutorial heal), **Shitake**, **Motoko** (commons),
@@ -35,11 +46,12 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   not move them.
 
 ## Next (the design the user described)
-1. **The town** — spawn hub with a shop, alchemy table, repair bench, plot access, and one exit.
+1. ~~**The town**~~ — done, see "The town hub" above.
 2. **Layered RNG forest** — path graph with forks, dead ends, hazard blooms, and random structures
    (house / mini-castle / dungeon) with loot; deeper layers = stronger enemies + better mushrooms.
 3. **Spore Bloom hazard** — proximity-detonated toxic cloud, destroyable at range.
-4. Then: equipment + armour repair, throwables, darkness/vision, shop economy.
+4. Then: equipment + armour repair (unlocks Armour Patch), throwables (Spore Bomb), darkness
+   (unlocks Nighteye), deeper-layer enemies, shop economy depth.
 
 ## Known gaps
 - No anti-cheat: peers report their own HP, gold, inventory, position; the server validates shape only.
