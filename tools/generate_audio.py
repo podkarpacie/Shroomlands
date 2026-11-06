@@ -249,6 +249,47 @@ def _ui_click() -> list[float]:
     return out
 
 
+def _creak() -> list[float]:
+    """Slow wooden groan: a falling low sweep with filtered grit under it."""
+    out = _buffer(2.4)
+    body = _shape(_sweep(2.4, 96.0, 48.0), 0.5, 1.3)
+    grit = _shape(_lowpass(_noise(_rng("creak"), 2.4), 260.0), 0.4, 1.6)
+    _into(out, body, 0.72)
+    _into(out, grit, 0.30)
+    return out
+
+
+def _whisper() -> list[float]:
+    """Breathy, unintelligible whisper: band-limited noise with a slow swell."""
+    count = _frames(2.8)
+    noise = _lowpass(_noise(_rng("whisper"), 2.8), 900.0)
+    out = [
+        noise[index] * (0.30 + 0.22 * math.sin(TAU * 1.7 * index / RATE))
+        for index in range(count)
+    ]
+    return _shape(out, 0.6, 1.9)
+
+
+def _drip() -> list[float]:
+    """Water finding a root: a short pitched drop and a soft wet tail."""
+    out = _buffer(1.1)
+    drop = _shape(_sweep(1.1, 880.0, 220.0), 0.002, 0.16)
+    tail = _shape(_lowpass(_noise(_rng("drip"), 1.1), 1400.0), 0.01, 0.38)
+    _into(out, drop, 0.80)
+    _into(out, tail, 0.16)
+    return out
+
+
+def _heartbeat() -> list[float]:
+    """Two low thumps; the game plays it faster and louder as danger rises."""
+    out = _buffer(0.9)
+    first = _shape(_sine(52.0, 0.22), 0.004, 0.085)
+    second = _shape(_sine(44.0, 0.18), 0.004, 0.10)
+    _into(out, first, 0.90, 0.0)
+    _into(out, second, 0.55, 0.30)
+    return out
+
+
 def _ambient(seconds: float = 20.0) -> list[float]:
     """Seamless mycelial bed: detuned low drone, slow LFO, faint noise.
 
@@ -303,6 +344,10 @@ CUES = {
     "footstep": _footstep,
     "ui_click": _ui_click,
     "ambient_mycelia": _ambient,
+    "creak": _creak,
+    "whisper": _whisper,
+    "drip": _drip,
+    "heartbeat": _heartbeat,
 }
 
 # The ambient bed is a loop, so it must not be faded at the edges.

@@ -47,7 +47,8 @@ signal landed(impact_speed: float)
 @export var mouse_sensitivity := 0.0025
 @export var min_pitch := -75.0
 @export var max_pitch := 60.0
-## The ray starts at the camera, which sits `camera_distance` behind the player,
+## The view starts first person (the rig's eyes) and the wheel zooms out. The
+## ray starts at the camera, which sits `camera_distance` behind the player,
 ## so a 3.5 m ray would stop at the player's own head and never reach a ground
 ## mushroom inside GatheringSystem's 3.5 m gather range. 8 m covers the camera
 ## offset plus one mushroom-height target in front of the player.
@@ -55,7 +56,7 @@ signal landed(impact_speed: float)
 @export var turn_rate := 14.0
 ## Distance the third-person camera sits behind the pivot. One knob for the
 ## scene's `SpringArm3D.spring_length`, applied on ready.
-@export var camera_distance := 4.0
+@export var camera_distance := 0.05
 @export var base_fov := 75.0
 ## Extra field of view while sprinting; sells the speed without touching gameplay.
 @export var sprint_fov_kick := 7.0
@@ -196,6 +197,11 @@ func _ready() -> void:
 	_zoom_target = camera_distance
 	_camera.fov = base_fov
 	_collect_head_meshes()
+	# Start in the view the tunable asks for, on frame one: with the default
+	# first-person distance the eyes/arms must not render a third-person frame
+	# while `_process` eases in.
+	_spring_arm.position = fp_eye_offset * _eye_offset_blend()
+	_update_first_person()
 	# Stay glued to slopes and small steps instead of skipping off them.
 	floor_snap_length = 0.35
 	floor_constant_speed = true

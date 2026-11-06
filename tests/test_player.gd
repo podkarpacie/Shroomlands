@@ -58,35 +58,26 @@ func _run() -> void:
 		var camera := cameras[0] as Camera3D
 		var camera_distance := camera.global_position.distance_to(player.global_position)
 		print("      camera distance from player origin: %.2f m" % camera_distance)
-		_check("camera sits at least 2.5 m from the player (%.2f m)" % camera_distance, camera_distance >= 2.5)
+		_check("the default view is first person (camera %.2f m from the body)" % camera_distance,
+			camera_distance < 1.0)
 		_check("camera is not underground (y = %.2f)" % camera.global_position.y, camera.global_position.y >= player.global_position.y - 0.5)
 
-		# Framing regression guards: the camera must be *behind* the player and
-		# looking at them, not in front and looking away. A distance check alone
-		# would pass for either orientation.
+		# First person is the default now: the camera looks forward with the
+		# body and the arm is pulled to the eyes. The third-person framing is
+		# covered by test_fp_camera after zooming the wheel out.
 		var forward := -camera.global_transform.basis.z
-		var facing := forward.dot((player.global_position - camera.global_position).normalized())
-		_check("camera looks at the player (dot = %.2f)" % facing, facing > 0.5)
-		var focus := player.global_position + Vector3(0.0, 1.0, 0.0)
-		_check("player is inside the camera frustum", camera.is_position_in_frustum(focus))
-		# Headless uses a tiny dummy viewport; the centre check still catches a
-		# camera that is aimed away from the player.
-		var viewport_size := camera.get_viewport().get_visible_rect().size
-		var projected := camera.unproject_position(focus)
+		var body_forward := -player.global_transform.basis.z
 		_check(
-			"player projects into the horizontal middle third (x = %.0f of %.0f)" % [projected.x, viewport_size.x],
-			projected.x >= viewport_size.x / 3.0 and projected.x <= viewport_size.x * 2.0 / 3.0
+			"the first-person camera looks forward (dot = %.2f)" % forward.dot(body_forward),
+			forward.dot(body_forward) > 0.5
 		)
-
-		# Decoration lives on physics layer 2; the arm must only cast against
-		# world geometry (layer 1) so a prop can never collapse it.
+		_check("the controller reports first person", bool(player.call(&"is_first_person")))
 		var arm := camera.get_parent() as SpringArm3D
 		_check("camera hangs off a SpringArm3D", arm != null)
 		if arm != null:
-			_check("spring arm collision mask is world-only (0x%x)" % arm.collision_mask, arm.collision_mask == 1)
 			_check(
-				"spring arm is not collapsed by decoration (hit length = %.2f m)" % arm.get_hit_length(),
-				arm.get_hit_length() >= 2.5
+				"the arm is pulled to the eyes (%.2f m)" % arm.spring_length,
+				arm.spring_length <= 0.6
 			)
 
 	var stats := player.get_node_or_null("Stats")

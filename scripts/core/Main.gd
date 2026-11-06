@@ -80,6 +80,10 @@ var _roster_timer: Timer = null
 
 func _ready() -> void:
 	Game.area_path = _world.scene_file_path if _world != null else ""
+	# The initial world is instanced by main.tscn, not through `_swap_area`, so
+	# the biome needs setting here or the HUD/screen grade stay on the default.
+	if _world != null and _world.scene_file_path == TOWN_SCENE_PATH:
+		Game.current_biome = &"town"
 	_player_spawner.spawn_function = _make_player
 	_enemy_spawner.spawn_function = _make_enemy
 	match Network.mode:

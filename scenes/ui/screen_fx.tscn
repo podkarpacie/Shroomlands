@@ -1,0 +1,26 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ScreenFX.gd" id="1_fx"]
+[ext_resource type="Shader" path="res://assets/shaders/screen_fx.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fx"]
+shader = ExtResource("2_shader")
+shader_parameter/tint = Color(0.62, 0.86, 0.68, 1)
+shader_parameter/tint_strength = 0.09
+shader_parameter/vignette_strength = 0.5
+shader_parameter/grain_strength = 0.03
+shader_parameter/pulse = 0.0
+
+[node name="ScreenFX" type="CanvasLayer"]
+layer = 5
+script = ExtResource("1_fx")
+
+[node name="Screen" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_fx")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)

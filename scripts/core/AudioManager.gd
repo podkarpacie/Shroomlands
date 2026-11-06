@@ -135,6 +135,14 @@ func stop_music() -> void:
 		_music.stop()
 
 
+## The atmosphere lowers the bed's pitch as danger rises; it never touches the
+## user's music volume.
+func set_ambient_danger(value: float) -> void:
+	if _music == null:
+		return
+	_music.pitch_scale = 1.0 - 0.08 * clampf(value, 0.0, 1.0)
+
+
 func is_music_playing() -> bool:
 	return _music != null and _music.playing
 

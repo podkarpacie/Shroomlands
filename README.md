@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 36 headless test suites, **1793 assertions**, all green - including a run with a
+- 37 headless test suites, **1810 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -41,6 +41,7 @@ and Windows/Web exports.
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
 | Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
 | Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, a hut with a one-shot loot chest, descent/return gates, and enemies scaled by depth. Structure variety is still to come |
+| First-person & atmosphere | Done | Starts at the eyes; a screen pass adds a biome tint, a danger vignette/grain and a small chroma split, while quiet creaks/whispers/drips and a heartbeat quicken near creatures |
 | Server-authoritative run props | Done | Crate searches are validated by the server, opened on every peer and paid to the searching owner; the Blight spawns through a `MultiplayerSpawner` so all peers see the hunter |
 | Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and dying in the forest costs half of every carried stack |
 | Extraction pressure | First pass | A 180 s run clock per layer with a HUD countdown; at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
@@ -83,29 +84,21 @@ Each suite is a `SceneTree` script and exits non-zero on failure:
 
 ```powershell
 $godot = ".\Godot Engine Latest\Godot_v4.7.2-stable_win64_console.exe"
-$suites = @(
-  'test_alchemy','test_audio','test_chat','test_combat','test_consumables','test_effects',
-  'test_fp_camera','test_gathering','test_holding','test_inventory','test_isolation','test_limbs',
-  'test_lobby','test_lore','test_models','test_movement','test_movement_block','test_network',
-  'test_pause','test_player','test_plots','test_rig','test_save','test_shop','test_sync',
-  'test_town','test_ui','test_vocation'
-)
-foreach ($suite in $suites) {
-  & $godot --headless --path . --script "res://tests/$suite.gd"
-  if ($LASTEXITCODE -ne 0) { throw "suite failed: $suite" }
+Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | ForEach-Object {
+  & $godot --headless --path . --script "res://tests/$($_.BaseName).gd"
+  if ($LASTEXITCODE -ne 0) { throw "suite failed: $($_.BaseName)" }
 }
 ```
 
-Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_audio` 78,
-`test_chat` 24, `test_combat` 47, `test_consumables` 36, `test_effects` 40,
-`test_forest_run` 62, `test_fp_camera` 52,
-`test_gathering` 38, `test_holding` 26, `test_horror_search` 33, `test_inventory` 31,
-`test_isolation` 22, `test_layered_forest` 36, `test_limbs` 15, `test_lobby` 98,
-`test_lore` 322, `test_models` 41, `test_movement` 30, `test_movement_block` 15,
-`test_network` 41, `test_pause` 76, `test_player` 20, `test_plots` 86, `test_rig` 48,
-`test_run_goal` 37, `test_run_timer` 20, `test_save` 58, `test_shop` 29,
-`test_spore_bloom` 22, `test_sync` 68, `test_town` 51, `test_ui` 60, `test_vocation` 70,
-`test_voice_and_leader` 21 - **1793 assertions**.
+Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere` 19,
+`test_audio` 78, `test_chat` 24, `test_combat` 47, `test_consumables` 36, `test_effects` 40,
+`test_forest_run` 62, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
+`test_horror_search` 33, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 36,
+`test_limbs` 15, `test_lobby` 98, `test_lore` 322, `test_models` 41, `test_movement` 30,
+`test_movement_block` 15, `test_network` 41, `test_pause` 76, `test_player` 18,
+`test_plots` 86, `test_rig` 48, `test_run_goal` 37, `test_run_timer` 20, `test_save` 58,
+`test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51, `test_ui` 60,
+`test_vocation` 70, `test_voice_and_leader` 21 - **1810 assertions**.
 
 ### Continuous integration
 
@@ -114,9 +107,9 @@ Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_audio` 78,
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-36 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+37 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1793). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1810). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -236,7 +229,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   36 headless suites, net_harness, capture_frame, network proofs
+tests/                   37 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -398,7 +391,8 @@ Commit the four files together: `<name>.gltf`, `<name>.gltf.import`, `<name>_0.p
 
 ### First person
 
-The scroll wheel runs the camera from **8 m third person down to the rig's eye point**.
+The view **starts first person at the rig's eyes**; the scroll wheel zooms out to **8 m third
+person**.
 `zoom_min` (2.2 m) is where the dolly starts easing the lens from the pivot toward the
 head; below `first_person_threshold` (0.6 m) the view is first person, and leaving needs
 `fp_exit_margin` (0.15 m) more than that so a wheel parked on the boundary cannot flicker
@@ -450,6 +444,19 @@ voices plus one ambient player, resolves a cue by id (`Audio.play_sfx(&"gather")
 to `EventBus` for hits, gathering, pickups, level-ups, death, building and vocation events. The
 ambient bed starts when `main.tscn` (group `main`) enters the tree and stops when the last world
 leaves, so the lobby is silent apart from the UI click.
+
+The horror bed adds four generated one-shots (`creak`, `whisper`, `drip`, `heartbeat`).
+`scripts/core/Atmosphere.gd` plays them at low volume on a random timer — faster in the forest —
+and quickens the heartbeat as HP falls or a creature comes within 20 m. It also calls
+`Audio.set_ambient_danger()`, which lowers the bed's pitch with danger without touching the
+player's music volume.
+
+### Screen grade
+
+`scenes/ui/screen_fx.tscn` (CanvasLayer 5) draws a screen-space shader over the 3D view and under
+the HUD: a per-biome/layer tint, a vignette that tightens with `Atmosphere.danger_level()`, film
+grain and a tiny chromatic split. `test_atmosphere.gd` covers the default first-person view, the
+layer-3 tint shift, the four cues and the danger response.
 
 The lobby's settings panel has **Music volume** and **SFX volume** sliders (0-100 %). They apply
 live through `Audio.set_music_volume()` / `Audio.set_sfx_volume()` and persist to

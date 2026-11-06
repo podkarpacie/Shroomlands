@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **36 test suites / 1793 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **37 test suites / 1810 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -48,6 +48,17 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Presentation pass
+- **First person is the default** (`camera_distance = 0.05`): the eye offset and FP state are applied
+  in `_ready`, so the first frame is already at the eyes; the wheel still zooms to 8 m.
+- **Screen grade** (`ScreenFX.gd` + `screen_fx.gdshader`): a layer-5 screen pass with a biome/layer
+  tint, a danger vignette, film grain and a small chroma split. Danger comes from the same
+  `Atmosphere` node as the heartbeat.
+- **Dynamic quiet ambience** (`Atmosphere.gd`): random creaks/whispers/drips (`tools/generate_audio.py`),
+  a heartbeat that quickens near creatures or low HP, and a pitch drop on the ambient bed.
+- Verified with a Forward+ first-person capture in The Rotting Hollow (lamp beam, crimson tint,
+  vignette, arms) and `test_atmosphere.gd` (19 assertions).
 
 ## Run goal, death stakes and summary
 - Each forest layer starts a quota: `run_quota = 40 + 20*layer` gold of loot value.
@@ -141,7 +152,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - 20-bone Blockbench rig, six keyframed clips (idle/walk/run/attack/draw/**holster**), unskinned
   rigid-segment animation. `PlayerAnimator` picks the clip from measured position deltas so
   replicated players animate. `swing_seq` replicates attacks; `held_item` drives draw/holster.
-- **First person**: wheel zoom 0.05-8 m, exponential easing, FP below 0.6 m with hysteresis, head/cap
+- **First person**: now the default at 0.05 m; the wheel zooms out to 8 m with exponential easing,
+  head/cap
   hidden, ±85° pitch, arms + club + held item visible (`FpArms.gd` overrides arm bones after the
   AnimationPlayer). Limit: the FP arms are the third-person block arms, and attack/draw one-shots do
   not move them.
@@ -156,6 +168,7 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Carried loot can be lost (death stakes), with a quota and results screen
 - [x] Crate loot and the Blight replicated through the server
 - [x] Active area (path + forest_layer) persisted and restored from saves
+- [x] First-person default, screen grade and dynamic ambience
 - [ ] Leader handoff UI and a party HUD marker
 - [ ] Structure variety (mini-castle / dungeon)
 
