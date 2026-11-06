@@ -43,3 +43,7 @@ desktop.ini
 
 # NOTE: *.import and *.uid are deliberately NOT ignored. Godot needs both:
 # .import descriptors for every imported asset and .uid sidecars since 4.4.
+
+# Python bytecode from the Blender tools
+__pycache__/
+*.pyc

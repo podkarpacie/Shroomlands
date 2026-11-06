@@ -1,6 +1,6 @@
 # Shroomlands — Progress
 
-Status: MVP + items + rig + first person shipped. `main` = `b251d4f` (+ this doc commit), clean, CI green.
+Status: MVP + items + rig + first person shipped. `main` is clean and CI green.
 
 ## Goal
 Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots, craft, then push
@@ -32,9 +32,22 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   Konop is the teaching example: +15 HP raw, **Konop Draught** +45 HP brewed.
 - Effect engine on `PlayerStats`: heal, heal-over-time, stamina, self-damage, cleanse, poison and
   timed buffs (max HP/stamina, damage, armour, vision) that **refresh, never stack**.
-- 11 unique blocky models in `assets/models/mushrooms/`, one per species.
+- 11 unique low-poly models in `assets/models/mushrooms/`, one per species, regenerated
+  from `tools/blender/mushroom_forge.py` (see below).
 - Not built yet: **Alchemy Table object + brewing UI**, equipment/armour (Kora's repair is data only),
   throwables (Bedak's Spore Bomb is data only), darkness (Altak's vision is data only).
+
+## Art pipeline (Blender)
+- `tools/blender/mushroom_forge.py` is the editable source of truth for all eleven species:
+  one headless `bpy` run rebuilds every `<id>.gltf` with no GUI, GPU, Blockbench or MCP.
+- Shape and colour live in a `SPECIES` table (height, stem/cap radius, tiers, dome, rings,
+  spots, warts, spikes, halo, droop). Palettes are the original Blockbench hex values, so
+  each species keeps its identity; one embedded palette texture + one material per model.
+- `tools/blender/validate_models.py` gates the asset contract (node naming for the glow,
+  single material/texture, embedded buffers, feet at y=0, height, ≤400 tris).
+  `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
+- Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
+  `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
 
 ## Player
 - 20-bone Blockbench rig, six keyframed clips (idle/walk/run/attack/draw/**holster**), unskinned

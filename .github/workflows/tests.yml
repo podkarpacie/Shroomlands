@@ -26,6 +26,12 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
+      # Pure-CPython check of the generated mushroom glTFs: node naming for
+      # ModelGlow, one embedded material/texture, feet at y=0, triangle budget.
+      # No Blender install needed; the forge itself is a local/artist step.
+      - name: Validate mushroom models
+        run: python3 tools/blender/validate_models.py
+
       - name: Restore Godot ${{ env.GODOT_VERSION }}
         id: godot-cache
         uses: actions/cache@v4

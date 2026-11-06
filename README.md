@@ -251,6 +251,16 @@ files sit next to it.
 Heights are metres: Blockbench works in 16-unit blocks, so 16 units = 1 m and the glTF needs no
 scaling on import.
 
+### Mushroom species models
+
+The eleven species models live in `assets/models/mushrooms/<id>.gltf` (one per mushroom in
+`docs/ITEMS.md`) and are generated, not hand-authored: `tools/blender/mushroom_forge.py` builds
+them headlessly from a `SPECIES` table and writes the same self-contained glTF (embedded buffer
+and palette texture, sidecar `<id>_0.png`). They are 0.35–0.71 m tall, 124–306 triangles each,
+one material, and mesh nodes named `stem*`/`cap*` so `ModelGlow` can find and light the caps.
+`tools/blender/validate_models.py` enforces all of that in CI; `tools/blender/render_sheet.py`
+renders a review sheet with Cycles CPU. See `tools/blender/README.md`.
+
 ### How they were produced
 
 Blockbench **5.2.2** (`C:\Users\Acer\Tools\Blockbench\Blockbench_5.2.2_portable.exe`) driven by

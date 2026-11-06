@@ -161,6 +161,22 @@ Keep the Blockbench window open while using it; restart it if the bridge is unre
 check the file before retrying, or POST the bridge directly:
 `POST http://127.0.0.1:8787/command {"action":"export_model","params":{...},"id":1}`
 
+### Mushroom models — headless Blender (Linux/CI)
+
+The eleven species models now come from `tools/blender/mushroom_forge.py`, which runs
+without a GUI or GPU and writes a self-contained `assets/models/mushrooms/<id>.gltf`.
+See `tools/blender/README.md` for the contract and knobs.
+
+```bash
+blender --background --factory-startup --python tools/blender/mushroom_forge.py
+python3 tools/blender/validate_models.py
+blender --background --factory-startup --python tools/blender/render_sheet.py -- --out /tmp/sheet.png
+godot4 --headless --path . --import
+```
+
+On the Linux workstation `blender` (4.5.15 LTS) and `godot4` (4.7.2) are on `PATH`.
+The Blockbench path above is still how the rigged player and the blightling are authored.
+
 ## MCP tooling live in this workspace
 
 - `godot-ai` (47 tools) — drives the **running** Godot editor: scenes, nodes, scripts, playtests,
