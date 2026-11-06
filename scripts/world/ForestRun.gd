@@ -13,6 +13,7 @@ extends RefCounted
 ## spine nodes are promoted to hazards or the one loot structure.
 
 enum Kind { ENTRY, PATH, JUNCTION, DEAD_END, EXIT }
+enum StructureKind { HUT, CASTLE, DUNGEON }
 
 const SPACING := 8.0
 const MAX_RADIUS := 11
@@ -32,6 +33,8 @@ var exit_id := 0
 ## and still be a junction for the path layout.
 var hazard_ids: Array[int] = []
 var structure_id := -1
+## HUT on layer 1, CASTLE on 2-3, DUNGEON on 4-5.
+var structure_kind := StructureKind.HUT
 
 
 ## Rebuilds the run for `p_layer` (1-5) and `p_seed`. Same inputs -> same graph.
@@ -41,6 +44,7 @@ func generate(p_layer: int, p_seed: int) -> void:
 	nodes.clear()
 	hazard_ids.clear()
 	structure_id = -1
+	structure_kind = StructureKind.HUT
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed + layer * 7919
 
@@ -103,6 +107,11 @@ func generate(p_layer: int, p_seed: int) -> void:
 		candidates.append(id)
 	_mark_hazards(rng, candidates)
 	_place_structure(candidates)
+	structure_kind = (
+		StructureKind.HUT if layer <= 1
+		else StructureKind.CASTLE if layer <= 3
+		else StructureKind.DUNGEON
+	)
 
 	# Jitter is cosmetic: a separate stream keeps the graph decisions above
 	# independent of it, so changing the jitter never changes the layout.

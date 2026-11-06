@@ -39,7 +39,7 @@ const CONTROL_GROUPS := [
 	},
 	{
 		"title": "Interaction",
-		"actions": [&"interact", &"attack", &"flashlight", &"voice_toggle", &"build_toggle", &"vocation_menu"],
+		"actions": [&"interact", &"attack", &"flashlight", &"voice_toggle", &"pass_lamp", &"build_toggle", &"vocation_menu"],
 	},
 	{
 		"title": "UI",
@@ -60,6 +60,7 @@ const ACTION_LABELS := {
 	&"vocation_menu": "Vocation",
 	&"flashlight": "Spore-lamp",
 	&"voice_toggle": "Voice (monsters hear you)",
+	&"pass_lamp": "Pass the lamp",
 	&"toggle_inventory": "Satchel",
 	&"toggle_chat": "Chat",
 	&"ui_cancel": "Pause menu",

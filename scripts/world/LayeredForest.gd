@@ -47,6 +47,8 @@ var generated_mushrooms := 0
 var generated_hazards := 0
 var generated_crates := 0
 var structure_id := -1
+## 0 = hut, 1 = castle, 2 = dungeon; mirrors `ForestRun.structure_kind`.
+var structure_kind := 0
 ## Layers 3-5 are night runs: the sun is down and only the spore-lamp helps.
 var is_dark := false
 ## Seconds left; -1 before the run starts or after it ends.
@@ -63,6 +65,7 @@ var _rng := RandomNumberGenerator.new()
 var _path_material: StandardMaterial3D = null
 var _ground_material: StandardMaterial3D = null
 var _wood_material: StandardMaterial3D = null
+var _stone_material: StandardMaterial3D = null
 var _roof_material: StandardMaterial3D = null
 
 @onready var _sun: DirectionalLight3D = $Sun
@@ -76,6 +79,7 @@ func _ready() -> void:
 	_run = ForestRun.new()
 	_run.generate(layer, run_seed)
 	structure_id = _run.structure_id
+	structure_kind = int(_run.structure_kind)
 	_rng.seed = run_seed + layer * 313
 	_make_materials()
 	_build_ground()
@@ -188,6 +192,7 @@ func _make_materials() -> void:
 	_ground_material = _material(Color(0.14, 0.23, 0.12))
 	_path_material = _material(Color(0.31, 0.41, 0.22))
 	_wood_material = _material(Color(0.33, 0.22, 0.13))
+	_stone_material = _material(Color(0.32, 0.33, 0.30))
 	_roof_material = _material(Color(0.22, 0.16, 0.10))
 
 
@@ -317,15 +322,31 @@ func _place_mushrooms(node: Dictionary, species: Array[String]) -> void:
 ## A hut: floor, four posts, a roof and the loot chest inside. No collision on
 ## the hut itself, so a player can always reach the chest.
 func _build_structure(centre: Vector2) -> void:
-	var hut := Node3D.new()
-	hut.name = "Structure"
-	hut.position = Vector3(centre.x, 0.0, centre.y)
-	_props.add_child(hut)
+	var structure := Node3D.new()
+	structure.name = "Structure"
+	structure.position = Vector3(centre.x, 0.0, centre.y)
+	_props.add_child(structure)
 
-	_add_box(hut, Vector3(8.0, 0.2, 8.0), Vector3(0.0, 0.1, 0.0), _wood_material)
+	var kind := Node3D.new()
+	structure.add_child(kind)
+	match structure_kind:
+		1:
+			kind.name = "Castle"
+			_build_castle(kind)
+		2:
+			kind.name = "Dungeon"
+			_build_dungeon(kind)
+		_:
+			kind.name = "Hut"
+			_build_hut(kind)
+	_add_structure_loot(structure)
+
+
+func _build_hut(parent: Node3D) -> void:
+	_add_box(parent, Vector3(8.0, 0.2, 8.0), Vector3(0.0, 0.1, 0.0), _wood_material)
 	for sx: float in [-3.4, 3.4]:
 		for sz: float in [-3.4, 3.4]:
-			_add_box(hut, Vector3(0.4, 3.0, 0.4), Vector3(sx, 1.5, sz), _wood_material)
+			_add_box(parent, Vector3(0.4, 3.0, 0.4), Vector3(sx, 1.5, sz), _wood_material)
 	# Four-sided pyramid roof: a flat slab reads as a floating lid from the
 	# overview camera.
 	var roof := CylinderMesh.new()
@@ -339,8 +360,60 @@ func _build_structure(centre: Vector2) -> void:
 	roof_mesh.mesh = roof
 	roof_mesh.position = Vector3(0.0, 4.2, 0.0)
 	roof_mesh.rotation.y = PI * 0.25
-	hut.add_child(roof_mesh)
+	parent.add_child(roof_mesh)
 
+
+## A walled courtyard with corner towers, battlements and a south doorway.
+func _build_castle(parent: Node3D) -> void:
+	_add_box(parent, Vector3(12.0, 0.3, 12.0), Vector3(0.0, 0.15, 0.0), _stone_material)
+	_add_box(parent, Vector3(12.0, 3.2, 0.6), Vector3(0.0, 1.6, -6.0), _stone_material)
+	_add_box(parent, Vector3(4.5, 3.2, 0.6), Vector3(-3.75, 1.6, 6.0), _stone_material)
+	_add_box(parent, Vector3(4.5, 3.2, 0.6), Vector3(3.75, 1.6, 6.0), _stone_material)
+	_add_box(parent, Vector3(3.0, 0.8, 0.6), Vector3(0.0, 3.6, 6.0), _stone_material)
+	_add_box(parent, Vector3(0.6, 3.2, 12.0), Vector3(-6.0, 1.6, 0.0), _stone_material)
+	_add_box(parent, Vector3(0.6, 3.2, 12.0), Vector3(6.0, 1.6, 0.0), _stone_material)
+	for sx: float in [-5.4, 5.4]:
+		for sz: float in [-5.4, 5.4]:
+			_add_box(parent, Vector3(2.2, 4.4, 2.2), Vector3(sx, 2.2, sz), _stone_material)
+	for step in range(-5, 6, 2):
+		_add_box(parent, Vector3(1.0, 0.7, 0.7), Vector3(float(step), 3.55, -6.0), _stone_material)
+		if absi(step) > 2:
+			_add_box(parent, Vector3(1.0, 0.7, 0.7), Vector3(float(step), 3.55, 6.0), _stone_material)
+	for step in range(-4, 5, 2):
+		_add_box(parent, Vector3(0.7, 0.7, 1.0), Vector3(-6.0, 3.55, float(step)), _stone_material)
+		_add_box(parent, Vector3(0.7, 0.7, 1.0), Vector3(6.0, 3.55, float(step)), _stone_material)
+	_add_torch(parent, Vector3(-4.6, 1.1, -4.6))
+	_add_torch(parent, Vector3(4.6, 1.1, 4.6))
+
+
+## A low stone vault with pillars and two torches; the deeper-layer structure.
+func _build_dungeon(parent: Node3D) -> void:
+	_add_box(parent, Vector3(10.0, 0.3, 10.0), Vector3(0.0, 0.15, 0.0), _stone_material)
+	_add_box(parent, Vector3(10.0, 3.6, 0.6), Vector3(0.0, 1.8, -5.0), _stone_material)
+	_add_box(parent, Vector3(3.8, 3.6, 0.6), Vector3(-3.1, 1.8, 5.0), _stone_material)
+	_add_box(parent, Vector3(3.8, 3.6, 0.6), Vector3(3.1, 1.8, 5.0), _stone_material)
+	_add_box(parent, Vector3(0.6, 3.6, 10.0), Vector3(-5.0, 1.8, 0.0), _stone_material)
+	_add_box(parent, Vector3(0.6, 3.6, 10.0), Vector3(5.0, 1.8, 0.0), _stone_material)
+	for sx: float in [-3.6, 3.6]:
+		for sz: float in [-3.6, 3.6]:
+			_add_box(parent, Vector3(0.7, 3.4, 0.7), Vector3(sx, 1.7, sz), _stone_material)
+	_add_torch(parent, Vector3(-4.3, 1.4, -4.3))
+	_add_torch(parent, Vector3(4.3, 1.4, 4.3))
+
+
+func _add_torch(parent: Node3D, position: Vector3) -> void:
+	_add_box(parent, Vector3(0.16, 0.9, 0.16), position, _wood_material)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.62, 0.30)
+	light.light_energy = 1.7
+	light.omni_range = 7.5
+	light.shadow_enabled = false
+	light.position = position + Vector3(0.0, 0.55, 0.0)
+	parent.add_child(light)
+
+
+## The one chest and three crates every structure carries.
+func _add_structure_loot(parent: Node3D) -> void:
 	var species: Array[String] = Lore.mushrooms_in_layer(layer)
 	var loot: Array[String] = []
 	for _index in 2:
@@ -353,7 +426,7 @@ func _build_structure(centre: Vector2) -> void:
 	chest.position = Vector3(0.0, 0.1, -1.0)
 	chest.set(&"loot", loot)
 	chest.set(&"gold", 10 + layer * 10)
-	hut.add_child(chest)
+	parent.add_child(chest)
 
 	# Three searchable crates: quieter than the chest's big reward but each
 	# search is loud enough to pull something in from outside aggro range.
@@ -369,7 +442,7 @@ func _build_structure(centre: Vector2) -> void:
 			crate_loot.append(species[_rng.randi_range(0, species.size() - 1)])
 		crate.set(&"loot", crate_loot)
 		crate.set(&"gold", 5 + layer * 3)
-		hut.add_child(crate)
+		parent.add_child(crate)
 		generated_crates += 1
 
 

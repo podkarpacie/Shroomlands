@@ -43,6 +43,9 @@ func _check_layer(layer: int) -> void:
 	_check("layer %d has hazards (%d)" % [layer, hazards.size()], hazards.size() >= 2)
 	_check("layer %d has exactly one structure (%d)" % [layer, run.structure_id],
 		run.structure_id >= 0 and not hazards.has(run.structure_id))
+	var expected_kind := 0 if layer <= 1 else (1 if layer <= 3 else 2)
+	_check("layer %d structure kind is %d (%d)" % [layer, expected_kind, int(run.structure_kind)],
+		int(run.structure_kind) == expected_kind)
 
 	# The exit must be the deepest spine node: otherwise "deeper layers" would
 	# walk back toward the entrance.

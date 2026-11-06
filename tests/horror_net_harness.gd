@@ -115,6 +115,20 @@ func _host() -> void:
 			return current != null and current.find_child("Blight", true, false) != null,
 		WAIT_STEP
 	)
+	# The client (leader) passes the lamp to the host, then the host passes it
+	# back; both are real RPCs validated by the server.
+	var host_id := int(_network.get(&"local_peer_id"))
+	var handoff := await _wait_until(
+		func() -> bool: return int(_party.get(&"leader_id")) == host_id, 8.0
+	)
+	var back := false
+	if handoff:
+		var host_player := _game.call(&"get_local_player") as Node3D
+		if host_player != null:
+			_party.call(&"pass_to_nearest", host_player, 100.0)
+			back = await _wait_until(
+				func() -> bool: return int(_party.get(&"leader_id")) == client_id, 8.0
+			)
 	# A 22 m shout proves the client's voice reached the server; the crate's own
 	# noise is only 14 m.
 	var heard := await _wait_until(func() -> bool: return _max_radius >= 20.0, WAIT_STEP)
@@ -122,11 +136,12 @@ func _host() -> void:
 		func() -> bool: return _world_path() == TOWN_PATH, WAIT_STEP
 	)
 	var hud := _leader_hud_text()
-	var ok := two and leader and forest and crate and blight and heard and town
+	var ok := two and leader and forest and crate and blight and handoff and back and heard and town
 	print(
-		"HORROR_HOST ok=%d players=%d leader=%d forest=%d crate=%d blight=%d heard=%d max=%.0f town=%d hud=%s" % [
+		"HORROR_HOST ok=%d players=%d leader=%d forest=%d crate=%d blight=%d handoff=%d back=%d heard=%d max=%.0f town=%d hud=%s" % [
 			1 if ok else 0, _player_count(), int(_party.get(&"leader_id")),
 			1 if forest else 0, 1 if crate else 0, 1 if blight else 0,
+			1 if handoff else 0, 1 if back else 0,
 			1 if heard else 0, _max_radius, 1 if town else 0, hud
 		]
 	)
@@ -191,6 +206,15 @@ func _client() -> void:
 		WAIT_STEP
 	)
 
+	# Hand the lamp to the host, then wait for the host to hand it back.
+	var host_id := _other_peer()
+	var handoff := false
+	if player != null:
+		handoff = int(_party.call(&"pass_to_nearest", player, 100.0)) == host_id
+	var lamp_back := await _wait_until(
+		func() -> bool: return int(_party.get(&"leader_id")) == me, 10.0
+	)
+
 	forest_world = _main.get_node_or_null("World") as Node3D
 	var back := forest_world.get_node_or_null("ReturnGate") if forest_world != null else null
 	var returned := false
@@ -203,13 +227,14 @@ func _client() -> void:
 			func() -> bool: return _world_path() == TOWN_PATH, WAIT_STEP
 		)
 	var ok := two and leader and local_leader and lamp_on and forest \
-		and crate_opened and loot_received and blight and returned
+		and crate_opened and loot_received and blight and handoff and lamp_back and returned
 	print(
-		"HORROR_CLIENT ok=%d players=%d leader=%d local_leader=%d lamp=%d forest=%d crate=%d loot=%d blight=%d town=%d hud=%s" % [
+		"HORROR_CLIENT ok=%d players=%d leader=%d local_leader=%d lamp=%d forest=%d crate=%d loot=%d blight=%d handoff=%d back=%d town=%d hud=%s" % [
 			1 if ok else 0, _player_count(), int(_party.get(&"leader_id")),
 			1 if local_leader else 0, 1 if lamp_on else 0,
 			1 if forest else 0, 1 if crate_opened else 0,
 			1 if loot_received else 0, 1 if blight else 0,
+			1 if handoff else 0, 1 if lamp_back else 0,
 			1 if returned else 0, hud
 		]
 	)

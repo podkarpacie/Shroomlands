@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 37 headless test suites, **1810 assertions**, all green - including a run with a
+- 38 headless test suites, **1840 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -40,7 +40,8 @@ and Windows/Web exports.
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, active area + forest layer, position, HP/stamina, inventory. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
 | Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
-| Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, a hut with a one-shot loot chest, descent/return gates, and enemies scaled by depth. Structure variety is still to come |
+| Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, and a structure that grows with depth — hut on 1, battlemented castle with torches on 2-3, pillared dungeon on 4-5 — each with a chest and three crates. Descent/return gates, enemies scaled by depth |
+| Party HUD & handoff | Done | The HUD lists every body in the group with `[LAMP]` on the leader; `L` hands the lamp to the nearest living forager within 8 m, and the server only accepts it from the current leader |
 | First-person & atmosphere | Done | Starts at the eyes; a screen pass adds a biome tint, a danger vignette/grain and a small chroma split, while quiet creaks/whispers/drips and a heartbeat quicken near creatures |
 | Server-authoritative run props | Done | Crate searches are validated by the server, opened on every peer and paid to the searching owner; the Blight spawns through a `MultiplayerSpawner` so all peers see the hunter |
 | Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and dying in the forest costs half of every carried stack |
@@ -92,13 +93,13 @@ Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | Fo
 
 Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere` 19,
 `test_audio` 78, `test_chat` 24, `test_combat` 47, `test_consumables` 36, `test_effects` 40,
-`test_forest_run` 62, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
-`test_horror_search` 33, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 36,
+`test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
+`test_horror_search` 33, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 43,
 `test_limbs` 15, `test_lobby` 98, `test_lore` 322, `test_models` 41, `test_movement` 30,
-`test_movement_block` 15, `test_network` 41, `test_pause` 76, `test_player` 18,
-`test_plots` 86, `test_rig` 48, `test_run_goal` 37, `test_run_timer` 20, `test_save` 58,
-`test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51, `test_ui` 60,
-`test_vocation` 70, `test_voice_and_leader` 21 - **1810 assertions**.
+`test_movement_block` 15, `test_network` 41, `test_party_ui` 18, `test_pause` 76,
+`test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 37, `test_run_timer` 20,
+`test_save` 58, `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51,
+`test_ui` 60, `test_vocation` 70, `test_voice_and_leader` 21 - **1840 assertions**.
 
 ### Continuous integration
 
@@ -107,9 +108,9 @@ Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere`
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-37 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+38 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1810). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1840). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -229,7 +230,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   37 headless suites, net_harness, capture_frame, network proofs
+tests/                   38 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -508,8 +509,8 @@ back on for tools and tests.
     smoke runs cover two clients.
 12. **Web build is single-threaded** (nothreads variant, no GDExtension). It boots and
     renders, but expect lower performance than desktop.
-13. **Leader handoff has no UI.** Peer 1 starts as leader and the server can set another peer,
-    but there is no in-game "pass the lamp" control yet.
+13. **No dedicated sound-only stalker.** Creatures investigate noise and light, and the Blight is
+    time-based; there is no separate hunter that tracks voice loudness alone.
 14. **Two potions have effects nothing applies.** Armour Patch (`repair_armor`) and Nighteye
     Draught (`vision +1.0`) stay in `Lore.POTIONS` and show in the shop and alchemy panels, but
     there is no armour system and no darkness to see through. Their rows carry a

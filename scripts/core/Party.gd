@@ -30,6 +30,10 @@ func set_leader(peer_id: int) -> void:
 func request_leader(peer_id: int) -> void:
 	if Network.mode != Network.SERVER or peer_id <= 0:
 		return
+	var sender := multiplayer.get_remote_sender_id()
+	# The current leader passes the lamp; the host may also correct the roster.
+	if sender != leader_id and sender != 1:
+		return
 	_apply_leader(peer_id)
 	apply_leader.rpc(peer_id)
 
@@ -52,6 +56,36 @@ func _apply_leader(peer_id: int) -> void:
 		return
 	leader_id = peer_id
 	leader_changed.emit(leader_id)
+
+
+## Hands the lamp to the nearest other living player within `radius`.
+## Returns the new leader's peer id, 0 when nobody is close enough, or -1 when
+## the caller is not the leader. A client's `set_leader` forwards to the server,
+## which validates that the sender is the current leader.
+func pass_to_nearest(from: Node3D, radius := 8.0) -> int:
+	if from == null or not is_leader(from):
+		return -1
+	var best: Node3D = null
+	var best_distance := radius
+	for node: Node in get_tree().get_nodes_in_group(&"player"):
+		var body := node as Node3D
+		if body == null or body == from:
+			continue
+		var stats := body.get_node_or_null("Stats")
+		if stats != null and bool(stats.call(&"is_dead")):
+			continue
+		var offset := body.global_position - from.global_position
+		var distance := Vector2(offset.x, offset.z).length()
+		if distance <= best_distance:
+			best = body
+			best_distance = distance
+	if best == null:
+		return 0
+	var target := best.get_multiplayer_authority()
+	if target == leader_id:
+		return 0
+	set_leader(target)
+	return target
 
 
 func is_leader(player: Node) -> bool:

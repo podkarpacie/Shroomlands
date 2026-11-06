@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/core/Main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/world/town.tscn" id="2_world"]
@@ -16,6 +16,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/run_summary.tscn" id="14_run"]
 [ext_resource type="PackedScene" path="res://scenes/ui/screen_fx.tscn" id="15_fx"]
 [ext_resource type="Script" path="res://scripts/core/Atmosphere.gd" id="16_atmosphere"]
+[ext_resource type="Script" path="res://scripts/core/PartyActions.gd" id="17_party_actions"]
 
 [node name="Main" type="Node3D" groups=["main"]]
 script = ExtResource("1_main")
@@ -26,6 +27,9 @@ script = ExtResource("1_main")
 
 [node name="Atmosphere" type="Node" parent="."]
 script = ExtResource("16_atmosphere")
+
+[node name="PartyActions" type="Node" parent="."]
+script = ExtResource("17_party_actions")
 
 [node name="Players" type="Node3D" parent="."]
 

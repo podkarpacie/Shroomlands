@@ -45,6 +45,7 @@ const BUFF_ROW_WIDTH := 310.0
 @onready var _run_label: Label = $Root/Progression/RunLabel
 @onready var _leader_label: Label = $Root/Progression/LeaderLabel
 @onready var _quota_label: Label = $Root/Progression/QuotaLabel
+@onready var _party_label: Label = $Root/PartyBackdrop/PartyLabel
 @onready var _vocation_button: Button = $Root/Progression/VocationButton
 @onready var _crosshair: Control = $Root/Crosshair
 @onready var _prompt_label: Label = $Root/InteractionPrompt
@@ -88,6 +89,7 @@ var _toast_timer: Timer = null
 var _buff_row: VBoxContainer = null
 var _plot_system_ref: Node = null
 var _plot_status_left := 0.0
+var _party_left := 0.0
 
 
 func _ready() -> void:
@@ -97,6 +99,7 @@ func _ready() -> void:
 	_build_feedback_nodes()
 	_build_buff_row()
 	EventBus.run_timer_changed.connect(_on_run_timer_changed)
+	Party.leader_changed.connect(_on_leader_changed)
 	_apply_initial_state()
 	_connect_signals()
 	_vocation_button.pressed.connect(_on_vocation_pressed)
@@ -114,6 +117,10 @@ func _process(delta: float) -> void:
 	_update_mic()
 	_update_leader()
 	_update_quota()
+	_party_left -= delta
+	if _party_left <= 0.0:
+		_party_left = 0.5
+		_update_party()
 	_plot_status_left = maxf(_plot_status_left - delta, 0.0)
 	if _plot_status_left <= 0.0:
 		_plot_status_left = PLOT_STATUS_INTERVAL
@@ -871,6 +878,38 @@ func _update_quota() -> void:
 		Color(0.72, 1.0, 0.72) if Game.run_gold >= Game.run_quota
 		else Color(0.92, 0.95, 0.88)
 	)
+
+
+## Party list with the lamp marker on the current leader.
+func _update_party() -> void:
+	if _party_label == null:
+		return
+	var entries: Array[Dictionary] = []
+	for node: Node in get_tree().get_nodes_in_group(&"player"):
+		var body := node as Node3D
+		if body == null:
+			continue
+		entries.append({
+			"peer_id": body.get_multiplayer_authority(),
+			"name": "Player %d" % body.get_multiplayer_authority(),
+		})
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["peer_id"]) < int(b["peer_id"]))
+	var local_id := multiplayer.get_unique_id()
+	var lines := PackedStringArray(["PARTY"])
+	if entries.is_empty():
+		lines.append("[LAMP] You" if Party.local_is_leader() else "You")
+	else:
+		for entry: Dictionary in entries:
+			var peer_id := int(entry.get("peer_id", 0))
+			var marker := "[LAMP] " if peer_id == Party.leader_id else "       "
+			var suffix := " (you)" if peer_id == local_id else ""
+			lines.append("%s%s%s" % [marker, str(entry.get("name", "")), suffix])
+	_party_label.text = "\n".join(lines)
+
+
+func _on_leader_changed(_peer_id: int) -> void:
+	_update_party()
 
 
 ## One player carries the lamp; the HUD says whether that is you.

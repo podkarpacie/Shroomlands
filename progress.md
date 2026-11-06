@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **37 test suites / 1810 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **38 test suites / 1840 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -48,6 +48,20 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Party handoff and structure variety
+- **Party HUD**: a `PartyBackdrop/PartyLabel` panel lists every body and marks the leader with
+  `[LAMP]`; `(you)` marks the local body. It polls the player group every 0.5 s and reacts to
+  `Party.leader_changed`.
+- **Handoff**: `L` is `pass_lamp`; `PartyActions` asks `Party.pass_to_nearest` for the nearest
+  living body within 8 m. The server accepts a client's request only from the current leader
+  (the host may also correct it). The lamp and HUD follow immediately.
+- **Structures by depth**: `ForestRun.structure_kind` is HUT on layer 1, CASTLE on 2-3 and
+  DUNGEON on 4-5. `LayeredForest` builds a pyramid-roof hut, a battlemented courtyard with
+  corner towers/battlements/torches, or a pillared stone vault; all share the chest + three
+  crates.
+- Tests: `test_party_ui.gd` (18), `test_forest_run.gd` (67), `test_layered_forest.gd` (43),
+  and the two-process harness now proves `handoff=1 back=1` in a real session.
 
 ## Presentation pass
 - **First person is the default** (`camera_distance = 0.05`): the eye offset and FP state are applied
@@ -169,8 +183,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Crate loot and the Blight replicated through the server
 - [x] Active area (path + forest_layer) persisted and restored from saves
 - [x] First-person default, screen grade and dynamic ambience
-- [ ] Leader handoff UI and a party HUD marker
-- [ ] Structure variety (mini-castle / dungeon)
+- [x] Leader handoff UI and a party HUD marker
+- [x] Structure variety (castle / dungeon)
 
 ## Next (the design the user described)
 1. ~~**The town**~~ — done, see "The town hub" above.
@@ -181,8 +195,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
    (unlocks Nighteye), deeper-layer enemies, shop economy depth.
 
 ## Known gaps
-- Leader handoff has no UI: peer 1 starts as leader and the server can set another peer, but
-  there is no in-game "pass the lamp" control yet.
+- No dedicated sound-only stalker: creatures investigate noise/light and the Blight is
+  time-based; no hunter tracks voice loudness alone.
 - No anti-cheat: peers report their own HP, gold, inventory, position; the server validates shape only.
 - One transport per server instance (ENet XOR WebSocket).
 - Web renderer is Compatibility/WebGL2 — Forward+ is impossible in 4.7.2's web template.

@@ -96,6 +96,9 @@ func _run() -> void:
 		forest.find_children("SporeBloom*", "", true, false).size() == hazards
 	)
 	_check("the run has a structure", forest.get_node_or_null("Props/Structure") != null)
+	_check("layer 1 builds a hut (%d)" % int(forest.get("structure_kind")),
+		int(forest.get("structure_kind")) == 0)
+	_check("the hut marker exists", forest.get_node_or_null("Props/Structure/Hut") != null)
 	var chest := forest.get_node_or_null("Props/Structure/Chest")
 	_check("the structure has a loot chest", chest != null)
 	_check("the entry has a return gate", forest.get_node_or_null("ReturnGate") != null)
@@ -146,6 +149,9 @@ func _run() -> void:
 		_finish()
 		return
 	_check("layer state is 2", int(_game.get("forest_layer")) == 2)
+	_check("layer 2 builds a castle (%d)" % int(layer_two.get("structure_kind")),
+		int(layer_two.get("structure_kind")) == 1)
+	_check("the castle marker exists", layer_two.get_node_or_null("Props/Structure/Castle") != null)
 	_check("biome follows layer 2 (%s)" % _game.get("current_biome"), _game.get("current_biome") == &"violet_hollows")
 	_check(
 		"the layer-2 caption follows (%s)" % str(layer_two.get("display_name")),
@@ -176,6 +182,16 @@ func _run() -> void:
 		town_again != null and town_again.scene_file_path == TOWN_PATH
 	)
 	_check("layer state resets in town", int(_game.get("forest_layer")) == 0)
+
+	# --- deeper layers build the dungeon ---------------------------------
+	_game.set(&"forest_layer", 4)
+	_check("layer 4 loads", bool(_main.call(&"enter_area", FOREST_PATH)))
+	await _wait(12)
+	var deep := _main.get_node_or_null("World") as Node3D
+	_check("layer 4 builds a dungeon (%d)" % int(deep.get("structure_kind")) if deep != null else "missing",
+		deep != null and int(deep.get("structure_kind")) == 2)
+	_check("the dungeon marker exists",
+		deep != null and deep.get_node_or_null("Props/Structure/Dungeon") != null)
 	_finish()
 
 
