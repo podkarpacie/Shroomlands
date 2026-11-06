@@ -25,7 +25,7 @@ const MODEL_PATH := "res://assets/models/hazards/spore_bloom.gltf"
 ## are self-lit and readable in the fog like every other mushroom.
 const ModelGlow := preload("res://scripts/world/ModelGlow.gd")
 const LAYER := 32
-const GLOW_ENERGY := 2.0
+const GLOW_ENERGY := 1.0
 
 @export var max_hp := 20.0
 ## Flat distance at which the bloom arms itself.

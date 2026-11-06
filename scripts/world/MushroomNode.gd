@@ -14,7 +14,7 @@ extends StaticBody3D
 const MODEL_DIR := "res://assets/models/mushrooms/"
 const ModelGlow := preload("res://scripts/world/ModelGlow.gd")
 ## How strongly a species' cap glows (see ModelGlow).
-const GLOW_ENERGY := 1.6
+const GLOW_ENERGY := 0.65
 
 ## Species placed by this node; unknown ids still harvest (they just have no
 ## Lore name, colour or regrow entry).

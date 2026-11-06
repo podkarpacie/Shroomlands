@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **39 test suites / 1868 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **39 test suites / 1872 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -73,6 +73,20 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   a heartbeat that quickens near creatures or low HP, and a pitch drop on the ambient bed.
 - Verified with a Forward+ first-person capture in The Rotting Hollow (lamp beam, crimson tint,
   vignette, arms) and `test_atmosphere.gd` (19 assertions).
+
+## Model review pass
+- **Contact sheets**: rendered all eleven species + the Spore Bloom in Blender, the player and
+  blightling as a character sheet, and in-engine captures of a mushroom, bloom, blightling and the
+  third-person player.
+- **Mushrooms**: every cap now has a small overhanging rim (the stacked tiers read as one cone
+  before), and spots/veins/warts sit inside the surface instead of floating as tabs. Glow energy was
+  reduced from 1.6/1.4 (harvest/decor) and 2.0 (bloom) to 0.65/0.65/1.0 so the species colours are
+  not washed out in daylight.
+- **Spore Bloom**: fatter three-tier cap, fewer (7 warts + 7 veins), embedded, 288 tris.
+- **Structures**: hut posts, castle walls/towers and dungeon walls/pillars now have collision;
+  `test_layered_forest` verifies 4/8/6+ solids and layer 1.
+- **Player / blightling**: reviewed; the meshes are clean blocky art, no missing parts. The club is
+  the equippable item from the previous pass.
 
 ## Weapon item and player-model review
 - **The "rod" was not in the player glTF.** The character mesh has no club; `SwingWeapon.gd` built a

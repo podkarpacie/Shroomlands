@@ -14,7 +14,7 @@ const DECOR_MODELS: Array[PackedScene] = [
 	preload("res://assets/models/mushrooms/shitake.gltf"),
 ]
 const DECOR_NAMES: Array[String] = ["Konop", "Shitake"]
-const DECOR_GLOW := 1.4
+const DECOR_GLOW := 0.65
 ## Props are decoration only: keep them clear of the spawn point and the
 ## third-person camera's reach (arm length up to 8 m when zoomed out) so nothing
 ## can block the view when the game starts.

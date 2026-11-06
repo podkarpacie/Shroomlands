@@ -147,8 +147,8 @@ HAZARDS = {
     "spore_bloom": dict(
         body="#4a4a32", body_dark="#34341f", cap="#8a9a2e", cap_dark="#5f6b1e",
         cap_light="#b6c94a", gill="#3f4520", accent="#2e3218", ember="#c8ff5a",
-        height=0.84, stem_r=0.258, cap_r=0.345, cap_h=0.225, tiers=2,
-        dome=0.55, rings=1, spots=0, warts=9, veins=9,
+        height=0.86, stem_r=0.285, cap_r=0.370, cap_h=0.260, tiers=3,
+        dome=0.80, rings=1, spots=0, warts=7, veins=7,
     ),
 }
 
@@ -367,11 +367,19 @@ def build_species(mid, s):
                       bottom=(GILL if t == 0 else None))
         parts.append(m)
 
+    # A small overhanging lip reads as a mushroom rim at game distance; the
+    # stacked tiers alone are easy to mistake for one smooth cone.
+    lip = MeshBuilder("cap_lip")
+    lip.add_frustum(cap_base - 0.014, cap_base + 0.004,
+                    cap_r * 1.035, cap_r, 8, rot=rot,
+                    side=CAP, bottom=GILL)
+    parts.append(lip)
+
     # Gills: a dark disc tucked under the rim, its own non-glowing node.
     if s.get("gills", True):
         g = MeshBuilder("stem_gills")
-        g.add_frustum(cap_base - 0.012, cap_base + 0.002,
-                      cap_r * 0.80, cap_r * 0.70, 8, rot=rot,
+        g.add_frustum(cap_base - 0.022, cap_base - 0.006,
+                      cap_r * 0.82, cap_r * 0.72, 8, rot=rot,
                       side=GILL, bottom=GILL, top=GILL)
         parts.append(g)
 
@@ -381,7 +389,7 @@ def build_species(mid, s):
             rad = surface_r(0.28) * 0.62
             v = MeshBuilder("cap_vein_%d" % i)
             v.add_box(math.cos(a) * rad, math.sin(a) * rad,
-                      surface_z(rad) - 0.002, 0.045, 0.018, 0.010,
+                      surface_z(rad) - 0.006, 0.038, 0.015, 0.008,
                       slot=EMBER, rotz=a)
             parts.append(v)
 
@@ -391,7 +399,7 @@ def build_species(mid, s):
             rad = surface_r(0.48 + 0.16 * (i % 2)) * 0.55
             sp = MeshBuilder("cap_spot_%d" % i)
             sp.add_box(math.cos(a) * rad, math.sin(a) * rad,
-                       surface_z(rad) - 0.001, 0.042, 0.042, 0.012,
+                       surface_z(rad) - 0.008, 0.036, 0.036, 0.010,
                        slot=ACCENT, rotz=a)
             parts.append(sp)
 
@@ -401,7 +409,7 @@ def build_species(mid, s):
             rad = surface_r(0.56) * (0.40 + 0.22 * (i % 2))
             w = MeshBuilder("cap_wart_%d" % i)
             w.add_pyramid(math.cos(a) * rad, math.sin(a) * rad,
-                          surface_z(rad) - 0.006, 0.042, 0.05,
+                          surface_z(rad) - 0.012, 0.038, 0.045,
                           slot=CAP_DARK, n=4, rot=rot)
             parts.append(w)
 

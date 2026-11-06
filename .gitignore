@@ -55,3 +55,5 @@ tests/_town_spawn*.png
 tests/_town_spawn*.png.import
 tests/_weapon_*.png
 tests/_weapon_*.png.import
+tests/_review_*.png
+tests/_review_*.png.import

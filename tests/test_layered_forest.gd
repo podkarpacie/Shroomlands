@@ -99,6 +99,8 @@ func _run() -> void:
 	_check("layer 1 builds a hut (%d)" % int(forest.get("structure_kind")),
 		int(forest.get("structure_kind")) == 0)
 	_check("the hut marker exists", forest.get_node_or_null("Props/Structure/Hut") != null)
+	_check("the hut posts have collision (%d solids)" % _solid_count(forest),
+		_solid_count(forest) >= 4)
 	var chest := forest.get_node_or_null("Props/Structure/Chest")
 	_check("the structure has a loot chest", chest != null)
 	_check("the entry has a return gate", forest.get_node_or_null("ReturnGate") != null)
@@ -152,6 +154,8 @@ func _run() -> void:
 	_check("layer 2 builds a castle (%d)" % int(layer_two.get("structure_kind")),
 		int(layer_two.get("structure_kind")) == 1)
 	_check("the castle marker exists", layer_two.get_node_or_null("Props/Structure/Castle") != null)
+	_check("the castle walls have collision (%d solids)" % _solid_count(layer_two),
+		_solid_count(layer_two) >= 8)
 	_check("biome follows layer 2 (%s)" % _game.get("current_biome"), _game.get("current_biome") == &"violet_hollows")
 	_check(
 		"the layer-2 caption follows (%s)" % str(layer_two.get("display_name")),
@@ -192,7 +196,24 @@ func _run() -> void:
 		deep != null and int(deep.get("structure_kind")) == 2)
 	_check("the dungeon marker exists",
 		deep != null and deep.get_node_or_null("Props/Structure/Dungeon") != null)
+	_check("the dungeon walls have collision (%d solids)" % _solid_count(deep),
+		deep != null and _solid_count(deep) >= 6)
+	if deep != null:
+		var solids := deep.get_node("Props/Structure").find_children(
+			"Solid_*", "StaticBody3D", true, false
+		)
+		_check("structure solids are world geometry",
+			not solids.is_empty() and (solids[0] as StaticBody3D).collision_layer == 1)
 	_finish()
+
+
+func _solid_count(world: Node) -> int:
+	if world == null:
+		return 0
+	var structure := world.get_node_or_null("Props/Structure")
+	if structure == null:
+		return 0
+	return structure.find_children("Solid_*", "StaticBody3D", true, false).size()
 
 
 func _flat_distance(point: Vector3) -> float:

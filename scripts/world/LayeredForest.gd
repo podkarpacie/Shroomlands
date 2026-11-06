@@ -346,7 +346,7 @@ func _build_hut(parent: Node3D) -> void:
 	_add_box(parent, Vector3(8.0, 0.2, 8.0), Vector3(0.0, 0.1, 0.0), _wood_material)
 	for sx: float in [-3.4, 3.4]:
 		for sz: float in [-3.4, 3.4]:
-			_add_box(parent, Vector3(0.4, 3.0, 0.4), Vector3(sx, 1.5, sz), _wood_material)
+			_add_box(parent, Vector3(0.4, 3.0, 0.4), Vector3(sx, 1.5, sz), _wood_material, true)
 	# Four-sided pyramid roof: a flat slab reads as a floating lid from the
 	# overview camera.
 	var roof := CylinderMesh.new()
@@ -366,15 +366,15 @@ func _build_hut(parent: Node3D) -> void:
 ## A walled courtyard with corner towers, battlements and a south doorway.
 func _build_castle(parent: Node3D) -> void:
 	_add_box(parent, Vector3(12.0, 0.3, 12.0), Vector3(0.0, 0.15, 0.0), _stone_material)
-	_add_box(parent, Vector3(12.0, 3.2, 0.6), Vector3(0.0, 1.6, -6.0), _stone_material)
-	_add_box(parent, Vector3(4.5, 3.2, 0.6), Vector3(-3.75, 1.6, 6.0), _stone_material)
-	_add_box(parent, Vector3(4.5, 3.2, 0.6), Vector3(3.75, 1.6, 6.0), _stone_material)
+	_add_box(parent, Vector3(12.0, 3.2, 0.6), Vector3(0.0, 1.6, -6.0), _stone_material, true)
+	_add_box(parent, Vector3(4.5, 3.2, 0.6), Vector3(-3.75, 1.6, 6.0), _stone_material, true)
+	_add_box(parent, Vector3(4.5, 3.2, 0.6), Vector3(3.75, 1.6, 6.0), _stone_material, true)
 	_add_box(parent, Vector3(3.0, 0.8, 0.6), Vector3(0.0, 3.6, 6.0), _stone_material)
-	_add_box(parent, Vector3(0.6, 3.2, 12.0), Vector3(-6.0, 1.6, 0.0), _stone_material)
-	_add_box(parent, Vector3(0.6, 3.2, 12.0), Vector3(6.0, 1.6, 0.0), _stone_material)
+	_add_box(parent, Vector3(0.6, 3.2, 12.0), Vector3(-6.0, 1.6, 0.0), _stone_material, true)
+	_add_box(parent, Vector3(0.6, 3.2, 12.0), Vector3(6.0, 1.6, 0.0), _stone_material, true)
 	for sx: float in [-5.4, 5.4]:
 		for sz: float in [-5.4, 5.4]:
-			_add_box(parent, Vector3(2.2, 4.4, 2.2), Vector3(sx, 2.2, sz), _stone_material)
+			_add_box(parent, Vector3(2.2, 4.4, 2.2), Vector3(sx, 2.2, sz), _stone_material, true)
 	for step in range(-5, 6, 2):
 		_add_box(parent, Vector3(1.0, 0.7, 0.7), Vector3(float(step), 3.55, -6.0), _stone_material)
 		if absi(step) > 2:
@@ -389,14 +389,14 @@ func _build_castle(parent: Node3D) -> void:
 ## A low stone vault with pillars and two torches; the deeper-layer structure.
 func _build_dungeon(parent: Node3D) -> void:
 	_add_box(parent, Vector3(10.0, 0.3, 10.0), Vector3(0.0, 0.15, 0.0), _stone_material)
-	_add_box(parent, Vector3(10.0, 3.6, 0.6), Vector3(0.0, 1.8, -5.0), _stone_material)
-	_add_box(parent, Vector3(3.8, 3.6, 0.6), Vector3(-3.1, 1.8, 5.0), _stone_material)
-	_add_box(parent, Vector3(3.8, 3.6, 0.6), Vector3(3.1, 1.8, 5.0), _stone_material)
-	_add_box(parent, Vector3(0.6, 3.6, 10.0), Vector3(-5.0, 1.8, 0.0), _stone_material)
-	_add_box(parent, Vector3(0.6, 3.6, 10.0), Vector3(5.0, 1.8, 0.0), _stone_material)
+	_add_box(parent, Vector3(10.0, 3.6, 0.6), Vector3(0.0, 1.8, -5.0), _stone_material, true)
+	_add_box(parent, Vector3(3.8, 3.6, 0.6), Vector3(-3.1, 1.8, 5.0), _stone_material, true)
+	_add_box(parent, Vector3(3.8, 3.6, 0.6), Vector3(3.1, 1.8, 5.0), _stone_material, true)
+	_add_box(parent, Vector3(0.6, 3.6, 10.0), Vector3(-5.0, 1.8, 0.0), _stone_material, true)
+	_add_box(parent, Vector3(0.6, 3.6, 10.0), Vector3(5.0, 1.8, 0.0), _stone_material, true)
 	for sx: float in [-3.6, 3.6]:
 		for sz: float in [-3.6, 3.6]:
-			_add_box(parent, Vector3(0.7, 3.4, 0.7), Vector3(sx, 1.7, sz), _stone_material)
+			_add_box(parent, Vector3(0.7, 3.4, 0.7), Vector3(sx, 1.7, sz), _stone_material, true)
 	_add_torch(parent, Vector3(-4.3, 1.4, -4.3))
 	_add_torch(parent, Vector3(4.3, 1.4, 4.3))
 
@@ -446,7 +446,13 @@ func _add_structure_loot(parent: Node3D) -> void:
 		generated_crates += 1
 
 
-func _add_box(parent: Node3D, size: Vector3, position: Vector3, material: Material) -> void:
+func _add_box(
+	parent: Node3D,
+	size: Vector3,
+	position: Vector3,
+	material: Material,
+	solid := false
+) -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	mesh.material = material
@@ -454,6 +460,21 @@ func _add_box(parent: Node3D, size: Vector3, position: Vector3, material: Materi
 	instance.mesh = mesh
 	instance.position = position
 	parent.add_child(instance)
+	if not solid:
+		return
+	# Structure walls are world geometry, not decoration: the player, enemies and
+	# the camera spring arm must treat them like the ground.
+	var body := StaticBody3D.new()
+	body.name = "Solid_%d" % parent.get_child_count()
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var collision := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	collision.shape = box
+	body.add_child(collision)
+	body.position = position
+	parent.add_child(body)
 
 
 func _build_spawn() -> void:
