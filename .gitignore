@@ -47,3 +47,11 @@ desktop.ini
 # Python bytecode from the Blender tools
 __pycache__/
 *.pyc
+
+# Screenshot/debug captures are local-only.
+tests/_capture*.gd
+tests/_capture*.gd.uid
+tests/_town_spawn*.png
+tests/_town_spawn*.png.import
+tests/_weapon_*.png
+tests/_weapon_*.png.import
