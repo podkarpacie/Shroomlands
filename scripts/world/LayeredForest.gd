@@ -8,9 +8,9 @@ extends Node3D
 ## structure with a loot chest, and the gates at the entry and the exit.
 ##
 ## `Game.forest_layer` selects the depth (1-5) before `Main.enter_area` swaps the
-## world in, so the same scene serves every layer. Area travel is offline-only in
-## this phase, which is why the dressing can be built locally without spawning
-## replication.
+## world in, so the same scene serves every layer. Area travel is
+## server-authoritative; every peer rebuilds the same deterministic dressing from
+## the layer in the `apply_area` broadcast.
 ##
 ## Safe start: hazards only sit at depth 2 or deeper, so the entry clearing and
 ## the 12 m radius around the spawn never contain a bloom.
@@ -103,7 +103,9 @@ func _start_run() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if time_left < 0.0 or not is_multiplayer_authority():
+	if multiplayer.multiplayer_peer == null or time_left < 0.0:
+		return
+	if not is_multiplayer_authority():
 		return
 	time_left = maxf(time_left - delta, 0.0)
 	_notify_left -= delta

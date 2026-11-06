@@ -43,6 +43,7 @@ const BUFF_ROW_WIDTH := 310.0
 @onready var _xp_value: Label = $Root/Progression/XPValue
 @onready var _gold_label: Label = $Root/Progression/GoldLabel
 @onready var _run_label: Label = $Root/Progression/RunLabel
+@onready var _leader_label: Label = $Root/Progression/LeaderLabel
 @onready var _vocation_button: Button = $Root/Progression/VocationButton
 @onready var _crosshair: Control = $Root/Crosshair
 @onready var _prompt_label: Label = $Root/InteractionPrompt
@@ -110,6 +111,7 @@ func _process(delta: float) -> void:
 		tint.a = DAMAGE_FLASH_ALPHA * (_damage_flash_left / DAMAGE_FLASH_SECONDS)
 		_damage_flash.modulate = tint
 	_update_mic()
+	_update_leader()
 	_plot_status_left = maxf(_plot_status_left - delta, 0.0)
 	if _plot_status_left <= 0.0:
 		_plot_status_left = PLOT_STATUS_INTERVAL
@@ -855,6 +857,18 @@ func _on_plot_changed(_plot_id: int) -> void:
 
 
 ## Compact plot line, shown only while the player stands on one of the plots.
+## One player carries the lamp; the HUD says whether that is you.
+func _update_leader() -> void:
+	if _leader_label == null:
+		return
+	if Party.local_is_leader():
+		_leader_label.text = "LEADER - carry the lamp"
+		_leader_label.modulate = Color(0.72, 1.0, 0.72)
+	else:
+		_leader_label.text = "FOLLOW THE LAMP"
+		_leader_label.modulate = Color(1.0, 0.82, 0.45)
+
+
 ## Countdown for the forest run. Hidden in town and when the run has ended.
 func _on_run_timer_changed(seconds_left: float) -> void:
 	if _run_label == null:

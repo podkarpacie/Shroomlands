@@ -123,6 +123,11 @@ layout_mode = 2
 text = ""
 horizontal_alignment = 2
 
+[node name="LeaderLabel" type="Label" parent="Root/Progression"]
+layout_mode = 2
+text = "LEADER - carry the lamp"
+horizontal_alignment = 2
+
 [node name="VocationButton" type="Button" parent="Root/Progression"]
 visible = false
 layout_mode = 2

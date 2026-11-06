@@ -13,8 +13,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## The town hub (done)
 - **Mycoria** — walled settlement, the spawn area, plot row just outside the north gate.
-- **Area switching**: `Main.enter_area()` swaps worlds without losing the HUD; offline-only in
-  multiplayer (a client asks the server and is refused, so a session cannot desync).
+- **Area switching**: `Main.enter_area()` swaps worlds without losing the HUD. In a session the
+  server owns the swap and broadcasts `apply_area`; clients rebuild the same deterministic area.
 - **Shop**: buy potions at fee × 3, sell mushrooms at rarity value (5/20/60/150 g).
 - **Alchemy Table**: brew 1 mushroom + fee into its potion — the potion data is finally usable.
 - **Repair Bench**: `weapon_condition` (0-100, −1 per swing, damage halved at 0) repaired at 2 g/point.
@@ -48,6 +48,19 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Multiplayer horror run (server-authoritative)
+- **Area travel**: `Main.enter_area(path, layer)` is server-authoritative. A client requests, the
+  server validates the path (allow-list) and the forest return rule (living leader within 14 m),
+  swaps, and broadcasts `apply_area`; each peer builds the same `LayeredForest` from the layer.
+- **Leader**: `Party.set_leader()` uses `request_leader`/`apply_leader` RPCs; `Main` syncs the
+  current leader to a peer on connect. The HUD shows `LEADER - carry the lamp` or `FOLLOW THE LAMP`.
+- **Voice**: `Network.report_disturbance()` sends a client's voice/lamp/search to the server, which
+  emits locally so its authoritative enemies investigate. No more local-only hearing.
+- Proven by `tests/run_horror_net_test.sh` + `tests/horror_net_harness.gd` (two processes over
+  ENet): both peers reach the forest and return to town, the client is replicated as leader, its
+  lamp works, its voice is heard on the host, and the HUD marker matches.
+- Still peer-local: crate loot and the Blight instance are not replicated.
 
 ## Extraction pressure (YAPYAP ghost)
 - Every forest layer starts a 180 s run clock; the HUD `RunLabel` counts down and turns red in
@@ -124,6 +137,7 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Monster hears the player (microphone loudness -> disturbances -> investigation)
 - [x] One leader with the only lamp; return gate refuses without them
 - [x] Dark layers, searchable crates, light/noise aggro, extraction gates
+- [x] Group play: server-authoritative forest travel, replicated leader, networked voice
 - [x] Extraction timer and an inescapable "Blight" if the party overstays
 - [ ] Carried loot can be lost (death/extraction stakes)
 - [ ] Leader handoff UI and a party HUD marker

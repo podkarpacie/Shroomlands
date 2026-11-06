@@ -39,10 +39,10 @@ and Windows/Web exports.
 | **H. World** | Done (one biome) | Verdant Bloom placeholder terrain, mushroom nodes, decorative props, plot row, four enemy spawns |
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, position, HP/stamina, inventory. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
-| Town hub | Done (travel is offline-only) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
+| Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
 | Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, a hut with a one-shot loot chest, descent/return gates, and enemies scaled by depth. Structure variety and area persistence are still to come |
 | Extraction pressure | First pass | A 180 s run clock per layer with a HUD countdown; at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
-| Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the party leader (peer 1 offline) can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
+| Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the replicated party leader can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
 | Horror search | First pass | Night layers 3-5, a battery spore-lamp (`F`) whose beam draws creatures from 16 m, three searchable crates per structure whose noise pulls them from 14 m, and enemies that investigate light and sound. No extraction timer or carried-loot loss yet |
 | Spore Bloom hazard | Done | Fat veined mushroom: arms at 2.5 m, swells 0.6 s, bursts into a 3 m toxic cloud for 6 s (3 damage per 0.75 s). Destroyable at range for no loot; three spawns in the Verdant Bloom |
 | Export Web + Desktop | Done | Windows Desktop, Web (nothreads), Windows Server presets; all boot |
@@ -153,6 +153,9 @@ powershell -ExecutionPolicy Bypass -File tests\run_network_test.ps1 -Transport w
 
 # Websocket-only dedicated server + two real WebSocket clients (server reports players=2)
 powershell -ExecutionPolicy Bypass -File tests\run_websocket_test.ps1
+
+# Linux desktop, two processes: forest travel, replicated leader, networked voice
+bash tests/run_horror_net_test.sh
 ```
 
 ## Export
@@ -495,9 +498,9 @@ back on for tools and tests.
     smoke runs cover two clients.
 12. **Web build is single-threaded** (nothreads variant, no GDExtension). It boots and
     renders, but expect lower performance than desktop.
-13. **Area travel is offline-only.** The town gate frees and re-instances the `World` node,
-    which is not replicated. In a networked session `Main.enter_area` refuses, and a client's
-    request is answered by the server with the same denial, so every peer stays in town.
+13. **Some run props are still peer-local.** Area travel, leadership and voice now go through
+    the server, but a searched crate's loot is applied by the searching peer and the Blight is
+    spawned on the server only; neither is replicated yet.
 14. **Two potions have effects nothing applies.** Armour Patch (`repair_armor`) and Nighteye
     Draught (`vision +1.0`) stay in `Lore.POTIONS` and show in the shop and alchemy panels, but
     there is no armour system and no darkness to see through. Their rows carry a

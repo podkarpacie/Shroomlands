@@ -15,6 +15,41 @@ var leader_id := 1
 func set_leader(peer_id: int) -> void:
 	if peer_id <= 0 or peer_id == leader_id:
 		return
+	match Network.mode:
+		Network.CLIENT:
+			request_leader.rpc_id(1, peer_id)
+		Network.SERVER:
+			_apply_leader(peer_id)
+			apply_leader.rpc(peer_id)
+		_:
+			_apply_leader(peer_id)
+
+
+## Client -> server: only the authority decides who leads.
+@rpc("any_peer", "call_remote", "reliable")
+func request_leader(peer_id: int) -> void:
+	if Network.mode != Network.SERVER or peer_id <= 0:
+		return
+	_apply_leader(peer_id)
+	apply_leader.rpc(peer_id)
+
+
+## Server -> clients.
+@rpc("authority", "call_remote", "reliable")
+func apply_leader(peer_id: int) -> void:
+	_apply_leader(peer_id)
+
+
+## Sends the current leader to a peer that just joined.
+func sync_to_peer(peer_id: int) -> void:
+	if Network.mode != Network.SERVER or peer_id <= 0:
+		return
+	apply_leader.rpc_id(peer_id, leader_id)
+
+
+func _apply_leader(peer_id: int) -> void:
+	if peer_id <= 0 or peer_id == leader_id:
+		return
 	leader_id = peer_id
 	leader_changed.emit(leader_id)
 

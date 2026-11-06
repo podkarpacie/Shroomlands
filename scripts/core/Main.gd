@@ -22,6 +22,10 @@ const LAYERED_FOREST_PATH := "res://scenes/world/layered_forest.tscn"
 const LAYER_BIOMES: Array[StringName] = [
 	&"verdant_bloom", &"violet_hollows", &"crimson_rot", &"deep_mycelium", &"pale_crown",
 ]
+## Gates may only ask for these scenes; the server validates before swapping.
+const ALLOWED_AREAS: Array[String] = [
+	TOWN_SCENE_PATH, FOREST_SCENE_PATH, LAYERED_FOREST_PATH,
+]
 ## `local` chat reaches only peers whose body is within this many metres of the
 ## sender. Global chat ignores distance.
 const CHAT_LOCAL_RANGE := 25.0
@@ -120,48 +124,74 @@ func _area_display_name(world: Node) -> String:
 
 
 ## Swaps the active area without touching the UI layers, which are siblings of
-## `World`. Offline this frees the current world, instances `path`, moves the
-## local body to the new `PlayerSpawn` and re-runs the per-area loader (creature
-## roster and plot visibility). Returns false when the path is invalid, while a
-## client asks the server instead, and in a networked session, where the world is
-## not replicated yet: this phase is deliberately offline-only so a gate can
-## never desync a session.
-func enter_area(path: String) -> bool:
-	if path.is_empty():
+## `World`. Offline the local peer applies it; in a session the server owns the
+## swap and broadcasts `apply_area`, while a client only requests it. The layout
+## is deterministic, so every peer builds the same `LayeredForest` from the same
+## layer. `requested_layer` is a forest depth (1-5) or -1 to keep the current one.
+func enter_area(path: String, requested_layer := -1) -> bool:
+	if path.is_empty() or not ALLOWED_AREAS.has(path):
+		push_warning("Main: area '%s' is not a known area." % path)
 		return false
 	match Network.mode:
 		Network.CLIENT:
-			request_area.rpc_id(1, path)
+			request_area.rpc_id(1, path, requested_layer)
 			EventBus.toast_requested.emit("Area travel requested from the server…")
 			return false
 		Network.SERVER:
-			EventBus.toast_requested.emit("Area travel is offline only in this phase")
-			return false
-	return _swap_area(path)
+			return _server_enter_area(path, requested_layer)
+	return _swap_area(path, requested_layer)
 
 
-## Client -> server leg of `enter_area`. The server owns the swap; until the
-## world itself replicates it acknowledges with a refusal so nothing diverges.
+## Client -> server leg. The server validates the path and the leader rule, then
+## broadcasts the result; the client's swap happens in `apply_area`.
 @rpc("any_peer", "call_remote", "reliable")
-func request_area(_path: String) -> void:
+func request_area(path: String, requested_layer: int) -> void:
 	if Network.mode != Network.SERVER:
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if sender <= 1:
 		return
-	area_request_result.rpc_id(sender, false)
+	if not _server_enter_area(path, requested_layer):
+		area_request_result.rpc_id(sender, false)
 
 
-## Server -> client: gate travel result. Only the denial path is reachable while
-## the swap is offline-only.
+## Server -> clients: the authoritative swap.
+@rpc("authority", "call_remote", "reliable")
+func apply_area(path: String, layer: int) -> void:
+	if Network.mode != Network.CLIENT:
+		return
+	_swap_area(path, layer)
+
+
+## Server-side area swap, including the leader rule. A client cannot slip home
+## on its own while the lamp is elsewhere, even if its local gate said yes.
+func _server_enter_area(path: String, requested_layer: int) -> bool:
+	if path == TOWN_SCENE_PATH and _world != null \
+			and _world.scene_file_path == LAYERED_FOREST_PATH:
+		var gate := _world.get_node_or_null(^"ReturnGate") as Node3D
+		if gate == null:
+			gate = _world.get_node_or_null(^"ExitGate") as Node3D
+		if gate != null and not Party.leader_is_near(gate.global_position, 14.0):
+			EventBus.toast_requested.emit(
+				"The leader carries the lamp - you cannot leave without them"
+			)
+			return false
+	var swapped := _swap_area(path, requested_layer)
+	if swapped:
+		apply_area.rpc(path, Game.forest_layer)
+	return swapped
+
+
+## Server -> client: a refused request. The gate's local check normally catches
+## it first; this covers a client that asked anyway.
 @rpc("authority", "call_remote", "reliable")
 func area_request_result(granted: bool) -> void:
 	if granted:
 		return
-	EventBus.toast_requested.emit("Area travel is offline only in this phase")
+	EventBus.toast_requested.emit("The gate refused: the leader is not here")
 
 
-func _swap_area(path: String) -> bool:
+func _swap_area(path: String, requested_layer := -1) -> bool:
 	if not ResourceLoader.exists(path):
 		# `load()` would log an engine ERROR for a typo; a gate path is data, so a
 		# missing scene stays a quiet refusal like any other bad target.
@@ -176,6 +206,20 @@ func _swap_area(path: String) -> bool:
 		push_warning("Main: area '%s' is not a Node3D." % path)
 		return false
 
+	# Set the layer before the area's `_ready` runs: the new forest reads
+	# `Game.forest_layer` to pick its layout and caption.
+	var layer := 0
+	if path == LAYERED_FOREST_PATH:
+		layer = requested_layer if requested_layer > 0 else Game.forest_layer
+		layer = clampi(layer if layer > 0 else 1, 1, LAYER_BIOMES.size())
+	Game.forest_layer = layer
+	if path == TOWN_SCENE_PATH:
+		Game.current_biome = &"town"
+	elif path == LAYERED_FOREST_PATH:
+		Game.current_biome = LAYER_BIOMES[layer - 1]
+	else:
+		Game.current_biome = &"verdant_bloom"
+
 	var previous := _world
 	if previous != null and is_instance_valid(previous):
 		# Remove it now so the new marker is the only `PlayerSpawn` in the tree
@@ -188,17 +232,7 @@ func _swap_area(path: String) -> bool:
 	# Keep the world before the CanvasLayers, exactly where main.tscn had it.
 	move_child(world, 0)
 	_world = world
-
 	_move_local_player_to(_area_spawn_point(world))
-	if path == TOWN_SCENE_PATH:
-		Game.current_biome = &"town"
-		Game.forest_layer = 0
-	elif path == LAYERED_FOREST_PATH:
-		var layer := clampi(Game.forest_layer, 1, LAYER_BIOMES.size())
-		Game.current_biome = LAYER_BIOMES[layer - 1]
-	else:
-		Game.current_biome = &"verdant_bloom"
-		Game.forest_layer = 0
 	# The HUD caption follows the area scene's own label, so a renamed or new
 	# area needs no change in the UI layer.
 	EventBus.area_changed.emit(_area_display_name(world))
@@ -341,6 +375,7 @@ func _make_player(peer_id: int) -> Node3D:
 
 func _on_peer_connected(peer_id: int) -> void:
 	_spawn_network_player(peer_id)
+	Party.sync_to_peer(peer_id)
 	# Immediate roster push for the new peer (the 1 Hz tick is the safety net),
 	# so a late joiner sees the player count and values without waiting.
 	_refresh_roster()

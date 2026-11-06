@@ -122,3 +122,8 @@ jobs:
             echo "::error::$failed suite(s) failed"
             exit 1
           fi
+
+      # Real two-process proof for the multiplayer horror run: server-authoritative
+      # forest travel, replicated leader, networked voice and the leader-gated return.
+      - name: Two-process horror run
+        run: GODOT=godot bash tests/run_horror_net_test.sh

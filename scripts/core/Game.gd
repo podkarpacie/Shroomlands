@@ -101,6 +101,9 @@ func set_vocation(id: String) -> bool:
 ## Prefer the node that is both authoritative and named after this peer id, then
 ## any authoritative node, and only then whatever the group returns first.
 func get_local_player() -> Node:
+	# After a disconnect there is no peer; HUD polling must not spam engine errors.
+	if multiplayer.multiplayer_peer == null:
+		return null
 	var local_id := str(multiplayer.get_unique_id())
 	var authoritative: Node = null
 	for node: Node in get_tree().get_nodes_in_group(&"player"):

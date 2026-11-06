@@ -48,7 +48,7 @@ func _process(delta: float) -> void:
 		_alert_left -= delta
 		if _alert_left <= 0.0:
 			_alert_left = alert_interval
-			EventBus.disturbance_emitted.emit(global_position, alert_radius)
+			Network.report_disturbance(global_position, alert_radius)
 		if battery <= 0.0:
 			on = false
 			visible = false
@@ -81,7 +81,7 @@ func toggle() -> void:
 	on = not on
 	visible = on
 	# The switch itself is a small sound; the beam pulses while it stays on.
-	EventBus.disturbance_emitted.emit(global_position, toggle_noise_radius)
+	Network.report_disturbance(global_position, toggle_noise_radius)
 	EventBus.toast_requested.emit(
 		"Spore-lamp %s (%d%%)" % ["on" if on else "off", roundi(battery_ratio() * 100.0)]
 	)

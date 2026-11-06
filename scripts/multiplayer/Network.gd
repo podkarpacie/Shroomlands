@@ -166,6 +166,23 @@ func join(
 ## Host without a local player. A dedicated server still loads the world and
 ## spawns remote players; it just never owns one itself. Defaults to ENet; pass
 ## "websocket" to serve browsers.
+## Sends a noise/light disturbance to the authority that runs creature AI.
+## Offline and on the server it is applied locally; a client forwards it to the
+## server, so enemies there react to that client's voice, lamp and searches.
+func report_disturbance(position: Vector3, radius: float) -> void:
+	if mode == CLIENT:
+		_receive_disturbance.rpc_id(1, position, radius)
+		return
+	EventBus.disturbance_emitted.emit(position, radius)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _receive_disturbance(position: Vector3, radius: float) -> void:
+	if mode != SERVER:
+		return
+	EventBus.disturbance_emitted.emit(position, radius)
+
+
 func start_dedicated(port: int = DEFAULT_PORT, transport_name: String = TRANSPORT_ENET) -> Error:
 	# Set the flag first so anything reacting to `hosted` never spawns a local
 	# player, even if it loads the world from the signal.

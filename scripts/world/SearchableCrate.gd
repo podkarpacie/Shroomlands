@@ -69,7 +69,7 @@ func _complete() -> void:
 			given += int(inventory.call(&"add_item", StringName(id), 1))
 	if gold > 0:
 		Game.add_gold(gold)
-	EventBus.disturbance_emitted.emit(global_position, noise_radius)
+	Network.report_disturbance(global_position, noise_radius)
 	EventBus.toast_requested.emit("Crate: %d item(s), %d gold" % [given, gold])
 	_open_lid()
 	_searcher = null

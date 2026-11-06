@@ -1,7 +1,7 @@
 extends StaticBody3D
 ## A two-post gate between areas. The middle is walkable; only the posts and the
-## lintel have collision. Interacting asks `Main.enter_area` for `target_scene`,
-## which owns the actual swap (and, in a networked session, refuses it for now).
+## lintel have collision. Interacting asks `Main.enter_area` for `target_scene`
+## and `target_layer`; in a session the server validates and broadcasts the swap.
 
 @export var target_scene := "res://scenes/world/verdant_bloom.tscn"
 @export var target_label := "Verdant Bloom"
@@ -35,8 +35,6 @@ func interact(_player: Node) -> void:
 	if main == null or not main.has_method(&"enter_area"):
 		EventBus.toast_requested.emit("The gate is sealed")
 		return
-	if target_layer > 0:
-		Game.forest_layer = target_layer
 	# `enter_area` reports a refusal itself (networked session, bad path), so a
 	# successful call needs no extra toast here.
-	main.call(&"enter_area", target_scene)
+	main.call(&"enter_area", target_scene, target_layer)

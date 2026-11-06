@@ -89,7 +89,7 @@ func _emit() -> float:
 	var body := get_parent() as Node3D
 	var origin := body.global_position if body != null else Vector3.ZERO
 	var radius := lerpf(min_radius, max_radius, loudness)
-	EventBus.disturbance_emitted.emit(origin, radius)
+	Network.report_disturbance(origin, radius)
 	return radius
 
 

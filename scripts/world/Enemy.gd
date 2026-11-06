@@ -160,7 +160,9 @@ func investigation_target() -> Vector3:
 
 
 func _on_disturbance(position: Vector3, radius: float) -> void:
-	if dead or not is_multiplayer_authority():
+	# A queued-free enemy can still receive one last server disturbance while an
+	# area swap tears the roster down.
+	if not is_inside_tree() or dead or not is_multiplayer_authority():
 		return
 	if _flat_distance(position) > radius:
 		return
