@@ -46,6 +46,12 @@ signal player_respawned
 ## distance at which it can draw attention; a lamp pulses this while it is on.
 signal disturbance_emitted(position: Vector3, radius: float)
 
+# Horror run
+## Seconds left in the forest run, or -1 when no run is active.
+signal run_timer_changed(seconds_left: float)
+## Emitted once when the timer reaches zero and the Blight is released.
+signal run_expired
+
 # Plots & building
 signal plot_purchased(plot_id: int)
 signal plot_expired(plot_id: int)

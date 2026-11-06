@@ -38,7 +38,7 @@ Get-ChildItem tests/test_*.gd | ForEach-Object {
 ```
 
 Tests are `extends SceneTree` scripts run with `--script`. They must all exit 0.
-Current state: **33 suites, 1722 assertions, 0 failures.** CI runs the same set on every push
+Current state: **34 suites, 1742 assertions, 0 failures.** CI runs the same set on every push
 (`.github/workflows/tests.yml`).
 
 **A fresh clone cannot run the suites until assets are imported.** No `.godot/` cache means no
@@ -190,6 +190,10 @@ noise and light pull creatures, and you extract through the gate.
 - **Searchable crates** (`scripts/world/SearchableCrate.gd`, three per structure): interact and
   stay within 4 m for 1.2 s. Pays 1 layer species + `5 + 3*layer` gold, emits a 14 m
   disturbance, and never refills. The `LootChest` remains the larger, instant reward.
+- **Extraction pressure**: `LayeredForest.run_seconds` (180 s) starts on entry and drives
+  `EventBus.run_timer_changed` (HUD `RunLabel`; -1 hides it). At zero `expire_run()` spawns one
+  `Blight` from `enemy.tscn`: 100k HP, 400 m aggro, 6.4 m/s, 90 bite damage, no respawn — the
+  YAPYAP ghost. It is released once; leaving the area frees it with the world.
 - **Creatures investigate**: every `Enemy` listens on `disturbance_emitted`; if it is inside
   the radius it walks to the point for 4 s (`is_investigating()`), even when the player is
   outside the 12 m aggro range. Using the lamp or searching a crate is therefore a real risk.

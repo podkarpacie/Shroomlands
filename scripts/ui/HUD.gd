@@ -42,6 +42,7 @@ const BUFF_ROW_WIDTH := 310.0
 @onready var _xp_bar: ProgressBar = $Root/Progression/XPBar
 @onready var _xp_value: Label = $Root/Progression/XPValue
 @onready var _gold_label: Label = $Root/Progression/GoldLabel
+@onready var _run_label: Label = $Root/Progression/RunLabel
 @onready var _vocation_button: Button = $Root/Progression/VocationButton
 @onready var _crosshair: Control = $Root/Crosshair
 @onready var _prompt_label: Label = $Root/InteractionPrompt
@@ -93,6 +94,7 @@ func _ready() -> void:
 	_style_static_nodes()
 	_build_feedback_nodes()
 	_build_buff_row()
+	EventBus.run_timer_changed.connect(_on_run_timer_changed)
 	_apply_initial_state()
 	_connect_signals()
 	_vocation_button.pressed.connect(_on_vocation_pressed)
@@ -853,6 +855,20 @@ func _on_plot_changed(_plot_id: int) -> void:
 
 
 ## Compact plot line, shown only while the player stands on one of the plots.
+## Countdown for the forest run. Hidden in town and when the run has ended.
+func _on_run_timer_changed(seconds_left: float) -> void:
+	if _run_label == null:
+		return
+	if seconds_left < 0.0:
+		_run_label.text = ""
+		return
+	var whole := int(ceil(seconds_left))
+	_run_label.text = "RUN  %d:%02d" % [whole / 60, whole % 60]
+	_run_label.modulate = (
+		Color(1.0, 0.42, 0.38) if seconds_left <= 30.0 else Color(0.82, 0.92, 0.80)
+	)
+
+
 ## The voice meter is the only feedback that the microphone is live and that the
 ## creatures can hear it. Offline/headless there is no mic, so it says so.
 func _update_mic() -> void:

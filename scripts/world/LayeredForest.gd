@@ -18,6 +18,7 @@ extends Node3D
 const MUSHROOM_SCENE := preload("res://scenes/world/mushroom_node.tscn")
 const BLOOM_SCENE := preload("res://scenes/world/spore_bloom.tscn")
 const CHEST_SCENE := preload("res://scenes/world/loot_chest.tscn")
+const ENEMY_SCENE := preload("res://scenes/world/enemy.tscn")
 const CRATE_SCENE := preload("res://scenes/world/searchable_crate.tscn")
 const GATE_SCENE := preload("res://scenes/world/area_gate.tscn")
 const ForestRun := preload("res://scripts/world/ForestRun.gd")
@@ -37,6 +38,9 @@ const LAYER_TINTS: Array[Color] = [
 @export var display_name := "The Shallows"
 @export var run_seed := 20261106
 @export var layer := 1
+## Time the party has before the Blight is released. Deeper runs are longer
+## because the walk is longer, not because they are safer.
+@export var run_seconds := 180.0
 
 ## Counters for tests and tooling.
 var generated_mushrooms := 0
@@ -45,6 +49,10 @@ var generated_crates := 0
 var structure_id := -1
 ## Layers 3-5 are night runs: the sun is down and only the spore-lamp helps.
 var is_dark := false
+## Seconds left; -1 before the run starts or after it ends.
+var time_left := -1.0
+var _notify_left := 0.0
+var _blight_spawned := false
 
 var _run = null
 var _props: Node3D = null
@@ -74,6 +82,7 @@ func _ready() -> void:
 	_build_spawn()
 	_build_gates()
 	_tint_environment()
+	_start_run()
 
 
 ## Called by `Main._area_spawn_point` like every other area.
@@ -83,6 +92,65 @@ func get_spawn_point() -> Marker3D:
 
 func get_run():
 	return _run
+
+
+func _start_run() -> void:
+	time_left = run_seconds
+	if not is_multiplayer_authority():
+		return
+	EventBus.run_timer_changed.emit(time_left)
+	_notify_left = 0.0
+
+
+func _physics_process(delta: float) -> void:
+	if time_left < 0.0 or not is_multiplayer_authority():
+		return
+	time_left = maxf(time_left - delta, 0.0)
+	_notify_left -= delta
+	if _notify_left <= 0.0:
+		_notify_left = 1.0
+		EventBus.run_timer_changed.emit(time_left)
+	if time_left <= 0.0:
+		expire_run()
+
+
+## Releases the Blight once. Public so the extraction-pressure test can trigger
+## the moment without waiting three minutes.
+func expire_run() -> void:
+	if _blight_spawned or not is_multiplayer_authority():
+		return
+	_blight_spawned = true
+	time_left = 0.0
+	EventBus.run_timer_changed.emit(0.0)
+	var blight := ENEMY_SCENE.instantiate() as Node3D
+	if blight == null:
+		return
+	blight.name = "Blight"
+	# Faster than the player, sees the whole layer, hits like a truck and has
+	# effectively infinite HP and no respawn: this is the YAPYAP ghost, not a
+	# fight.
+	blight.set(&"max_hp", 100000.0)
+	blight.set(&"aggro_range", 400.0)
+	blight.set(&"move_speed", 6.4)
+	blight.set(&"attack_damage", 90.0)
+	blight.set(&"attack_cooldown", 0.8)
+	blight.set(&"xp_reward", 0)
+	blight.set(&"respawn_seconds", 99999.0)
+	var body := Game.get_local_player() as Node3D
+	var origin := Vector3(0.0, 0.0, 0.0)
+	if body != null:
+		var back := body.global_transform.basis.z
+		back.y = 0.0
+		origin = body.global_position + back.normalized() * 18.0
+	blight.position = origin
+	add_child(blight)
+	blight.scale = Vector3(1.45, 1.45, 1.45)
+	EventBus.toast_requested.emit("The Blight has found you - reach the gate!")
+	EventBus.run_expired.emit()
+
+
+func _exit_tree() -> void:
+	EventBus.run_timer_changed.emit(-1.0)
 
 
 func _make_materials() -> void:

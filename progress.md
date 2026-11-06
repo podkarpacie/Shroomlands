@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **33 test suites / 1722 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **34 test suites / 1742 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -48,6 +48,15 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Extraction pressure (YAPYAP ghost)
+- Every forest layer starts a 180 s run clock; the HUD `RunLabel` counts down and turns red in
+  the last 30 s.
+- At zero `expire_run()` releases one `Blight`: 100k HP, 400 m aggro, 6.4 m/s, 90 damage, no
+  respawn. It is not a fight — it is the reason to leave.
+- Leaving the forest stops the clock (-1 hides the HUD) and frees the Blight with the world.
+- `test_run_timer.gd` (20 assertions) covers the clock, HUD text, one-time release, Blight stats
+  and the stopped clock on return.
 
 ## Voice hearing & the leader (YAPYAP loop)
 - **The monster hears you**: `VoiceInput.gd` captures microphone RMS on a private, muted bus and
@@ -115,7 +124,7 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Monster hears the player (microphone loudness -> disturbances -> investigation)
 - [x] One leader with the only lamp; return gate refuses without them
 - [x] Dark layers, searchable crates, light/noise aggro, extraction gates
-- [ ] Extraction timer and an inescapable "Blight" if the party overstays
+- [x] Extraction timer and an inescapable "Blight" if the party overstays
 - [ ] Carried loot can be lost (death/extraction stakes)
 - [ ] Leader handoff UI and a party HUD marker
 - [ ] Structure variety (mini-castle / dungeon) and area persistence in saves

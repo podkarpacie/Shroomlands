@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 33 headless test suites, **1722 assertions**, all green - including a run with a
+- 34 headless test suites, **1742 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -41,6 +41,7 @@ and Windows/Web exports.
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
 | Town hub | Done (travel is offline-only) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
 | Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, a hut with a one-shot loot chest, descent/return gates, and enemies scaled by depth. Structure variety and area persistence are still to come |
+| Extraction pressure | First pass | A 180 s run clock per layer with a HUD countdown; at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
 | Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the party leader (peer 1 offline) can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
 | Horror search | First pass | Night layers 3-5, a battery spore-lamp (`F`) whose beam draws creatures from 16 m, three searchable crates per structure whose noise pulls them from 14 m, and enemies that investigate light and sound. No extraction timer or carried-loot loss yet |
 | Spore Bloom hazard | Done | Fat veined mushroom: arms at 2.5 m, swells 0.6 s, bursts into a 3 m toxic cloud for 6 s (3 damage per 0.75 s). Destroyable at range for no loot; three spawns in the Verdant Bloom |
@@ -101,7 +102,7 @@ Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat
 `test_models` 41, `test_movement` 30, `test_movement_block` 15, `test_network` 41,
 `test_pause` 76, `test_player` 20, `test_plots` 86, `test_rig` 48, `test_save` 58,
 `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51, `test_ui` 60,
-`test_vocation` 70, `test_voice_and_leader` 21 - **1722 assertions**.
+`test_vocation` 70, `test_voice_and_leader` 21 - **1742 assertions**.
 
 ### Continuous integration
 
@@ -110,9 +111,9 @@ Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-33 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+34 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1722). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1742). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -229,7 +230,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   33 headless suites, net_harness, capture_frame, network proofs
+tests/                   34 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md

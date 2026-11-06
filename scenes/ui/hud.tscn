@@ -61,6 +61,11 @@ show_percentage = false
 layout_mode = 2
 text = "STAMINA"
 
+[node name="MicLabel" type="Label" parent="Root/Vitals"]
+layout_mode = 2
+text = "MIC  off  (V)"
+modulate = Color(1, 1, 1, 0.55)
+
 [node name="ProgressionBackdrop" type="Panel" parent="Root"]
 layout_mode = 1
 anchors_preset = 1
@@ -111,6 +116,11 @@ horizontal_alignment = 2
 [node name="GoldLabel" type="Label" parent="Root/Progression"]
 layout_mode = 2
 text = "Gold 50"
+horizontal_alignment = 2
+
+[node name="RunLabel" type="Label" parent="Root/Progression"]
+layout_mode = 2
+text = ""
 horizontal_alignment = 2
 
 [node name="VocationButton" type="Button" parent="Root/Progression"]
