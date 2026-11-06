@@ -55,6 +55,9 @@ var is_dark := false
 var time_left := -1.0
 var _notify_left := 0.0
 var _blight_spawned := false
+## Clients hear the countdown from the synchronizer; this keeps their HUD and
+## the "the Blight has found you" toast on the same schedule as the server.
+var _blight_announced := false
 var _blight_holder: Node3D = null
 var _blight_spawner: MultiplayerSpawner = null
 
@@ -103,17 +106,24 @@ func get_run():
 
 func _start_run() -> void:
 	time_left = run_seconds
+	_notify_left = 0.0
+	_blight_announced = false
 	if not is_multiplayer_authority():
 		return
 	EventBus.run_timer_changed.emit(time_left)
-	_notify_left = 0.0
 
 
 func _physics_process(delta: float) -> void:
-	if multiplayer.multiplayer_peer == null or time_left < 0.0:
+	if time_left < 0.0:
+		# Before the first tick (and after leaving the area) there is no clock.
 		return
 	if not is_multiplayer_authority():
+		# The server owns the countdown; `time_left` arrives through the run
+		# synchronizer. Clients still drive their HUD and the Blight warning
+		# from it, so a joining player gets both.
+		_client_clock(delta)
 		return
+	# Offline there is no peer, but the run clock still has to tick.
 	time_left = maxf(time_left - delta, 0.0)
 	_notify_left -= delta
 	if _notify_left <= 0.0:
@@ -121,6 +131,15 @@ func _physics_process(delta: float) -> void:
 		EventBus.run_timer_changed.emit(time_left)
 	if time_left <= 0.0:
 		expire_run()
+
+
+func _client_clock(delta: float) -> void:
+	_notify_left -= delta
+	if _notify_left <= 0.0:
+		_notify_left = 1.0
+		EventBus.run_timer_changed.emit(time_left)
+	if time_left <= 0.0:
+		_announce_blight()
 
 
 ## Releases the Blight once. Public so the extraction-pressure test can trigger
@@ -142,6 +161,15 @@ func expire_run() -> void:
 	else:
 		# The spawner calls `_make_blight` on the server and on every client.
 		_blight_spawner.spawn(origin)
+	_announce_blight()
+
+
+## Toast + `run_expired`, once per run on every peer. Split out so a client can
+## announce the same moment when the replicated clock reaches zero.
+func _announce_blight() -> void:
+	if _blight_announced:
+		return
+	_blight_announced = true
 	EventBus.toast_requested.emit("The Blight has found you - reach the gate!")
 	EventBus.run_expired.emit()
 

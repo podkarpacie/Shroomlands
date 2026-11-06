@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 39 headless test suites, **1874 assertions**, all green - including a run with a
+- 39 headless test suites, **1893 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -46,9 +46,9 @@ and Windows/Web exports.
 | Server-authoritative run props | Done | Crate searches are validated by the server, opened on every peer and paid to the searching owner; the Blight spawns through a `MultiplayerSpawner` so all peers see the hunter |
 | Equippable weapon | Done | The starting club is a real inventory item: 12/22 damage, 4/7 bare-handed, double-click in the satchel equips/unequips, its own save key and replicated hand state. Unequipping or dropping it leaves the hand empty |
 | Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and dying in the forest costs half of every carried stack |
-| Extraction pressure | First pass | A 180 s run clock per layer with a HUD countdown; at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
+| Extraction pressure | Done | A server-owned 180 s run clock per layer, replicated to every peer (countdown and Blight warning included); at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
 | Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the replicated party leader can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
-| Horror search | First pass | Night layers 3-5, a battery spore-lamp (`F`) whose beam draws creatures from 16 m, three searchable crates per structure whose noise pulls them from 14 m, and enemies that investigate light and sound. No extraction timer or carried-loot loss yet |
+| Horror search | First pass | Night layers 3-5, a battery spore-lamp (`F`) whose beam draws creatures from 16 m, three searchable crates per structure whose noise pulls them from 14 m, and enemies that investigate light and sound. The run clock and loot-on-death are in; a sound-only stalker is not |
 | Spore Bloom hazard | Done | Fat veined mushroom: arms at 2.5 m, swells 0.6 s, bursts into a 3 m toxic cloud for 6 s (3 damage per 0.75 s). Destroyable at range for no loot; three spawns in the Verdant Bloom |
 | Export Web + Desktop | Done | Windows Desktop, Web (nothreads), Windows Server presets; all boot |
 | Hosting (playit.gg) | Done | `tools/run_server.ps1` (ENet or WebSocket), `tools/serve_web.ps1`, [`docs/HOSTING.md`](docs/HOSTING.md); the lobby has a Port field for tunnelled public ports |
@@ -93,15 +93,15 @@ Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | Fo
 ```
 
 Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere` 19,
-`test_audio` 78, `test_chat` 24, `test_combat` 47, `test_consumables` 36, `test_effects` 40,
+`test_audio` 78, `test_chat` 24, `test_combat` 51, `test_consumables` 36, `test_effects` 40,
 `test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
 `test_horror_search` 33, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 47,
 `test_limbs` 15, `test_lobby` 98, `test_lore` 322, `test_models` 43, `test_movement` 30,
 `test_movement_block` 15, `test_network` 41, `test_party_ui` 18, `test_pause` 76,
-`test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 37, `test_run_timer` 20,
-`test_save` 58, `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51,
+`test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 41, `test_run_timer` 22,
+`test_save` 67, `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51,
 `test_ui` 60, `test_vocation` 70, `test_voice_and_leader` 21, `test_weapon` 28 -
-**1874 assertions**.
+**1893 assertions**.
 
 ### Continuous integration
 
@@ -112,7 +112,7 @@ every pull request: it downloads the official Godot 4.7.2 Linux binary (cached b
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
 39 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1874). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1893). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -507,7 +507,10 @@ back on for tools and tests.
    the cubes it drives — the export animates rigid segments. One ground mound still z-fights
    slightly.
 7. **No voice chat**, full skill trees, advanced crafting, raids/endgame, factions or the
-   full Great Blight story. Vocation choice exists, but the trees behind it do not.
+   full Great Blight story. Vocation choice exists, but the trees behind it do not. Levels
+   only add melee damage (3% each); there is one weapon and no armour/equipment slots, no
+   throwables (Spore Bomb is gated in the shop and the table), and `Lore.RESOURCES` has no
+   source or recipe yet.
 8. **No server browser or accounts.** Direct host/port only; no authentication, no
    character server, no anti-cheat. The server relays what each peer reports for
    player position, gold, inventory, vitals and discoveries, so there is no server-side
@@ -521,8 +524,9 @@ back on for tools and tests.
     renders, but expect lower performance than desktop.
 13. **No dedicated sound-only stalker.** Creatures investigate noise and light, and the Blight is
     time-based; there is no separate hunter that tracks voice loudness alone.
-14. **Two potions have effects nothing applies.** Armour Patch (`repair_armor`) and Nighteye
-    Draught (`vision +1.0`) stay in `Lore.POTIONS` and show in the shop and alchemy panels, but
-    there is no armour system and no darkness to see through. Their rows carry a
-    `(needs equipment)` / `(needs darkness)` tag and both Buy and Brew are disabled, so no gold
-    is spent on a no-op.
+14. **Three potions have effects nothing applies.** Armour Patch (`repair_armor`), Nighteye
+    Draught (`vision +1.0`) and Spore Bomb (`throwable`) stay in `Lore.POTIONS` and show in the
+    shop and alchemy panels, but there is no armour system, the vision buff is not read by the
+    camera, and there are no throwables. Their rows carry a `(needs equipment)` /
+    `(not implemented)` / `(needs throwables)` tag and both Buy and Brew are disabled, so no
+    gold is spent on a no-op.

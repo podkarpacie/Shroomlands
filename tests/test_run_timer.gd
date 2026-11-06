@@ -75,6 +75,18 @@ func _run() -> void:
 	_check("the HUD has a run label", label != null)
 	if label != null:
 		_check("the HUD shows the countdown (%s)" % label.text, label.text.begins_with("RUN"))
+	# Offline there is no peer object; the clock still has to tick, or the run
+	# never expires and the HUD freezes at 3:00.
+	var left_before := float(forest.get("time_left"))
+	var text_before := label.text if label != null else ""
+	await _wait(80)
+	var left_after := float(forest.get("time_left"))
+	_check("the clock counts down offline (%.1f -> %.1f)" % [left_before, left_after],
+		left_after < left_before - 0.5)
+	_check("the countdown reaches the HUD (%s -> %s)" % [
+			text_before, label.text if label != null else ""
+		],
+		label != null and not label.text.is_empty() and label.text != text_before)
 
 	# --- expiry releases one Blight ---------------------------------------
 	var before := _expired

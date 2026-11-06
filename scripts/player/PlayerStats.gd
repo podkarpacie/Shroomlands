@@ -415,12 +415,13 @@ func die() -> void:
 	if Game.forest_layer > 0:
 		_drop_run_loot()
 	EventBus.player_died.emit()
-	# TODO(phase-6): death UI listens on player_died; respawn() is called from it.
+	# The death screen listens on `player_died` and calls `respawn()` from there.
 
 
-## Death in a run costs half of every carried stack. The player keeps their
-## equipped weapon and purse: this is a loot stake, not a full wipe, so a bad
-## run still leaves the expedition worth finishing.
+## Death in a run costs half of every carried stack, rounded up, so even a
+## single mushroom is a real loss. The player keeps their equipped weapon and
+## purse: this is a loot stake, not a full wipe, so a bad run still leaves the
+## expedition worth finishing.
 func _drop_run_loot() -> void:
 	var inventory := get_parent().get_node_or_null("InventorySystem")
 	Game.note_run_death()
@@ -434,7 +435,7 @@ func _drop_run_loot() -> void:
 		totals[id] = int(totals.get(id, 0)) + int(slot.get("count", 0))
 	var lost := 0
 	for id: StringName in totals:
-		var drop := int(int(totals[id]) / 2)
+		var drop := int(ceili(float(totals[id]) / 2.0))
 		if drop > 0:
 			lost += int(inventory.call(&"remove_item", id, drop))
 	if lost > 0:
@@ -454,6 +455,11 @@ func respawn() -> void:
 
 
 func add_xp(amount: int) -> void:
+	# A replicated copy must never write progression: the server's mirror of a
+	# client body would otherwise win the race with the owner's own value and
+	# emit another player's XP into this peer's HUD.
+	if not is_local_owner():
+		return
 	if amount <= 0 or _dead:
 		return
 	xp += amount
@@ -461,6 +467,17 @@ func add_xp(amount: int) -> void:
 		xp -= Game.xp_to_level(level)
 		level_up()
 	EventBus.xp_changed.emit(xp, Game.xp_to_level(level))
+
+
+## Server -> owner leg of a kill award (`Enemy._award_xp`): the server runs the
+## AI but only the owner may write this body's XP.
+@rpc("any_peer", "call_remote", "reliable")
+func add_xp_rpc(amount: int) -> void:
+	if not is_local_owner():
+		return
+	if multiplayer.get_remote_sender_id() != 1:
+		return
+	add_xp(clampi(amount, 1, 100000))
 
 
 ## One level per call; `add_xp` loops so a single large gain can grant several.

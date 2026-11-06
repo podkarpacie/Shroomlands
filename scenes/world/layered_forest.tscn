@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/LayeredForest.gd" id="1_forest"]
 
@@ -41,6 +41,11 @@ adjustment_enabled = true
 adjustment_contrast = 1.06
 adjustment_saturation = 1.12
 
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_run"]
+properties/0/path = NodePath(".:time_left")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+
 [node name="LayeredForest" type="Node3D"]
 script = ExtResource("1_forest")
 
@@ -56,3 +61,8 @@ directional_shadow_fade_start = 0.85
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_forest")
+
+[node name="RunSync" type="MultiplayerSynchronizer" parent="."]
+root_path = NodePath("..")
+replication_config = SubResource("SceneReplicationConfig_run")
+public_visibility = true

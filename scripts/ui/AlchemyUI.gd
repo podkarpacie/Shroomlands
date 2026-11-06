@@ -16,8 +16,12 @@ const GATED_POTIONS := {
 		"reason": "There is no armour system to repair yet.",
 	},
 	"nighteye_draught": {
-		"tag": "(needs darkness)",
-		"reason": "There is no darkness to see through yet.",
+		"tag": "(not implemented)",
+		"reason": "The deep layers are dark, but the vision buff is not read by the camera yet.",
+	},
+	"spore_bomb": {
+		"tag": "(needs throwables)",
+		"reason": "There are no throwables yet, so the bomb would do nothing.",
 	},
 }
 

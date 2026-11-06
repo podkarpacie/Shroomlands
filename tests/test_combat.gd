@@ -219,6 +219,12 @@ func _run() -> void:
 		var spawn_distance := target.global_position.distance_to(spawn_point)
 		print("respawn distance from the fixed spawn point: %.2f m" % spawn_distance)
 		_check("the respawned enemy is back at its spawn point", spawn_distance < 0.75)
+		# Respawns must not pay again, or a camped spawn is an XP faucet.
+		var xp_before_second := int(_stats.get("xp"))
+		target.call(&"take_damage", 999.0, false, _player)
+		await _wait_physics(2)
+		_check("a respawned enemy pays no XP (xp %d)" % int(_stats.get("xp")),
+			int(_stats.get("xp")) == xp_before_second)
 
 	# --- enemy damage, player death, HUD respawn ----------------------------
 	var biter := enemies[1] as Node3D
@@ -287,6 +293,29 @@ func _run() -> void:
 		)
 		_check("the repair costs the quoted gold (%d)" % int(game.get("gold")), int(game.get("gold")) == 80)
 
+	# --- a mirrored body must not write progression -------------------------
+	var mirror: Node = _stats.get_script().new()
+	mirror.set_multiplayer_authority(2)
+	root.add_child(mirror)
+	mirror.set("xp", 0)
+	mirror.call(&"add_xp", 50)
+	_check("a non-owner copy refuses add_xp (xp %d)" % int(mirror.get("xp")),
+		int(mirror.get("xp")) == 0)
+	mirror.queue_free()
+
+	# --- levels are not cosmetic -------------------------------------------
+	_player.set("weapon_condition", 100)
+	var level_was := int(_stats.get("level"))
+	_stats.set("level", 11)
+	_check(
+		"level 11 adds 30%% light damage (%.1f)" % float(_combat.call(&"current_attack_damage", false)),
+		is_equal_approx(float(_combat.call(&"current_attack_damage", false)), light_damage * 1.3)
+	)
+	_check(
+		"level 11 adds 30%% heavy damage (%.1f)" % float(_combat.call(&"current_attack_damage", true)),
+		is_equal_approx(float(_combat.call(&"current_attack_damage", true)), heavy_damage * 1.3)
+	)
+	_stats.set("level", level_was)
 	_finish()
 
 

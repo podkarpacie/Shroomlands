@@ -130,6 +130,10 @@ func collect_state() -> Dictionary:
 	var inventory := player.get_node_or_null("InventorySystem")
 	if inventory != null and inventory.has_method(&"to_dict"):
 		state["inventory"] = inventory.call(&"to_dict")
+	# The club's wear belongs to the body, not the item slot; saving it stops
+	# the repair bench from being a free reset on every load.
+	if "weapon_condition" in player:
+		state["weapon_condition"] = clampi(int(player.get(&"weapon_condition")), 0, 100)
 	return state
 
 
@@ -188,10 +192,20 @@ func apply_state(data: Dictionary) -> void:
 		var inventory := player.get_node_or_null("InventorySystem")
 		if inventory != null and inventory.has_method(&"from_dict"):
 			inventory.call(&"from_dict", saved_inventory)
-			# Saves written before weapons existed have no `weapon` key: give the
-			# player the starting club instead of leaving them permanently unarmed.
-			if not data.has("weapon") and inventory.has_method(&"ensure_starting_weapon"):
+			# The weapon lives inside the inventory dict, not at the top level.
+			# Only a save written before weapons existed lacks the key; adding a
+			# club on every load duplicated a dropped one and re-equipped one the
+			# player had deliberately put away.
+			var has_weapon_key := (saved_inventory as Dictionary).has("weapon")
+			if not has_weapon_key and inventory.has_method(&"ensure_starting_weapon"):
 				inventory.call(&"ensure_starting_weapon")
+	if "weapon_condition" in player:
+		var condition := clampi(
+			_as_int(data.get("weapon_condition"), int(player.get(&"weapon_condition"))),
+			0,
+			100
+		)
+		player.set(&"weapon_condition", condition)
 
 
 ## Digest for the lobby's Continue button; empty when there is no readable save.

@@ -109,27 +109,34 @@ func _run() -> void:
 	_check("an unknown buy changes no gold", int(game.get("gold")) == gold_before_missing)
 
 	# --- potions with no system behind them yet -----------------------------
-	# Armour Patch and Nighteye Draught stay in `Lore.POTIONS`, but nothing
-	# repairs armour or darkens the world yet. The shop tags the rows and refuses
-	# the sale instead of taking gold for an effect nothing applies.
+	# Armour Patch, Nighteye Draught and Spore Bomb stay in `Lore.POTIONS`, but
+	# there is no armour to repair, no vision effect and no throwable system. The
+	# shop tags the rows and refuses the sale instead of taking gold for an
+	# effect nothing applies.
 	game.set("gold", 200)
 	var gated_before := int(game.get("gold"))
 	shop.call(&"set_open", true)
 	await _wait_physics(2)
 	var armour_row := _row(shop, "Armour Patch")
 	var nighteye_row := _row(shop, "Nighteye Draught")
+	var bomb_row := _row(shop, "Spore Bomb")
 	_check(
-		"the shop tags both gated potions and disables their buttons (%s / %s)" % [
-			str(armour_row.get("text", "")), str(nighteye_row.get("text", ""))
+		"the shop tags all gated potions and disables their buttons (%s / %s / %s)" % [
+			str(armour_row.get("text", "")), str(nighteye_row.get("text", "")),
+			str(bomb_row.get("text", ""))
 		],
 		"(needs equipment)" in str(armour_row.get("text", ""))
-		and "(needs darkness)" in str(nighteye_row.get("text", ""))
+		and "(not implemented)" in str(nighteye_row.get("text", ""))
+		and "(needs throwables)" in str(bomb_row.get("text", ""))
 		and _button(armour_row) != null and _button(armour_row).disabled
 		and _button(nighteye_row) != null and _button(nighteye_row).disabled
+		and _button(bomb_row) != null and _button(bomb_row).disabled
 	)
 	var armour_bought := bool(shop.call(&"buy_potion", "armour_patch"))
 	var nighteye_bought := bool(shop.call(&"buy_potion", "nighteye_draught"))
-	_check("buying a gated potion is refused", not armour_bought and not nighteye_bought)
+	var bomb_bought := bool(shop.call(&"buy_potion", "spore_bomb"))
+	_check("buying a gated potion is refused",
+		not armour_bought and not nighteye_bought and not bomb_bought)
 	_check("a refused buy spends no gold", int(game.get("gold")) == gated_before)
 	_check(
 		"a refused buy adds nothing to the satchel",

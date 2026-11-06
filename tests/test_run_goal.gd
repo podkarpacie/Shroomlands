@@ -95,12 +95,16 @@ func _run() -> void:
 
 	# --- death costs half of every stack -------------------------------
 	_inventory.call(&"add_item", &"konop", 10)
+	_inventory.call(&"add_item", &"shitake", 1)
 	var held := int(_inventory.call(&"count_item", &"konop"))
 	_check("the test carries 10 konops", held == 10)
 	_stats.call(&"take_damage", 999.0)
 	await _wait(2)
 	var left := int(_inventory.call(&"count_item", &"konop"))
 	_check("death drops half the stack (%d -> %d)" % [held, left], left == held / 2)
+	# Rounding down used to make a lone item a free death.
+	_check("a lone item is still lost (1 -> %d)" % int(_inventory.call(&"count_item", &"shitake")),
+		int(_inventory.call(&"count_item", &"shitake")) == 0)
 	_check("the run records the death", int(_game.get(&"run_deaths")) == 1)
 	_stats.call(&"respawn")
 	await _wait(3)
@@ -160,6 +164,27 @@ func _run() -> void:
 			await _wait(12)
 	_check("the second summary fired", _summaries == 2)
 	_check("an empty run misses the quota", not bool(_summary.get("met", true)))
+
+	# --- descending closes the layer's book --------------------------------
+	# The old `_swap_area` only finished a run when the target was *not* the
+	# forest, so layers 1-4 never paid a summary or the quota bonus.
+	var town_world2 := _main.get_node_or_null("World") as Node3D
+	var gate2 := town_world2.get_node_or_null("DescentGate") if town_world2 != null else null
+	if gate2 != null:
+		gate2.call(&"interact", _player)
+	await _wait(12)
+	var before_descend := _summaries
+	var summaries_before := _summary.duplicate()
+	_main.call(&"_swap_area", FOREST_PATH, 2)
+	await _wait(12)
+	_check("descending finishes the previous layer (%d -> %d summaries)" % [
+			before_descend, _summaries
+		],
+		_summaries == before_descend + 1)
+	_check("the finished summary is layer 1 (%s)" % int(_summary.get("layer", 0)),
+		int(_summary.get("layer", 0)) == 1)
+	_check("the new run is layer 2 (%s)" % int(_game.get(&"run_layer")),
+		int(_game.get(&"run_layer")) == 2)
 	if panel != null:
 		var title2 := panel.get_node_or_null("Root/Center/Card/Margin/Content/Title") as Label
 		_check("the title reports the miss (%s)" % (title2.text if title2 != null else "missing"),

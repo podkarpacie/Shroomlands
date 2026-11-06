@@ -7,9 +7,35 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **39 test suites / 1874 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **39 test suites / 1893 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
+
+## Review fixes (player-facing bugs)
+Findings from a code review of inventory/stats/combat/enemy/run/forest code, all fixed:
+- **Run clock on clients.** `time_left` was server-only, so a client saw no countdown, no toast and
+  no `run_expired`; it also never ticked offline because of a `multiplayer_peer == null` guard.
+  The forest now carries a `MultiplayerSynchronizer` (`RunSync`), clients drive their HUD from it
+  and announce the Blight at zero, and the clock ticks without a peer. The two-process harness
+  asserts the client's clock moves and reaches 0 (`timer=1 ... expired=1`).
+- **Kill XP for non-hosts.** The server's copy of a client body used to write XP and emit into the
+  host HUD. `PlayerStats.add_xp` is now owner-only and `Enemy._award_xp` routes a remote kill
+  through `add_xp_rpc`; the vitals synchronizer carries the result back.
+- **Respawn farming.** A creature pays XP once (`_xp_paid`), so respawns are obstacles, not a
+  faucet.
+- **Save/load weapon bugs.** The migration checked `data.has("weapon")` at the top level although
+  the weapon lives inside `data["inventory"]`, so every load handed back a dropped club and
+  re-equipped an unequipped one. It now checks the inventory key; `weapon_condition` is saved and
+  restored too.
+- **Descending skipped the run close.** `_swap_area` only called `finish_run()` when leaving the
+  forest, so layers 1-4 never paid a summary or the 50% quota bonus. Any forest departure closes
+  the run first, then starts the new one.
+- **Death penalty loophole.** Integer division made a single-item stack free; the drop is now
+  rounded up.
+- **Spore Bomb sold a no-op.** Gated in the shop and the alchemy table with the other unimplemented
+  potions; the Nighteye gate text no longer claims there is no darkness.
+- **Levels and gathering paid nothing.** Melee damage now gains 3% per level, and gathering pays a
+  fifth of the species' value in XP.
 
 ## The town hub (done)
 - **Mycoria** — walled settlement, the spawn area, plot row just outside the north gate.
@@ -19,8 +45,9 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - **Alchemy Table**: brew 1 mushroom + fee into its potion — the potion data is finally usable.
 - **Repair Bench**: `weapon_condition` (0-100, −1 per swing, damage halved at 0) repaired at 2 g/point.
 - **Plot Board**: read-only plot summary.
-- Two potions are deliberately gated in the UI: `Armour Patch` needs an equipment system,
-  `Nighteye Draught` needs darkness. Their buttons are disabled rather than charging gold for nothing.
+- Three potions are deliberately gated in the UI: `Armour Patch` needs an equipment system,
+  `Nighteye Draught` needs a camera that reads its vision buff, and `Spore Bomb` needs throwables.
+  Their buttons are disabled rather than charging gold for nothing.
 
 ## Items — `docs/ITEMS.md` is the source of truth
 - 11 mushrooms: **Konop** (common, universal tutorial heal), **Shitake**, **Motoko** (commons),
@@ -184,7 +211,7 @@ defects that the first contact sheet missed:
   from outside its 12 m aggro range, so light and searching are risks.
 - `test_horror_search.gd` (33 assertions) covers night lighting, battery drain/recharge,
   crate payout/noise, and a distant creature investigating.
-- Not yet: extraction timer/ghost, loot loss on death, a dedicated sound-only stalker.
+- Not yet: a dedicated sound-only stalker (the run clock and loot-on-death are in).
 
 ## The layered forest (first pass)
 - **Run layout**: `scripts/world/ForestRun.gd` is a deterministic graph for one depth layer:
@@ -198,8 +225,8 @@ defects that the first contact sheet missed:
   drives `Game.forest_layer`; `Main` maps the layer to a biome and scales enemy HP/damage/XP.
 - Tests: `test_forest_run.gd` (62 assertions, pure data) and `test_layered_forest.gd`
   (36 assertions, town -> layer 1 -> chest -> layer 2 -> town).
-- Not yet: mini-castle/dungeon structures, per-structure loot tables, enemies placed on paths,
-  and saving the active area (a forest save restores its coordinates in town).
+- Not yet: per-structure loot tables, enemies placed on paths, and saving the active area
+  (a forest save restores its coordinates in town).
 
 ## Hazards (done)
 - **Spore Bloom** — `scenes/world/spore_bloom.tscn` + `scripts/world/SporeBloom.gd`, model

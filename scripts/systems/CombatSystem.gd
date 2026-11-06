@@ -35,6 +35,8 @@ const BROKEN_CONDITION_DAMAGE := 0.5
 ## Bare-hand damage when no weapon item is equipped.
 @export var unarmed_light_damage := 4.0
 @export var unarmed_heavy_damage := 7.0
+## Fraction of extra melee damage per level above 1.
+const LEVEL_DAMAGE_STEP := 0.03
 @export var crit_chance := 0.15
 @export var crit_multiplier := 2.0
 @export var attack_stamina_cost := 12.0
@@ -184,16 +186,29 @@ func _swing(heavy: bool) -> void:
 			_body.call(&"add_camera_shake", 0.16 if heavy else 0.09)
 
 
-## Base damage of the equipped weapon, or the bare-hand values. Public so the
-## HUD/tests can show what a swing will do without simulating a hit.
+## Base damage of the equipped weapon, or the bare-hand values, plus the level
+## bonus. Public so the HUD/tests can show what a swing will do without
+## simulating a hit.
 func current_attack_damage(heavy := false) -> float:
 	var weapon := _equipped_weapon()
-	if weapon.is_empty():
-		return unarmed_heavy_damage if heavy else unarmed_light_damage
-	return float(
-		weapon.get("heavy_damage", heavy_damage) if heavy
-		else weapon.get("damage", light_damage)
+	var base := (
+		float(unarmed_heavy_damage if heavy else unarmed_light_damage)
+		if weapon.is_empty()
+		else float(
+			weapon.get("heavy_damage", heavy_damage) if heavy
+			else weapon.get("damage", light_damage)
+		)
 	)
+	return base * level_damage_scale()
+
+
+## Every level adds 3% melee damage, so XP and the vocation sink are not
+## cosmetic. Level 1 is exactly the weapon's listed damage.
+func level_damage_scale() -> float:
+	if _stats == null:
+		return 1.0
+	var level := maxi(int(_stats.get(&"level")), 1)
+	return 1.0 + LEVEL_DAMAGE_STEP * float(level - 1)
 
 
 func _equipped_weapon() -> Dictionary:

@@ -117,6 +117,11 @@ func finish_run() -> Dictionary:
 
 func _on_mushroom_gathered(id: String, count: int) -> void:
 	add_run_mushrooms(id, count)
+	# Foraging is progression too: a fifth of the species' shop value in XP, so
+	# a run levels you even when the blades stay sheathed.
+	var rarity := str(Lore.get_mushroom(id).get("rarity", ""))
+	var per_pick := maxi(1, Lore.mushroom_value(rarity) / 5)
+	add_xp(per_pick * count)
 
 
 ## XP needed to advance from `level` to `level + 1`; monotonic by construction.

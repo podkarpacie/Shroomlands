@@ -72,6 +72,8 @@ var _disturbance := Vector3.ZERO
 var _gravity := Vector3.DOWN * 9.8
 var _rng := RandomNumberGenerator.new()
 var _flash_tween: Tween = null
+## A creature pays XP once, however many times it respawns.
+var _xp_paid := false
 var _death_tween: Tween = null
 ## One private copy of the model's material, shared by every mesh of this
 ## creature, so a flash never tints its neighbours.
@@ -269,15 +271,24 @@ func _die(attacker: Node) -> void:
 
 
 func _award_xp(attacker: Node) -> void:
-	if xp_reward <= 0:
+	if xp_reward <= 0 or _xp_paid:
+		# Respawning must not become an XP faucet: one kill, one reward.
 		return
 	var local := Game.get_local_player()
 	if attacker == null or attacker == local:
 		# `Game` is the documented XP funnel and forwards to the local player.
+		_xp_paid = true
 		Game.add_xp(xp_reward)
 		return
-	if attacker.has_method(&"add_xp"):
+	if not attacker.has_method(&"add_xp"):
+		return
+	_xp_paid = true
+	if multiplayer.multiplayer_peer == null or attacker.is_multiplayer_authority():
 		attacker.call(&"add_xp", xp_reward)
+		return
+	# The server's copy of a client body is not the owner. Route the award to
+	# the owner, whose vitals synchronizer carries it back to every peer.
+	attacker.rpc_id(attacker.get_multiplayer_authority(), &"add_xp_rpc", xp_reward)
 
 
 func _on_respawn_timeout() -> void:

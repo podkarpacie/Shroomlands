@@ -76,6 +76,7 @@ func _run() -> void:
 	inventory.call(&"add_item", &"konop", 5)
 	inventory.call(&"add_item", &"shitake", 12)
 	inventory.call(&"add_item", &"bedak", 3)
+	_player.set(&"weapon_condition", 37)
 	var expected_inventory: Dictionary = inventory.call(&"to_dict")
 	# Set last: physics would pull a body that is left standing in the air.
 	_player.global_position = RICH_POSITION
@@ -101,6 +102,8 @@ func _run() -> void:
 	_check("the save file carries hp and stamina",
 		parsed.has("hp") and parsed.has("stamina"))
 	_check("the save file carries the inventory", parsed.get("inventory") is Dictionary)
+	_check("the save file carries the weapon condition (%s)" % parsed.get("weapon_condition", "?"),
+		int(parsed.get("weapon_condition", -1)) == 37)
 	_check("the saved position is an Array of 3 numbers",
 		parsed.get("position") is Array and (parsed["position"] as Array).size() == 3)
 
@@ -143,6 +146,8 @@ func _run() -> void:
 			and int(inventory.call(&"count_item", &"bedak")) == 3)
 	_check("position round-trips exactly (%s)" % _vec(_player.global_position),
 		_player.global_position.is_equal_approx(RICH_POSITION))
+	_check("the weapon condition round-trips (%d)" % int(_player.get(&"weapon_condition")),
+		int(_player.get(&"weapon_condition")) == 37)
 	_check("the ranger bonus is applied once, not twice (walk %.2f)" % float(_player.get("walk_speed")),
 		is_equal_approx(float(_player.get("walk_speed")), 5.3))
 
@@ -214,6 +219,35 @@ func _run() -> void:
 	_check("the close save is at the isolated path (%s)" % _save_path,
 		FileAccess.file_exists(_save_path))
 
+	# --- the club survives exactly as it was ------------------------------
+	var club := &"mycelium_club"
+	var club_slot := _slot_of(inventory, club)
+	_check("the save still carries the club", club_slot >= 0)
+	if club_slot >= 0:
+		inventory.call(&"drop_slot", club_slot, true)
+		var dropped: Dictionary = _saves.call(&"collect_state")
+		_saves.call(&"apply_state", dropped)
+		_check("a dropped club is not handed back (count %d)" % int(inventory.call(&"count_item", club)),
+			int(inventory.call(&"count_item", club)) == 0)
+		_check("a dropped club is not re-equipped (%s)" % String(inventory.get(&"equipped_weapon")),
+			StringName(inventory.get(&"equipped_weapon")) == &"")
+		inventory.call(&"add_item", club, 1)
+		_check("the club can be taken back", bool(inventory.call(&"equip_weapon", club)))
+		var equipped_slot := _slot_of(inventory, club)
+		if equipped_slot >= 0:
+			inventory.call(&"use_slot", equipped_slot)
+		var unequipped: Dictionary = _saves.call(&"collect_state")
+		_saves.call(&"apply_state", unequipped)
+		_check("an unequipped club stays unequipped (%s)" % String(inventory.get(&"equipped_weapon")),
+			StringName(inventory.get(&"equipped_weapon")) == &"")
+
+	# --- a save written before weapons existed ----------------------------
+	_saves.call(&"apply_state", {"inventory": {"slots": {}}})
+	_check("an old save is given the starting club (%d)" % int(inventory.call(&"count_item", club)),
+		int(inventory.call(&"count_item", club)) == 1)
+	_check("and the old save equips it",
+		StringName(inventory.get(&"equipped_weapon")) == club)
+
 	# --- delete + a save without a player ----------------------------------
 	_check("delete_save() succeeds", bool(_saves.call(&"delete_save")))
 	_check("has_save() is false after delete_save()", not bool(_saves.call(&"has_save")))
@@ -250,6 +284,15 @@ func _parse_save_file() -> Dictionary:
 	if not parsed is Dictionary:
 		return {}
 	return parsed
+
+
+func _slot_of(inventory: Node, id: StringName) -> int:
+	var slots: Array = inventory.get(&"slots")
+	for index in slots.size():
+		var slot: Dictionary = slots[index]
+		if not slot.is_empty() and StringName(slot.get("id", &"")) == id:
+			return index
+	return -1
 
 
 func _vec(v: Vector3) -> String:

@@ -227,11 +227,13 @@ func _swap_area(path: String, requested_layer := -1) -> bool:
 
 	var previous := _world
 	var was_forest := previous != null and previous.scene_file_path == LAYERED_FOREST_PATH
+	# Any departure closes the expedition - including descending to another
+	# layer, which used to skip the summary and the quota bonus. Close first,
+	# then start the new run so its counters are the ones that survive.
+	if was_forest:
+		Game.finish_run()
 	if path == LAYERED_FOREST_PATH:
 		Game.start_run(layer)
-	elif was_forest:
-		# Leaving the forest closes the expedition; the summary panel listens.
-		Game.finish_run()
 	if previous != null and is_instance_valid(previous):
 		# Remove it now so the new marker is the only `PlayerSpawn` in the tree
 		# (PlayerStats resolves respawns by name) and so a stale world cannot

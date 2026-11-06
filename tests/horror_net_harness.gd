@@ -177,6 +177,17 @@ func _client() -> void:
 	)
 	# Let the server receive this body's forest spawn before the search.
 	await _wait(40)
+	# The run clock and the Blight warning belong to the server; this peer must
+	# see the countdown move without ticking it locally.
+	var run_timer := false
+	var run_label := _run_label_text()
+	if forest:
+		var live := _main.get_node_or_null("World") as Node3D
+		var before := float(live.get(&"time_left")) if live != null else -1.0
+		await _wait(70)
+		var after := float(live.get(&"time_left")) if live != null else -1.0
+		run_timer = before > 0.0 and after < before
+		print("client clock: %.1f -> %.1f" % [before, after])
 
 	# Search Crate1: the server validates proximity, pays the loot to this owner
 	# and broadcasts the opened state.
@@ -206,6 +217,10 @@ func _client() -> void:
 			return current != null and current.find_child("Blight", true, false) != null,
 		WAIT_STEP
 	)
+	var expired := false
+	if forest:
+		var live := _main.get_node_or_null("World") as Node3D
+		expired = live != null and float(live.get(&"time_left")) <= 0.0
 
 	# Hand the lamp to the host, then wait for the host to hand it back.
 	var host_id := _other_peer()
@@ -228,18 +243,25 @@ func _client() -> void:
 			func() -> bool: return _world_path() == TOWN_PATH, WAIT_STEP
 		)
 	var ok := two and leader and local_leader and lamp_on and forest \
-		and crate_opened and loot_received and blight and handoff and lamp_back and returned
+		and run_timer and crate_opened and loot_received and blight \
+		and expired and handoff and lamp_back and returned
 	print(
-		"HORROR_CLIENT ok=%d players=%d leader=%d local_leader=%d lamp=%d forest=%d crate=%d loot=%d blight=%d handoff=%d back=%d town=%d hud=%s" % [
+		"HORROR_CLIENT ok=%d players=%d leader=%d local_leader=%d lamp=%d forest=%d timer=%d label=%s expired=%d crate=%d loot=%d blight=%d handoff=%d back=%d town=%d hud=%s" % [
 			1 if ok else 0, _player_count(), int(_party.get(&"leader_id")),
 			1 if local_leader else 0, 1 if lamp_on else 0,
-			1 if forest else 0, 1 if crate_opened else 0,
+			1 if forest else 0, 1 if run_timer else 0, run_label,
+			1 if expired else 0, 1 if crate_opened else 0,
 			1 if loot_received else 0, 1 if blight else 0,
 			1 if handoff else 0, 1 if lamp_back else 0,
 			1 if returned else 0, hud
 		]
 	)
 	quit(0 if ok else 1)
+
+
+func _run_label_text() -> String:
+	var label := _main.get_node_or_null("HUD/Root/Progression/RunLabel") as Label
+	return label.text if label != null else ""
 
 
 func _leader_hud_text() -> String:
