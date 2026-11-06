@@ -15,6 +15,10 @@ var gold: int = STARTING_GOLD
 var discovered_mushrooms: Dictionary = {}
 var chosen_vocation: StringName = &""
 var current_biome: StringName = &"verdant_bloom"
+## 1-5 while a Layered Forest area is active, 0 in town / the Verdant Bloom.
+## The descent gate sets it before `Main.enter_area`, so the new area and its
+## enemy roster read the same value.
+var forest_layer: int = 0
 ## XP gathered before PlayerStats exists (main menu, save load). PlayerStats
 ## drains this on spawn.
 var pending_xp: int = 0

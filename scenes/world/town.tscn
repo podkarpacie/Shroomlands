@@ -96,3 +96,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 24)
 target_scene = "res://scenes/world/verdant_bloom.tscn"
 target_label = "Verdant Bloom"
 prompt = "Leave to"
+
+[node name="DescentGate" parent="." instance=ExtResource("3_gate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, 14)
+target_scene = "res://scenes/world/layered_forest.tscn"
+target_label = "The Shallows"
+prompt = "Descend to"
+target_layer = 1

@@ -17,6 +17,11 @@ const ENEMY_SCENE := preload("res://scenes/world/enemy.tscn")
 ## The two story areas. `main.tscn` starts in town; the gate stations swap them.
 const TOWN_SCENE_PATH := "res://scenes/world/town.tscn"
 const FOREST_SCENE_PATH := "res://scenes/world/verdant_bloom.tscn"
+const LAYERED_FOREST_PATH := "res://scenes/world/layered_forest.tscn"
+## Depth layer -> biome id, so the HUD and biome colour follow the descent.
+const LAYER_BIOMES: Array[StringName] = [
+	&"verdant_bloom", &"violet_hollows", &"crimson_rot", &"deep_mycelium", &"pale_crown",
+]
 ## `local` chat reaches only peers whose body is within this many metres of the
 ## sender. Global chat ignores distance.
 const CHAT_LOCAL_RANGE := 25.0
@@ -185,9 +190,15 @@ func _swap_area(path: String) -> bool:
 	_world = world
 
 	_move_local_player_to(_area_spawn_point(world))
-	Game.current_biome = (
-		&"town" if path == TOWN_SCENE_PATH else &"verdant_bloom"
-	)
+	if path == TOWN_SCENE_PATH:
+		Game.current_biome = &"town"
+		Game.forest_layer = 0
+	elif path == LAYERED_FOREST_PATH:
+		var layer := clampi(Game.forest_layer, 1, LAYER_BIOMES.size())
+		Game.current_biome = LAYER_BIOMES[layer - 1]
+	else:
+		Game.current_biome = &"verdant_bloom"
+		Game.forest_layer = 0
 	# The HUD caption follows the area scene's own label, so a renamed or new
 	# area needs no change in the UI layer.
 	EventBus.area_changed.emit(_area_display_name(world))
@@ -365,6 +376,14 @@ func _make_enemy(index: int) -> Node3D:
 	enemy.name = "Enemy%d" % index
 	enemy.position = _enemies.to_local(ENEMY_SPAWNS[index])
 	enemy.set_multiplayer_authority(1)
+	# Deeper forest layers field tougher creatures. `Game.forest_layer` is 0 in
+	# town and the Verdant Bloom, so those keep the base stats.
+	var layer := Game.forest_layer
+	if layer > 1:
+		var step := float(layer - 1)
+		enemy.set(&"max_hp", 60.0 * pow(1.35, step))
+		enemy.set(&"attack_damage", 8.0 * pow(1.25, step))
+		enemy.set(&"xp_reward", int(round(15.0 * pow(1.3, step))))
 	return enemy
 
 

@@ -1,0 +1,58 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/LayeredForest.gd" id="1_forest"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_forest"]
+sky_top_color = Color(0.15, 0.33, 0.48, 1)
+sky_horizon_color = Color(0.68, 0.79, 0.7, 1)
+ground_bottom_color = Color(0.08, 0.13, 0.09, 1)
+ground_horizon_color = Color(0.42, 0.53, 0.4, 1)
+sun_angle_max = 22.0
+sun_curve = 0.12
+
+[sub_resource type="Sky" id="Sky_forest"]
+sky_material = SubResource("ProceduralSkyMaterial_forest")
+
+[sub_resource type="Environment" id="Environment_forest"]
+background_mode = 2
+sky = SubResource("Sky_forest")
+ambient_light_source = 3
+ambient_light_color = Color(0.62, 0.78, 0.72, 1)
+ambient_light_energy = 0.9
+reflected_light_source = 2
+tonemap_mode = 3
+tonemap_white = 5.0
+ssao_enabled = true
+ssao_radius = 1.4
+ssao_intensity = 1.8
+glow_enabled = true
+glow_intensity = 0.8
+glow_strength = 1.0
+glow_bloom = 0.05
+glow_hdr_threshold = 0.95
+fog_enabled = true
+fog_light_color = Color(0.62, 0.78, 0.72, 1)
+fog_light_energy = 1.0
+fog_sun_scatter = 0.22
+fog_density = 0.005
+fog_aerial_perspective = 0.3
+fog_sky_affect = 0.6
+adjustment_enabled = true
+adjustment_contrast = 1.06
+adjustment_saturation = 1.12
+
+[node name="LayeredForest" type="Node3D"]
+script = ExtResource("1_forest")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.590017, -0.569108, 0.572709, 0, 0.709333, 0.704873, -0.807391, -0.415887, 0.418518, 0, 0, 0)
+light_color = Color(1, 0.94, 0.82, 1)
+light_energy = 1.2
+light_angular_distance = 0.5
+shadow_enabled = true
+shadow_blur = 1.3
+directional_shadow_max_distance = 90.0
+directional_shadow_fade_start = 0.85
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_forest")

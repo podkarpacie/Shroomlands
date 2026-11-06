@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **29 test suites / 1570 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **31 test suites / 1668 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -49,6 +49,21 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
 
+## The layered forest (first pass)
+- **Run layout**: `scripts/world/ForestRun.gd` is a deterministic graph for one depth layer:
+  a winding spine from entry to exit plus `2 + layer` side branches, so forks and dead ends are
+  guaranteed. Hazard and structure ids are overlays, keeping the structural kinds clean.
+- **One scene, five layers**: `scenes/world/layered_forest.tscn` + `LayeredForest.gd` build
+  ground, path strips, layer-correct mushroom nodes, Spore Blooms, a hut with a one-shot
+  `LootChest`, and the gates. `Game.forest_layer` selects 1-5 and tints the fog per layer.
+- **Travel**: a second town gate ("Descent to The Shallows"), a descent gate at each exit
+  (`target_layer = layer + 1`, absent on 5) and a return gate at each entry. `AreaGate.target_layer`
+  drives `Game.forest_layer`; `Main` maps the layer to a biome and scales enemy HP/damage/XP.
+- Tests: `test_forest_run.gd` (62 assertions, pure data) and `test_layered_forest.gd`
+  (36 assertions, town -> layer 1 -> chest -> layer 2 -> town).
+- Not yet: mini-castle/dungeon structures, per-structure loot tables, enemies placed on paths,
+  and saving the active area (a forest save restores its coordinates in town).
+
 ## Hazards (done)
 - **Spore Bloom** — `scenes/world/spore_bloom.tscn` + `scripts/world/SporeBloom.gd`, model
   `assets/models/hazards/spore_bloom.gltf` (262 tris, Blender-forged by the same pipeline).
@@ -80,6 +95,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
    (unlocks Nighteye), deeper-layer enemies, shop economy depth.
 
 ## Known gaps
+- Area state is not in the save file: a save taken in the layered forest restores those
+  coordinates while the session starts in town.
 - No anti-cheat: peers report their own HP, gold, inventory, position; the server validates shape only.
 - One transport per server instance (ENet XOR WebSocket).
 - Web renderer is Compatibility/WebGL2 — Forward+ is impossible in 4.7.2's web template.
