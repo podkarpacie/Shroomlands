@@ -61,6 +61,10 @@ var _attack_timer := 0.0
 ## Brief hit-stun: knockback velocity is allowed to play out instead of being
 ## overwritten by the chase steering on the next physics tick.
 var _stagger_left := 0.0
+## A light beam or a noisy search it is walking toward, and how long the lead
+## stays interesting. Zero means no investigation.
+var _investigate_left := 0.0
+var _disturbance := Vector3.ZERO
 var _gravity := Vector3.DOWN * 9.8
 var _rng := RandomNumberGenerator.new()
 var _flash_tween: Tween = null
@@ -90,6 +94,7 @@ func _ready() -> void:
 	_rng.randomize()
 	_setup_materials()
 	_respawn_timer.timeout.connect(_on_respawn_timeout)
+	EventBus.disturbance_emitted.connect(_on_disturbance)
 	_pick_wander_target()
 	if not is_multiplayer_authority():
 		# A replicated copy takes its transform from the synchronizer; running
@@ -123,6 +128,17 @@ func _physics_process(delta: float) -> void:
 		state = State.CHASE
 		_face(target.global_position, delta)
 		_steer_toward(target.global_position, move_speed, delta)
+	elif _investigate_left > 0.0:
+		# A lamp beam or a loud search pulled it here even though the player is
+		# outside aggro range.
+		state = State.CHASE
+		_investigate_left -= delta
+		_face(_disturbance, delta)
+		if _flat_distance(_disturbance) < 1.5:
+			_investigate_left = 0.0
+			_brake(delta)
+		else:
+			_steer_toward(_disturbance, move_speed * 0.9, delta)
 	else:
 		state = State.IDLE
 		_wander(delta)
@@ -131,6 +147,25 @@ func _physics_process(delta: float) -> void:
 
 func is_dead() -> bool:
 	return dead
+
+
+## True while a test or tooling would see the creature walking toward a
+## disturbance rather than wandering.
+func is_investigating() -> bool:
+	return _investigate_left > 0.0
+
+
+func investigation_target() -> Vector3:
+	return _disturbance
+
+
+func _on_disturbance(position: Vector3, radius: float) -> void:
+	if dead or not is_multiplayer_authority():
+		return
+	if _flat_distance(position) > radius:
+		return
+	_disturbance = position
+	_investigate_left = 4.0
 
 
 ## Entry point for anything that hurts this creature. A peer that does not own
@@ -178,6 +213,7 @@ func respawn() -> void:
 	global_position = _origin
 	_attack_timer = 0.0
 	_stagger_left = 0.0
+	_investigate_left = 0.0
 	_pick_wander_target()
 	dead = false
 

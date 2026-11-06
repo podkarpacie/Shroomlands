@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **31 test suites / 1668 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **32 test suites / 1701 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -48,6 +48,19 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Horror search (first pass, YAPYAP-style)
+- Night layers: `LayeredForest.is_dark` on 3-5, sun 0.10, low ambient, dim sky, thick fog.
+- **Spore-lamp** (`SporeLamp.gd`): `F` toggles a 22 m spotlight at chest height; 90 s battery,
+  drains while on, recharges while off, flickers under 20%. The lit beam pulses a 16 m
+  disturbance every 1.2 s.
+- **Searchable crates**: three per structure, 1.2 s hold, one species plus `5 + 3*layer` gold,
+  14 m noise, one-shot.
+- **Creatures investigate**: `Enemy` listens for `disturbance_emitted` and walks to it for 4 s
+  from outside its 12 m aggro range, so light and searching are risks.
+- `test_horror_search.gd` (33 assertions) covers night lighting, battery drain/recharge,
+  crate payout/noise, and a distant creature investigating.
+- Not yet: extraction timer/ghost, loot loss on death, a dedicated sound-only stalker.
 
 ## The layered forest (first pass)
 - **Run layout**: `scripts/world/ForestRun.gd` is a deterministic graph for one depth layer:

@@ -18,6 +18,7 @@ extends Node3D
 const MUSHROOM_SCENE := preload("res://scenes/world/mushroom_node.tscn")
 const BLOOM_SCENE := preload("res://scenes/world/spore_bloom.tscn")
 const CHEST_SCENE := preload("res://scenes/world/loot_chest.tscn")
+const CRATE_SCENE := preload("res://scenes/world/searchable_crate.tscn")
 const GATE_SCENE := preload("res://scenes/world/area_gate.tscn")
 const ForestRun := preload("res://scripts/world/ForestRun.gd")
 
@@ -40,7 +41,10 @@ const LAYER_TINTS: Array[Color] = [
 ## Counters for tests and tooling.
 var generated_mushrooms := 0
 var generated_hazards := 0
+var generated_crates := 0
 var structure_id := -1
+## Layers 3-5 are night runs: the sun is down and only the spore-lamp helps.
+var is_dark := false
 
 var _run = null
 var _props: Node3D = null
@@ -252,6 +256,23 @@ func _build_structure(centre: Vector2) -> void:
 	chest.set(&"gold", 10 + layer * 10)
 	hut.add_child(chest)
 
+	# Three searchable crates: quieter than the chest's big reward but each
+	# search is loud enough to pull something in from outside aggro range.
+	var spots: Array[Vector3] = [
+		Vector3(-2.4, 0.2, -2.2), Vector3(2.6, 0.2, -2.4), Vector3(2.2, 0.2, 2.2),
+	]
+	for index in spots.size():
+		var crate := CRATE_SCENE.instantiate() as Node3D
+		crate.name = "Crate%d" % (index + 1)
+		crate.position = spots[index]
+		var crate_loot: Array[String] = []
+		if not species.is_empty():
+			crate_loot.append(species[_rng.randi_range(0, species.size() - 1)])
+		crate.set(&"loot", crate_loot)
+		crate.set(&"gold", 5 + layer * 3)
+		hut.add_child(crate)
+		generated_crates += 1
+
 
 func _add_box(parent: Node3D, size: Vector3, position: Vector3, material: Material) -> void:
 	var mesh := BoxMesh.new()
@@ -315,10 +336,21 @@ func _make_gate(
 
 
 func _tint_environment() -> void:
+	is_dark = layer >= 3
+	var tint := LAYER_TINTS[clampi(layer - 1, 0, LAYER_TINTS.size() - 1)]
 	if _environment != null and _environment.environment != null:
-		var tint := LAYER_TINTS[clampi(layer - 1, 0, LAYER_TINTS.size() - 1)]
-		_environment.environment.fog_light_color = tint
-		_environment.environment.ambient_light_color = tint
-		_environment.environment.fog_density = 0.004 + 0.0015 * layer
+		var environment := _environment.environment
+		environment.ambient_light_color = tint
+		if is_dark:
+			# Night run: a dark sky, almost no ambient, and the fog closes in.
+			environment.ambient_light_energy = 0.26 - 0.05 * (layer - 3)
+			environment.background_energy_multiplier = 0.10
+			environment.fog_light_color = tint.darkened(0.72)
+			environment.fog_density = 0.014 + 0.002 * layer
+		else:
+			environment.ambient_light_energy = 0.9
+			environment.background_energy_multiplier = 1.0
+			environment.fog_light_color = tint
+			environment.fog_density = 0.004 + 0.0015 * layer
 	if _sun != null:
-		_sun.light_energy = 1.25 - 0.07 * layer
+		_sun.light_energy = 0.10 if is_dark else 1.25 - 0.07 * layer

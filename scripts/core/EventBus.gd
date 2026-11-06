@@ -41,6 +41,11 @@ signal chat_message_received(sender: String, text: String, channel: String)
 signal player_died
 signal player_respawned
 
+# Horror search
+## A noise or a light beam the creatures can notice. `radius` is the flat
+## distance at which it can draw attention; a lamp pulses this while it is on.
+signal disturbance_emitted(position: Vector3, radius: float)
+
 # Plots & building
 signal plot_purchased(plot_id: int)
 signal plot_expired(plot_id: int)
