@@ -30,6 +30,7 @@ var _party: Node = null
 var _bus: Node = null
 var _game: Node = null
 var _disturbances := 0
+var _max_radius := 0.0
 
 
 func _initialize() -> void:
@@ -97,16 +98,36 @@ func _host() -> void:
 	var forest := await _wait_until(
 		func() -> bool: return _world_path() == FOREST_PATH, WAIT_STEP
 	)
-	var heard := await _wait_until(func() -> bool: return _disturbances > 0, WAIT_STEP)
+	# The client searches Crate1; the server owns the open state and the loot.
+	var crate := await _wait_until(
+		func() -> bool:
+			var world := _main.get_node_or_null("World")
+			var node := world.find_child("Crate1", true, false) if world != null else null
+			return node != null and bool(node.get(&"opened")),
+		WAIT_STEP
+	)
+	var world := _main.get_node_or_null("World")
+	if world != null and (world as Node3D).scene_file_path == FOREST_PATH:
+		world.call(&"expire_run")
+	var blight := await _wait_until(
+		func() -> bool:
+			var current := _main.get_node_or_null("World")
+			return current != null and current.find_child("Blight", true, false) != null,
+		WAIT_STEP
+	)
+	# A 22 m shout proves the client's voice reached the server; the crate's own
+	# noise is only 14 m.
+	var heard := await _wait_until(func() -> bool: return _max_radius >= 20.0, WAIT_STEP)
 	var town := await _wait_until(
 		func() -> bool: return _world_path() == TOWN_PATH, WAIT_STEP
 	)
 	var hud := _leader_hud_text()
-	var ok := two and leader and forest and heard and town
+	var ok := two and leader and forest and crate and blight and heard and town
 	print(
-		"HORROR_HOST ok=%d players=%d leader=%d forest=%d heard=%d town=%d hud=%s" % [
+		"HORROR_HOST ok=%d players=%d leader=%d forest=%d crate=%d blight=%d heard=%d max=%.0f town=%d hud=%s" % [
 			1 if ok else 0, _player_count(), int(_party.get(&"leader_id")),
-			1 if forest else 0, 1 if heard else 0, 1 if town else 0, hud
+			1 if forest else 0, 1 if crate else 0, 1 if blight else 0,
+			1 if heard else 0, _max_radius, 1 if town else 0, hud
 		]
 	)
 	quit(0 if ok else 1)
@@ -139,29 +160,57 @@ func _client() -> void:
 	var forest := await _wait_until(
 		func() -> bool: return _world_path() == FOREST_PATH, WAIT_STEP
 	)
-	# Let the server receive this body's forest spawn before the return request.
+	# Let the server receive this body's forest spawn before the search.
 	await _wait(40)
+
+	# Search Crate1: the server validates proximity, pays the loot to this owner
+	# and broadcasts the opened state.
+	var crate_opened := false
+	var loot_received := false
+	var forest_world := _main.get_node_or_null("World") as Node3D
+	var crate := forest_world.find_child("Crate1", true, false) if forest_world != null else null
+	if crate != null and player != null:
+		var crate_3d := crate as Node3D
+		player.global_position = crate_3d.global_position + Vector3(1.5, 1.2, 0.0)
+		await _wait(40)
+		crate.call(&"interact", player)
+		await _wait(110)
+		crate_opened = bool(crate.get(&"opened"))
+		loot_received = _inventory_total(player) > 0
+
 	if player != null:
 		var voice := player.get_node_or_null("VoiceInput")
 		if voice != null:
 			voice.call(&"push_voice", 0.9)
 	await _wait(20)
 
-	var forest_world := _main.get_node_or_null("World") as Node3D
-	var back := forest_world.get_node_or_null("ReturnGate") if forest_world != null else null
+	var blight := await _wait_until(
+		func() -> bool:
+			var current := _main.get_node_or_null("World")
+			return current != null and current.find_child("Blight", true, false) != null,
+		WAIT_STEP
+	)
 
+	forest_world = _main.get_node_or_null("World") as Node3D
+	var back := forest_world.get_node_or_null("ReturnGate") if forest_world != null else null
 	var returned := false
-	if back != null:
+	if back != null and player != null:
+		# Stand at the gate so the leader rule passes on both peers.
+		player.global_position = (back as Node3D).global_position + Vector3(0.0, 1.2, -3.0)
+		await _wait(30)
 		back.call(&"interact", player)
 		returned = await _wait_until(
 			func() -> bool: return _world_path() == TOWN_PATH, WAIT_STEP
 		)
-	var ok := two and leader and local_leader and lamp_on and forest and returned
+	var ok := two and leader and local_leader and lamp_on and forest \
+		and crate_opened and loot_received and blight and returned
 	print(
-		"HORROR_CLIENT ok=%d players=%d leader=%d local_leader=%d lamp=%d forest=%d town=%d hud=%s" % [
+		"HORROR_CLIENT ok=%d players=%d leader=%d local_leader=%d lamp=%d forest=%d crate=%d loot=%d blight=%d town=%d hud=%s" % [
 			1 if ok else 0, _player_count(), int(_party.get(&"leader_id")),
 			1 if local_leader else 0, 1 if lamp_on else 0,
-			1 if forest else 0, 1 if returned else 0, hud
+			1 if forest else 0, 1 if crate_opened else 0,
+			1 if loot_received else 0, 1 if blight else 0,
+			1 if returned else 0, hud
 		]
 	)
 	quit(0 if ok else 1)
@@ -181,6 +230,16 @@ func _other_peer() -> int:
 	return 0
 
 
+func _inventory_total(player: Node) -> int:
+	var inventory := player.get_node_or_null("InventorySystem")
+	if inventory == null:
+		return 0
+	var total := 0
+	for slot: Dictionary in inventory.get(&"slots"):
+		total += int(slot.get("count", 0))
+	return total
+
+
 func _player_count() -> int:
 	var players := _main.get_node_or_null("Players")
 	return players.get_child_count() if players != null else 0
@@ -191,8 +250,9 @@ func _world_path() -> String:
 	return world.scene_file_path if world != null else ""
 
 
-func _on_disturbance(_position: Vector3, _radius: float) -> void:
+func _on_disturbance(_position: Vector3, radius: float) -> void:
 	_disturbances += 1
+	_max_radius = maxf(_max_radius, radius)
 
 
 func _wait(frames: int) -> void:

@@ -79,6 +79,7 @@ var _roster_timer: Timer = null
 
 
 func _ready() -> void:
+	Game.area_path = _world.scene_file_path if _world != null else ""
 	_player_spawner.spawn_function = _make_player
 	_enemy_spawner.spawn_function = _make_enemy
 	match Network.mode:
@@ -238,6 +239,7 @@ func _swap_area(path: String, requested_layer := -1) -> bool:
 	# Keep the world before the CanvasLayers, exactly where main.tscn had it.
 	move_child(world, 0)
 	_world = world
+	Game.area_path = path
 	_move_local_player_to(_area_spawn_point(world))
 	# The HUD caption follows the area scene's own label, so a renamed or new
 	# area needs no change in the UI layer.
@@ -303,11 +305,46 @@ func _restore_offline_save() -> void:
 		return
 	if not SaveSystem.load_now():
 		return
+	# The save may name a forest layer; swap there before re-applying the stored
+	# position, which is relative to that area.
+	var saved_position := _player.global_position
+	var saved_area := Game.area_path
+	var saved_layer := Game.forest_layer
+	if ALLOWED_AREAS.has(saved_area) and saved_area != _world.scene_file_path:
+		_swap_area(saved_area, saved_layer)
+		_player.global_position = saved_position
 	_clamp_player_position()
 
 
 ## A stored position can be stale or hand-edited; keep the body inside the
 ## playable ground instead of dropping it through the floor.
+## Peer id -> body, for server-side validation of a client's request.
+func get_player_for_peer(peer_id: int) -> Node3D:
+	return _peer_player(peer_id)
+
+
+## Server -> owner: pay out a crate's contents on the peer that searched it.
+func send_loot(peer_id: int, items: Array, gold: int) -> void:
+	if Network.mode != Network.SERVER or peer_id <= 1:
+		return
+	grant_loot.rpc_id(peer_id, items, gold)
+
+
+@rpc("authority", "call_remote", "reliable")
+func grant_loot(items: Array, gold: int) -> void:
+	var player := Game.get_local_player()
+	if player == null:
+		return
+	var inventory := player.get_node_or_null("InventorySystem")
+	var given := 0
+	for id: Variant in items:
+		if id is String and inventory != null:
+			given += int(inventory.call(&"add_item", StringName(id), 1))
+	if gold > 0:
+		Game.add_run_gold(gold)
+	EventBus.toast_requested.emit("Crate: %d item(s), %d gold" % [given, gold])
+
+
 func _clamp_player_position() -> void:
 	if _player == null:
 		return

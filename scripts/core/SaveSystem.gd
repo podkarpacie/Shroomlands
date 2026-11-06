@@ -109,6 +109,8 @@ func collect_state() -> Dictionary:
 		"gold": Game.gold,
 		"discovered_mushrooms": Game.discovered_mushrooms.duplicate(),
 		"vocation": String(Game.chosen_vocation),
+		"area": Game.area_path,
+		"forest_layer": Game.forest_layer,
 		"position": [0.0, 0.0, 0.0],
 		"inventory": {},
 		"saved_at": _timestamp(),
@@ -158,6 +160,11 @@ func apply_state(data: Dictionary) -> void:
 			Game.chosen_vocation = &""
 		elif Lore.VOCATIONS.has(vocation):
 			Game.chosen_vocation = StringName(vocation)
+
+	var saved_area: Variant = data.get("area")
+	if saved_area is String:
+		Game.area_path = saved_area
+	Game.forest_layer = clampi(_as_int(data.get("forest_layer"), Game.forest_layer), 0, 5)
 
 	var player := Game.get_local_player()
 	if player == null:

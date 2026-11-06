@@ -53,6 +53,8 @@ var is_dark := false
 var time_left := -1.0
 var _notify_left := 0.0
 var _blight_spawned := false
+var _blight_holder: Node3D = null
+var _blight_spawner: MultiplayerSpawner = null
 
 var _run = null
 var _props: Node3D = null
@@ -82,6 +84,7 @@ func _ready() -> void:
 	_build_spawn()
 	_build_gates()
 	_tint_environment()
+	_setup_blight_spawner()
 	_start_run()
 
 
@@ -124,9 +127,41 @@ func expire_run() -> void:
 	_blight_spawned = true
 	time_left = 0.0
 	EventBus.run_timer_changed.emit(0.0)
+	var body := Game.get_local_player() as Node3D
+	var origin := Vector3(0.0, 0.0, 0.0)
+	if body != null:
+		var back := body.global_transform.basis.z
+		back.y = 0.0
+		origin = body.global_position + back.normalized() * 18.0
+	if Network.mode == Network.OFFLINE or _blight_spawner == null:
+		_blight_holder.add_child(_make_blight(origin))
+	else:
+		# The spawner calls `_make_blight` on the server and on every client.
+		_blight_spawner.spawn(origin)
+	EventBus.toast_requested.emit("The Blight has found you - reach the gate!")
+	EventBus.run_expired.emit()
+
+
+## One spawner for the whole layer; it replicates the Blight to every peer so a
+## client sees the same hunter the server's AI drives.
+func _setup_blight_spawner() -> void:
+	_blight_holder = Node3D.new()
+	_blight_holder.name = "BlightHolder"
+	add_child(_blight_holder)
+	_blight_spawner = MultiplayerSpawner.new()
+	_blight_spawner.name = "BlightSpawner"
+	_blight_spawner.spawn_path = NodePath("../BlightHolder")
+	_blight_spawner.spawn_limit = 1
+	_blight_spawner.spawn_function = _make_blight
+	add_child(_blight_spawner)
+
+
+## Spawn function shared by server and clients. It must be deterministic: the
+## only data on the wire is the origin.
+func _make_blight(data: Variant) -> Node:
 	var blight := ENEMY_SCENE.instantiate() as Node3D
 	if blight == null:
-		return
+		return null
 	blight.name = "Blight"
 	# Faster than the player, sees the whole layer, hits like a truck and has
 	# effectively infinite HP and no respawn: this is the YAPYAP ghost, not a
@@ -138,17 +173,11 @@ func expire_run() -> void:
 	blight.set(&"attack_cooldown", 0.8)
 	blight.set(&"xp_reward", 0)
 	blight.set(&"respawn_seconds", 99999.0)
-	var body := Game.get_local_player() as Node3D
-	var origin := Vector3(0.0, 0.0, 0.0)
-	if body != null:
-		var back := body.global_transform.basis.z
-		back.y = 0.0
-		origin = body.global_position + back.normalized() * 18.0
-	blight.position = origin
-	add_child(blight)
+	if data is Vector3:
+		blight.position = data
 	blight.scale = Vector3(1.45, 1.45, 1.45)
-	EventBus.toast_requested.emit("The Blight has found you - reach the gate!")
-	EventBus.run_expired.emit()
+	blight.set_multiplayer_authority(1)
+	return blight
 
 
 func _exit_tree() -> void:

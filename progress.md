@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **35 test suites / 1779 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **36 test suites / 1793 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -73,7 +73,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - Proven by `tests/run_horror_net_test.sh` + `tests/horror_net_harness.gd` (two processes over
   ENet): both peers reach the forest and return to town, the client is replicated as leader, its
   lamp works, its voice is heard on the host, and the HUD marker matches.
-- Still peer-local: crate loot and the Blight instance are not replicated.
+- Crate loot and the Blight are server-authoritative: the server validates/opens/pays a crate,
+  and the Blight spawns via a MultiplayerSpawner on every peer.
 
 ## Extraction pressure (YAPYAP ghost)
 - Every forest layer starts a 180 s run clock; the HUD `RunLabel` counts down and turns red in
@@ -153,8 +154,10 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Group play: server-authoritative forest travel, replicated leader, networked voice
 - [x] Extraction timer and an inescapable "Blight" if the party overstays
 - [x] Carried loot can be lost (death stakes), with a quota and results screen
+- [x] Crate loot and the Blight replicated through the server
+- [x] Active area (path + forest_layer) persisted and restored from saves
 - [ ] Leader handoff UI and a party HUD marker
-- [ ] Structure variety (mini-castle / dungeon) and area persistence in saves
+- [ ] Structure variety (mini-castle / dungeon)
 
 ## Next (the design the user described)
 1. ~~**The town**~~ — done, see "The town hub" above.
@@ -165,8 +168,8 @@ into a layered RNG mushroom forest for better loot and worse enemies.
    (unlocks Nighteye), deeper-layer enemies, shop economy depth.
 
 ## Known gaps
-- Area state is not in the save file: a save taken in the layered forest restores those
-  coordinates while the session starts in town.
+- Leader handoff has no UI: peer 1 starts as leader and the server can set another peer, but
+  there is no in-game "pass the lamp" control yet.
 - No anti-cheat: peers report their own HP, gold, inventory, position; the server validates shape only.
 - One transport per server instance (ENet XOR WebSocket).
 - Web renderer is Compatibility/WebGL2 — Forward+ is impossible in 4.7.2's web template.

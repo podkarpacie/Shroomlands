@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 35 headless test suites, **1779 assertions**, all green - including a run with a
+- 36 headless test suites, **1793 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -37,10 +37,11 @@ and Windows/Web exports.
 | **G. UI** | Done | Themed HUD (vitals, biome, progression, icon hotbar, damage numbers), satchel, chat, build palette, vocation picker, lobby, pause menu |
 | Pause menu | Done | Esc opens Resume / Settings / Controls / Players / Quit to Menu / Quit Game. Settings are the lobby's (`settings.cfg`, same ranges and defaults), Controls is generated from `InputMap` at runtime, Players mirrors `Main.get_roster()`. Pauses the SceneTree only OFFLINE; a networked peer keeps simulating and shows "Paused (local)". Escape closes chat, satchel or build mode first, and never opens the menu on top of them |
 | **H. World** | Done (one biome) | Verdant Bloom placeholder terrain, mushroom nodes, decorative props, plot row, four enemy spawns |
-| **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, position, HP/stamina, inventory. Plots live server-side |
+| **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, active area + forest layer, position, HP/stamina, inventory. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
 | Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
-| Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, a hut with a one-shot loot chest, descent/return gates, and enemies scaled by depth. Structure variety and area persistence are still to come |
+| Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, a hut with a one-shot loot chest, descent/return gates, and enemies scaled by depth. Structure variety is still to come |
+| Server-authoritative run props | Done | Crate searches are validated by the server, opened on every peer and paid to the searching owner; the Blight spawns through a `MultiplayerSpawner` so all peers see the hunter |
 | Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and dying in the forest costs half of every carried stack |
 | Extraction pressure | First pass | A 180 s run clock per layer with a HUD countdown; at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
 | Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the replicated party leader can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
@@ -95,15 +96,16 @@ foreach ($suite in $suites) {
 }
 ```
 
-Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat` 47,
-`test_consumables` 36, `test_effects` 40, `test_forest_run` 62, `test_fp_camera` 52,
+Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_audio` 78,
+`test_chat` 24, `test_combat` 47, `test_consumables` 36, `test_effects` 40,
+`test_forest_run` 62, `test_fp_camera` 52,
 `test_gathering` 38, `test_holding` 26, `test_horror_search` 33, `test_inventory` 31,
 `test_isolation` 22, `test_layered_forest` 36, `test_limbs` 15, `test_lobby` 98,
 `test_lore` 322, `test_models` 41, `test_movement` 30, `test_movement_block` 15,
 `test_network` 41, `test_pause` 76, `test_player` 20, `test_plots` 86, `test_rig` 48,
 `test_run_goal` 37, `test_run_timer` 20, `test_save` 58, `test_shop` 29,
 `test_spore_bloom` 22, `test_sync` 68, `test_town` 51, `test_ui` 60, `test_vocation` 70,
-`test_voice_and_leader` 21 - **1779 assertions**.
+`test_voice_and_leader` 21 - **1793 assertions**.
 
 ### Continuous integration
 
@@ -112,9 +114,9 @@ Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-35 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+36 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1779). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1793). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -234,7 +236,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   35 headless suites, net_harness, capture_frame, network proofs
+tests/                   36 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -499,9 +501,8 @@ back on for tools and tests.
     smoke runs cover two clients.
 12. **Web build is single-threaded** (nothreads variant, no GDExtension). It boots and
     renders, but expect lower performance than desktop.
-13. **Some run props are still peer-local.** Area travel, leadership and voice now go through
-    the server, but a searched crate's loot is applied by the searching peer and the Blight is
-    spawned on the server only; neither is replicated yet.
+13. **Leader handoff has no UI.** Peer 1 starts as leader and the server can set another peer,
+    but there is no in-game "pass the lamp" control yet.
 14. **Two potions have effects nothing applies.** Armour Patch (`repair_armor`) and Nighteye
     Draught (`vision +1.0`) stay in `Lore.POTIONS` and show in the shop and alchemy panels, but
     there is no armour system and no darkness to see through. Their rows carry a

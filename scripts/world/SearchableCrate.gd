@@ -60,19 +60,61 @@ func _process(delta: float) -> void:
 
 
 func _complete() -> void:
-	searching = false
-	opened = true
-	var inventory := _searcher.get_node_or_null("InventorySystem")
+	if Network.mode == Network.CLIENT:
+		# The server owns the contents and the opened state.
+		searching = false
+		_searcher = null
+		request_open.rpc_id(1)
+		return
+	_apply_opened()
+	_grant_local()
+	if Network.mode == Network.SERVER:
+		apply_opened.rpc()
+	Network.report_disturbance(global_position, noise_radius)
+
+
+## Server-side grant to its own player (offline or the host searched).
+func _grant_local() -> void:
+	var body := Game.get_local_player()
+	var inventory := body.get_node_or_null("InventorySystem") if body != null else null
 	var given := 0
 	for id: String in loot:
 		if inventory != null:
 			given += int(inventory.call(&"add_item", StringName(id), 1))
 	if gold > 0:
 		Game.add_run_gold(gold)
-	Network.report_disturbance(global_position, noise_radius)
 	EventBus.toast_requested.emit("Crate: %d item(s), %d gold" % [given, gold])
-	_open_lid()
+
+
+## Client -> server. The server checks the sender is actually at this crate
+## before paying out, then broadcasts the opened state.
+@rpc("any_peer", "call_remote", "reliable")
+func request_open() -> void:
+	if Network.mode != Network.SERVER or opened:
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	var main := get_tree().get_first_node_in_group(&"main")
+	if main == null or not main.has_method(&"get_player_for_peer"):
+		return
+	var body := main.call(&"get_player_for_peer", sender) as Node3D
+	if body == null or _flat_distance(body.global_position) > cancel_range + 1.0:
+		return
+	_apply_opened()
+	apply_opened.rpc()
+	main.call(&"send_loot", sender, loot, gold)
+	Network.report_disturbance(global_position, noise_radius)
+
+
+@rpc("authority", "call_remote", "reliable")
+func apply_opened() -> void:
+	_apply_opened()
+
+
+func _apply_opened() -> void:
+	searching = false
+	opened = true
 	_searcher = null
+	_open_lid()
 
 
 func _cancel() -> void:

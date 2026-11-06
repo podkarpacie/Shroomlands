@@ -81,7 +81,7 @@ func _run() -> void:
 	forest.call(&"expire_run")
 	await _wait(4)
 	_check("expiry fires once", _expired == before + 1)
-	var blight := forest.get_node_or_null("Blight") as Node3D
+	var blight := forest.find_child("Blight", true, false) as Node3D
 	_check("the Blight exists", blight != null)
 	if blight != null:
 		_check("the Blight joins the enemy group", blight.is_in_group(&"enemy"))
@@ -94,10 +94,7 @@ func _run() -> void:
 
 	forest.call(&"expire_run")
 	await _wait(3)
-	var blights := 0
-	for child in forest.get_children():
-		if String(child.name) == "Blight":
-			blights += 1
+	var blights := forest.find_children("Blight", "", true, false).size()
 	_check("the Blight is released only once (%d)" % blights, blights == 1)
 
 	# --- leaving stops the clock ------------------------------------------

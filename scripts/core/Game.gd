@@ -22,6 +22,8 @@ var current_biome: StringName = &"verdant_bloom"
 ## The descent gate sets it before `Main.enter_area`, so the new area and its
 ## enemy roster read the same value.
 var forest_layer: int = 0
+## Scene path of the active area; saved/restored so a forest save reopens there.
+var area_path := ""
 ## XP gathered before PlayerStats exists (main menu, save load). PlayerStats
 ## drains this on spawn.
 var pending_xp: int = 0
@@ -198,6 +200,8 @@ func reset_session() -> void:
 	discovered_mushrooms.clear()
 	chosen_vocation = &""
 	current_biome = &"verdant_bloom"
+	forest_layer = 0
+	area_path = ""
 	pending_xp = 0
 	EventBus.gold_changed.emit(gold)
 
