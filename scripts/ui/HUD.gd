@@ -44,6 +44,7 @@ const BUFF_ROW_WIDTH := 310.0
 @onready var _gold_label: Label = $Root/Progression/GoldLabel
 @onready var _run_label: Label = $Root/Progression/RunLabel
 @onready var _leader_label: Label = $Root/Progression/LeaderLabel
+@onready var _quota_label: Label = $Root/Progression/QuotaLabel
 @onready var _vocation_button: Button = $Root/Progression/VocationButton
 @onready var _crosshair: Control = $Root/Crosshair
 @onready var _prompt_label: Label = $Root/InteractionPrompt
@@ -112,6 +113,7 @@ func _process(delta: float) -> void:
 		_damage_flash.modulate = tint
 	_update_mic()
 	_update_leader()
+	_update_quota()
 	_plot_status_left = maxf(_plot_status_left - delta, 0.0)
 	if _plot_status_left <= 0.0:
 		_plot_status_left = PLOT_STATUS_INTERVAL
@@ -857,6 +859,20 @@ func _on_plot_changed(_plot_id: int) -> void:
 
 
 ## Compact plot line, shown only while the player stands on one of the plots.
+## Expedition goal: loot value gathered this run against the layer quota.
+func _update_quota() -> void:
+	if _quota_label == null:
+		return
+	if Game.forest_layer <= 0 or Game.run_quota <= 0:
+		_quota_label.text = ""
+		return
+	_quota_label.text = "LOOT  %d / %d g" % [Game.run_gold, Game.run_quota]
+	_quota_label.modulate = (
+		Color(0.72, 1.0, 0.72) if Game.run_gold >= Game.run_quota
+		else Color(0.92, 0.95, 0.88)
+	)
+
+
 ## One player carries the lamp; the HUD says whether that is you.
 func _update_leader() -> void:
 	if _leader_label == null:
@@ -905,7 +921,8 @@ func _update_mic() -> void:
 func _refresh_plot_status() -> void:
 	var system := _plot_system()
 	_bind_player()
-	if system == null or _player == null or not is_instance_valid(_player):
+	if system == null or _player == null or not is_instance_valid(_player) \
+			or not _player.is_inside_tree():
 		_set_plot_status("")
 		return
 	var plot_id := int(system.call(&"plot_at", (_player as Node3D).global_position))

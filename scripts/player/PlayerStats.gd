@@ -412,8 +412,33 @@ func die() -> void:
 	# respawn bar is the real base pool.
 	_clear_effects()
 	EventBus.hp_changed.emit(hp, max_hp)
+	if Game.forest_layer > 0:
+		_drop_run_loot()
 	EventBus.player_died.emit()
 	# TODO(phase-6): death UI listens on player_died; respawn() is called from it.
+
+
+## Death in a run costs half of every carried stack. The player keeps their
+## equipped weapon and purse: this is a loot stake, not a full wipe, so a bad
+## run still leaves the expedition worth finishing.
+func _drop_run_loot() -> void:
+	var inventory := get_parent().get_node_or_null("InventorySystem")
+	Game.note_run_death()
+	if inventory == null:
+		return
+	var totals := {}
+	for slot: Dictionary in inventory.get(&"slots"):
+		if slot.is_empty():
+			continue
+		var id := StringName(slot.get("id", &""))
+		totals[id] = int(totals.get(id, 0)) + int(slot.get("count", 0))
+	var lost := 0
+	for id: StringName in totals:
+		var drop := int(int(totals[id]) / 2)
+		if drop > 0:
+			lost += int(inventory.call(&"remove_item", id, drop))
+	if lost > 0:
+		EventBus.toast_requested.emit("%d item(s) fall to the mycelium" % lost)
 
 
 func respawn() -> void:

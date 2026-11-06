@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **34 test suites / 1742 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **35 test suites / 1779 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -48,6 +48,19 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Run goal, death stakes and summary
+- Each forest layer starts a quota: `run_quota = 40 + 20*layer` gold of loot value.
+  Chests/crates add through `Game.add_run_gold`; mushrooms add their shop value. The HUD
+  shows `LOOT X / Y g`.
+- Dying in the forest costs half of every carried stack (`PlayerStats._drop_run_loot`) and
+  increments the run's death count. The purse and weapon survive, so a bad run is painful
+  but not a wipe.
+- Leaving for town calls `Game.finish_run`: `last_run` stores layer/loot/quota/met/bonus/
+  mushrooms/deaths/time, meeting the quota pays a 50% bonus, and the `RunSummary` panel
+  shows the result with a Continue button.
+- `test_run_goal.gd` (37 assertions) covers quota sources, the HUD, death loss, a met run
+  with bonus, and an empty run reported as `QUOTA MISSED`.
 
 ## Multiplayer horror run (server-authoritative)
 - **Area travel**: `Main.enter_area(path, layer)` is server-authoritative. A client requests, the
@@ -139,7 +152,7 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Dark layers, searchable crates, light/noise aggro, extraction gates
 - [x] Group play: server-authoritative forest travel, replicated leader, networked voice
 - [x] Extraction timer and an inescapable "Blight" if the party overstays
-- [ ] Carried loot can be lost (death/extraction stakes)
+- [x] Carried loot can be lost (death stakes), with a quota and results screen
 - [ ] Leader handoff UI and a party HUD marker
 - [ ] Structure variety (mini-castle / dungeon) and area persistence in saves
 

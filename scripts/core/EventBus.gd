@@ -47,6 +47,8 @@ signal player_respawned
 signal disturbance_emitted(position: Vector3, radius: float)
 
 # Horror run
+## Emitted when the party leaves a forest layer; `summary` is Game.last_run.
+signal run_finished(summary: Dictionary)
 ## Seconds left in the forest run, or -1 when no run is active.
 signal run_timer_changed(seconds_left: float)
 ## Emitted once when the timer reaches zero and the Blight is released.

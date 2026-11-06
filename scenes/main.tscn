@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/core/Main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/world/town.tscn" id="2_world"]
@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/alchemy.tscn" id="11_alchemy"]
 [ext_resource type="PackedScene" path="res://scenes/ui/repair.tscn" id="12_repair"]
 [ext_resource type="PackedScene" path="res://scenes/ui/plot_board.tscn" id="13_board"]
+[ext_resource type="PackedScene" path="res://scenes/ui/run_summary.tscn" id="14_run"]
 
 [node name="Main" type="Node3D" groups=["main"]]
 script = ExtResource("1_main")
@@ -53,3 +54,5 @@ script = ExtResource("6_plots")
 [node name="RepairUI" parent="." instance=ExtResource("12_repair")]
 
 [node name="PlotBoardUI" parent="." instance=ExtResource("13_board")]
+
+[node name="RunSummary" parent="." instance=ExtResource("14_run")]

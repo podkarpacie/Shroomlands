@@ -10,6 +10,9 @@ const INVENTORY_COLS := 6
 const INVENTORY_ROWS := 8
 const PLOT_DAILY_FEE := 10
 const PLOT_EXPIRY_DAYS := 3
+## Expedition goal: loot value needed to "make quota" on a layer.
+const RUN_BASE_QUOTA := 40
+const RUN_QUOTA_PER_LAYER := 20
 
 var gold: int = STARTING_GOLD
 var discovered_mushrooms: Dictionary = {}
@@ -22,6 +25,16 @@ var forest_layer: int = 0
 ## XP gathered before PlayerStats exists (main menu, save load). PlayerStats
 ## drains this on spawn.
 var pending_xp: int = 0
+## Current expedition (one forest layer). `run_gold` is the loot value gathered
+## this run, which is what the quota and the summary screen measure.
+var run_layer := 0
+var run_gold := 0
+var run_quota := 0
+var run_mushrooms := 0
+var run_deaths := 0
+var run_started_msec := 0
+## Last finished expedition, read by the summary UI and tests.
+var last_run: Dictionary = {}
 
 
 func _ready() -> void:
@@ -31,6 +44,7 @@ func _ready() -> void:
 	EventBus.gold_changed.connect(_report_progress.unbind(1))
 	EventBus.species_discovered.connect(_report_progress.unbind(1))
 	EventBus.vocation_chosen.connect(_report_progress.unbind(1))
+	EventBus.mushroom_gathered.connect(_on_mushroom_gathered)
 
 
 func _report_progress() -> void:
@@ -40,6 +54,67 @@ func _report_progress() -> void:
 	if main == null or not main.has_method(&"report_own_progress"):
 		return
 	main.call(&"report_own_progress", gold, discovered_mushrooms.keys(), String(chosen_vocation))
+
+
+## Starts (or restarts) the expedition clock and quota when a forest layer loads.
+func start_run(layer: int) -> void:
+	run_layer = clampi(layer, 1, 5)
+	run_gold = 0
+	run_quota = RUN_BASE_QUOTA + RUN_QUOTA_PER_LAYER * run_layer
+	run_mushrooms = 0
+	run_deaths = 0
+	run_started_msec = Time.get_ticks_msec()
+
+
+## Gold found in a chest/crate. Always pays the purse; in a run it also counts
+## toward the quota.
+func add_run_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	add_gold(amount)
+	if forest_layer > 0:
+		run_gold += amount
+
+
+## Mushrooms count toward the quota at their shop value, so a careful forager
+## can make quota without finding every chest.
+func add_run_mushrooms(id: String, count: int) -> void:
+	if forest_layer <= 0 or count <= 0:
+		return
+	run_mushrooms += count
+	var rarity := str(Lore.get_mushroom(id).get("rarity", ""))
+	run_gold += Lore.mushroom_value(rarity) * count
+
+
+func note_run_death() -> void:
+	if forest_layer > 0:
+		run_deaths += 1
+
+
+## Closes the expedition, stores/returns the summary and notifies the UI.
+func finish_run() -> Dictionary:
+	var met := run_gold >= run_quota and run_quota > 0
+	var bonus := int(run_quota / 2) if met else 0
+	var summary := {
+		"layer": run_layer,
+		"name": str(Lore.DEPTH_LAYERS.get(str(run_layer), {}).get("name", "The Forest")),
+		"gold": run_gold,
+		"quota": run_quota,
+		"met": met,
+		"bonus": bonus,
+		"mushrooms": run_mushrooms,
+		"deaths": run_deaths,
+		"seconds": maxf((Time.get_ticks_msec() - run_started_msec) / 1000.0, 0.0),
+	}
+	if bonus > 0:
+		add_gold(bonus)
+	last_run = summary
+	EventBus.run_finished.emit(summary)
+	return summary
+
+
+func _on_mushroom_gathered(id: String, count: int) -> void:
+	add_run_mushrooms(id, count)
 
 
 ## XP needed to advance from `level` to `level + 1`; monotonic by construction.

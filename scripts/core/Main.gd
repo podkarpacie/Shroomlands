@@ -221,6 +221,12 @@ func _swap_area(path: String, requested_layer := -1) -> bool:
 		Game.current_biome = &"verdant_bloom"
 
 	var previous := _world
+	var was_forest := previous != null and previous.scene_file_path == LAYERED_FOREST_PATH
+	if path == LAYERED_FOREST_PATH:
+		Game.start_run(layer)
+	elif was_forest:
+		# Leaving the forest closes the expedition; the summary panel listens.
+		Game.finish_run()
 	if previous != null and is_instance_valid(previous):
 		# Remove it now so the new marker is the only `PlayerSpawn` in the tree
 		# (PlayerStats resolves respawns by name) and so a stale world cannot

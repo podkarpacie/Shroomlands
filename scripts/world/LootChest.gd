@@ -31,7 +31,7 @@ func interact(player: Node) -> void:
 		if inventory != null:
 			given += int(inventory.call(&"add_item", StringName(id), 1))
 	if gold > 0:
-		Game.add_gold(gold)
+		Game.add_run_gold(gold)
 	EventBus.toast_requested.emit("Chest: %d item(s), %d gold" % [given, gold])
 	_open_lid()
 
