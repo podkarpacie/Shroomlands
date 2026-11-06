@@ -50,7 +50,7 @@ func _run() -> void:
 	_check("Stats exposes apply_effect", stats.has_method(&"apply_effect"))
 
 	# --- an empty slot is not a snack ---------------------------------------
-	_check("use_slot on an empty slot returns false", not bool(inventory.call(&"use_slot", 0)))
+	_check("use_slot on an empty slot returns false", not bool(inventory.call(&"use_slot", 47)))
 	_check("use_slot ignores an out-of-range index", not bool(inventory.call(&"use_slot", -1)))
 	_check("use_slot ignores a past-the-end index", not bool(inventory.call(&"use_slot", 48)))
 

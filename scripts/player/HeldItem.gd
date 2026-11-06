@@ -118,6 +118,10 @@ func _refresh() -> void:
 		return
 	var slot: Dictionary = _inventory.call(&"get_slot", _selected)
 	var id := StringName(slot.get("id", &"")) if int(slot.get("count", 0)) > 0 else &""
+	# A weapon lives in the right hand; the left-hand `held_item` stays empty so
+	# the draw/holster one-shots do not fire for the club.
+	if bool(Lore.call(&"is_weapon", String(id))):
+		id = &""
 	_player.set(&"held_item", id)
 
 
@@ -180,6 +184,9 @@ func _visual_for(id: StringName) -> Node3D:
 ## The raw model for an id: the species glTF when it exists, otherwise the
 ## tinted bottle `ItemVisuals` builds for a potion. Null for anything else.
 func _build_source(id: StringName) -> Node3D:
+	# The weapon lives in the right hand (`SwingWeapon`); a club is not a prop.
+	if bool(Lore.call(&"is_weapon", String(id))):
+		return null
 	var path := "%s%s.gltf" % [MODEL_DIR, id]
 	if ResourceLoader.exists(path):
 		var packed := load(path) as PackedScene

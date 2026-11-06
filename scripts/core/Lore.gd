@@ -414,6 +414,19 @@ const DEPTH_LAYERS := {
 	},
 }
 
+## Equippable weapons. `damage`/`heavy_damage` are the base melee values; the
+## club is the starting weapon and can be unequipped or dropped like any item.
+const WEAPONS := {
+	"mycelium_club": {
+		"id": "mycelium_club",
+		"name": "Mycelium Club",
+		"description": "A knotted club of hardened mycelium. One good swing, or a slower heavy blow.",
+		"damage": 12.0,
+		"heavy_damage": 22.0,
+		"max_condition": 100,
+	},
+}
+
 const RESOURCES := {
 	"mycelium_fiber": {
 		"id": "mycelium_fiber",
@@ -589,6 +602,14 @@ func is_potion(id: String) -> bool:
 	return POTIONS.has(id)
 
 
+func is_weapon(id: String) -> bool:
+	return WEAPONS.has(id)
+
+
+func get_weapon(id: String) -> Dictionary:
+	return WEAPONS.get(id, {})
+
+
 ## Mushroom ids that grow in a depth layer, ordered by rarity and then id so
 ## spawn tables and the catalogue stay deterministic.
 func mushrooms_in_layer(layer: int) -> Array[String]:
@@ -640,6 +661,8 @@ func item_display_name(id: String) -> String:
 		return str(POTIONS[id]["name"])
 	if RESOURCES.has(id):
 		return str(RESOURCES[id]["name"])
+	if WEAPONS.has(id):
+		return str(WEAPONS[id]["name"])
 	return id
 
 

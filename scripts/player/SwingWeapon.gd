@@ -5,9 +5,10 @@ extends Node3D
 ## which the `walk`/`run`/`attack` clips animate. That keeps the club out of the
 ## model's mesh count while still following the authored arm swing exactly.
 ##
-## The club is the player's weapon, not an inventory item: it stays in the right
-## hand whatever `held_item` says. An empty hotbar slot or a mushroom in the left
-## hand must not remove it.
+## The club is an inventory item (`Lore.WEAPONS["mycelium_club"]`): it is shown
+## only while `InventorySystem.equipped_weapon` is set to it, so dropping or
+## unequipping the club leaves the hand empty. The hammer is built once and
+## toggled, never rebuilt on every swing.
 
 ## The animated right-hand bone. Blockbench exports the bone node next to the
 ## cube it drives, so `hand_right` (the mesh) is its child; the bone is the one
@@ -15,20 +16,37 @@ extends Node3D
 const HAND_NAME := &"hand_right2"
 
 var _hand: Node3D = null
+var _player: Node = null
+var _weapon_id: StringName = &""
 var _club: Node3D = null
 
 
 func _ready() -> void:
+	_player = get_parent()
 	_hand = _find_hand()
-	if _hand == null:
-		visible = false
-		set_process(false)
+	set_process(true)
+	_sync_weapon()
+
+
+## The body's replicated `equipped_weapon` is the source of truth on every peer;
+## the local owner updates it from `InventorySystem` via `weapon_changed`.
+func _sync_weapon() -> void:
+	var id: StringName = &""
+	if _player != null and "equipped_weapon" in _player:
+		id = _player.get(&"equipped_weapon")
+	if id == _weapon_id:
 		return
-	_build_club()
+	_weapon_id = id
+	var armed := id == &"mycelium_club" and _hand != null
+	if armed and _club == null:
+		_build_club()
+	if _club != null:
+		_club.visible = armed
 
 
 func _process(_delta: float) -> void:
-	if _hand == null or not is_instance_valid(_hand):
+	_sync_weapon()
+	if _hand == null or not is_instance_valid(_hand) or _club == null or not _club.visible:
 		return
 	# Held out to the side and angled down: the camera looks over the player's
 	# back, so a club pointing straight up disappears into the cap.
@@ -57,6 +75,7 @@ func _build_club() -> void:
 	var cap := Color(0.26, 0.78, 0.62)
 	var glow := Color(0.38, 1.0, 0.78)
 	_club.add_child(_cylinder(0.034, 0.050, 0.58, wood, 7, Vector3(0.0, 0.29, 0.0)))
+	_club.add_child(_cylinder(0.058, 0.062, 0.16, wood.darkened(0.28), 8, Vector3(0.0, 0.08, 0.0)))
 	_club.add_child(_cylinder(0.075, 0.075, 0.06, wood.lightened(0.20), 9, Vector3(0.0, 0.56, 0.0)))
 	var head := _sphere(0.155, 0.21, cap, 12, 6, 0.9)
 	head.position = Vector3(0.0, 0.66, 0.0)
@@ -64,6 +83,9 @@ func _build_club() -> void:
 	_club.add_child(head)
 	for index in 3:
 		var angle := TAU * float(index) / 3.0 + 0.3
+		var knot := _sphere(0.048, 0.036, wood.lightened(0.12), 7, 3, 0.0)
+		knot.position = Vector3(cos(angle) * 0.11, 0.62, sin(angle) * 0.11)
+		_club.add_child(knot)
 		var spot := _sphere(0.030, 0.018, glow, 6, 3, 1.5)
 		spot.position = Vector3(cos(angle) * 0.09, 0.73, sin(angle) * 0.09)
 		_club.add_child(spot)

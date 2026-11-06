@@ -7,6 +7,8 @@ signal inventory_changed
 signal item_added(id: String, count: int)
 signal item_removed(id: String, count: int)
 signal hotbar_changed
+## The equipped weapon changed. Empty means bare hands.
+signal weapon_changed(weapon_id: StringName)
 ## Selected hotbar slot (0-based). Emitted once the HUD has a hotbar and on every
 ## change, so a body that spawned later still learns the current selection.
 signal hotbar_selected(index: int)

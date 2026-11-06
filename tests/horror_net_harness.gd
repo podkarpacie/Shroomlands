@@ -188,10 +188,11 @@ func _client() -> void:
 		var crate_3d := crate as Node3D
 		player.global_position = crate_3d.global_position + Vector3(1.5, 1.2, 0.0)
 		await _wait(40)
+		var loot_before := _inventory_total(player)
 		crate.call(&"interact", player)
 		await _wait(110)
 		crate_opened = bool(crate.get(&"opened"))
-		loot_received = _inventory_total(player) > 0
+		loot_received = _inventory_total(player) > loot_before
 
 	if player != null:
 		var voice := player.get_node_or_null("VoiceInput")

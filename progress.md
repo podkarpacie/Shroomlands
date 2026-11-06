@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **38 test suites / 1840 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **39 test suites / 1868 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -73,6 +73,23 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   a heartbeat that quickens near creatures or low HP, and a pitch drop on the ambient bed.
 - Verified with a Forward+ first-person capture in The Rotting Hollow (lamp beam, crimson tint,
   vignette, arms) and `test_atmosphere.gd` (19 assertions).
+
+## Weapon item and player-model review
+- **The "rod" was not in the player glTF.** The character mesh has no club; `SwingWeapon.gd` built a
+  procedural club and welded it to the right hand every frame. It is now an inventory item:
+  `Lore.WEAPONS["mycelium_club"]`, carried in slot 0, equipped by default, with 12/22 light/heavy
+  damage (4/7 bare-handed). Double-click in the satchel equips/unequips, right-click drops it, and
+  the hand is visibly empty when unequipped. The club has a matching item icon/preview and a
+  knotted hand model.
+- **Replication**: `PlayerController.equipped_weapon` is replicated, so remote bodies show the
+  owner's equip state. The left-hand `held_item` excludes weapons, and inventory payload
+  validation accepts weapon ids.
+- **Bugs found and fixed by the review**: the club leaking into `held_item` (spurious draw/holster
+  animations), the server rejecting any inventory containing the club, remote bodies always
+  showing the starting club, and two test fixtures assuming slot 0 was empty.
+- Visuals checked with first-person captures: club in hand, empty hand after unequip, and the
+  town spawn/party HUD.
+- Test: `test_weapon.gd` (28 assertions).
 
 ## Run goal, death stakes and summary
 - Each forest layer starts a quota: `run_quota = 40 + 20*layer` gold of loot value.
@@ -183,6 +200,7 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - [x] Crate loot and the Blight replicated through the server
 - [x] Active area (path + forest_layer) persisted and restored from saves
 - [x] First-person default, screen grade and dynamic ambience
+- [x] Club is an equippable item; the hand is empty when unequipped
 - [x] Leader handoff UI and a party HUD marker
 - [x] Structure variety (castle / dungeon)
 

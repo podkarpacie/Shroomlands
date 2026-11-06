@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 38 headless test suites, **1840 assertions**, all green - including a run with a
+- 39 headless test suites, **1868 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -44,6 +44,7 @@ and Windows/Web exports.
 | Party HUD & handoff | Done | The HUD lists every body in the group with `[LAMP]` on the leader; `L` hands the lamp to the nearest living forager within 8 m, and the server only accepts it from the current leader |
 | First-person & atmosphere | Done | Starts at the eyes; a screen pass adds a biome tint, a danger vignette/grain and a small chroma split, while quiet creaks/whispers/drips and a heartbeat quicken near creatures |
 | Server-authoritative run props | Done | Crate searches are validated by the server, opened on every peer and paid to the searching owner; the Blight spawns through a `MultiplayerSpawner` so all peers see the hunter |
+| Equippable weapon | Done | The starting club is a real inventory item: 12/22 damage, 4/7 bare-handed, double-click in the satchel equips/unequips, its own save key and replicated hand state. Unequipping or dropping it leaves the hand empty |
 | Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and dying in the forest costs half of every carried stack |
 | Extraction pressure | First pass | A 180 s run clock per layer with a HUD countdown; at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
 | Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the replicated party leader can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
@@ -99,7 +100,8 @@ Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere`
 `test_movement_block` 15, `test_network` 41, `test_party_ui` 18, `test_pause` 76,
 `test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 37, `test_run_timer` 20,
 `test_save` 58, `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51,
-`test_ui` 60, `test_vocation` 70, `test_voice_and_leader` 21 - **1840 assertions**.
+`test_ui` 60, `test_vocation` 70, `test_voice_and_leader` 21, `test_weapon` 28 -
+**1868 assertions**.
 
 ### Continuous integration
 
@@ -108,9 +110,9 @@ Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere`
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-38 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+39 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1840). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1868). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -230,7 +232,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   38 headless suites, net_harness, capture_frame, network proofs
+tests/                   39 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md

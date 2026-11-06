@@ -188,6 +188,10 @@ func apply_state(data: Dictionary) -> void:
 		var inventory := player.get_node_or_null("InventorySystem")
 		if inventory != null and inventory.has_method(&"from_dict"):
 			inventory.call(&"from_dict", saved_inventory)
+			# Saves written before weapons existed have no `weapon` key: give the
+			# player the starting club instead of leaving them permanently unarmed.
+			if not data.has("weapon") and inventory.has_method(&"ensure_starting_weapon"):
+				inventory.call(&"ensure_starting_weapon")
 
 
 ## Digest for the lobby's Continue button; empty when there is no readable save.

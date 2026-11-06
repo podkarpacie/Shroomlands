@@ -21,6 +21,7 @@ const RESOURCE_IDS: Array[String] = [
 	"fossilized_caps", "infested_ore", "ancient_core"
 ]
 const BUILD_IDS: Array[String] = ["hut", "farm", "workshop", "chest"]
+const WEAPON_IDS: Array[String] = ["mycelium_club"]
 
 ## Fallback tints for the painted icons and the procedural models. Names always
 ## use the Lore rarity colour; these are species recognition only.
@@ -47,6 +48,7 @@ const COLORS := {
 	"farm": Color(0.62, 0.78, 0.32),
 	"workshop": Color(0.58, 0.62, 0.66),
 	"chest": Color(0.72, 0.50, 0.26),
+	"mycelium_club": Color(0.44, 0.29, 0.15),
 }
 
 const BUILD_NAMES := {
@@ -65,6 +67,7 @@ static func all_ids() -> Array[String]:
 	ids.append_array(MUSHROOM_IDS)
 	ids.append_array(RESOURCE_IDS)
 	ids.append_array(BUILD_IDS)
+	ids.append_array(WEAPON_IDS)
 	return ids
 
 
@@ -245,6 +248,8 @@ static func _model_scene(id: String) -> PackedScene:
 static func _procedural_model(id: String) -> Node3D:
 	if MUSHROOM_IDS.has(id):
 		return _mushroom(id)
+	if WEAPON_IDS.has(id):
+		return _club()
 	var potion := _potion_data(id)
 	if not potion.is_empty():
 		return _potion(id, str(potion.get("from", "")))
@@ -302,6 +307,41 @@ static func _mushroom(id: String) -> Node3D:
 		var angle := TAU * float(index) / 5.0 + 0.4
 		var spot := _sphere(0.045, 0.030, spot_color, 8, 4, 1.2)
 		spot.position = Vector3(cos(angle) * 0.22, 0.79 + sin(angle * 1.7) * 0.025, sin(angle) * 0.22)
+		root.add_child(spot)
+	return root
+
+
+## The starting club, shared by the satchel preview and the hotbar icon.
+static func _club() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Model_mycelium_club"
+	var wood := Color(0.44, 0.29, 0.15)
+	var cap := Color(0.26, 0.78, 0.62)
+	var glow := Color(0.38, 1.0, 0.78)
+
+	var shaft := _cylinder(0.045, 0.065, 0.72, wood, 8)
+	shaft.position.y = 0.36
+	root.add_child(shaft)
+	var grip := _cylinder(0.062, 0.075, 0.16, wood.darkened(0.25), 8)
+	grip.position.y = 0.10
+	root.add_child(grip)
+	var band := _cylinder(0.085, 0.085, 0.05, wood.lightened(0.15), 8)
+	band.position.y = 0.62
+	root.add_child(band)
+
+	var head := _sphere(0.19, 0.30, cap, 12, 6, 0.8)
+	head.position.y = 0.82
+	head.scale = Vector3(1.0, 0.85, 1.0)
+	root.add_child(head)
+	for index in 3:
+		var angle := TAU * float(index) / 3.0
+		var knot := _sphere(0.055, 0.07, cap.darkened(0.18), 8, 4)
+		knot.position = Vector3(cos(angle) * 0.13, 0.82, sin(angle) * 0.13)
+		root.add_child(knot)
+	for index in 4:
+		var angle := TAU * float(index) / 4.0 + 0.4
+		var spot := _sphere(0.028, 0.018, glow, 6, 3, 1.4)
+		spot.position = Vector3(cos(angle) * 0.11, 0.92, sin(angle) * 0.11)
 		root.add_child(spot)
 	return root
 

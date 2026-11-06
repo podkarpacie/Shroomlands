@@ -32,6 +32,9 @@ const BROKEN_CONDITION_DAMAGE := 0.5
 @export var heavy_cooldown_scale := 1.5
 @export var light_damage := 12.0
 @export var heavy_damage := 22.0
+## Bare-hand damage when no weapon item is equipped.
+@export var unarmed_light_damage := 4.0
+@export var unarmed_heavy_damage := 7.0
 @export var crit_chance := 0.15
 @export var crit_multiplier := 2.0
 @export var attack_stamina_cost := 12.0
@@ -110,10 +113,13 @@ func _build_hitbox() -> void:
 
 func _swing(heavy: bool) -> void:
 	last_hit_count = 0
+	var weapon := _equipped_weapon()
+	var armed := not weapon.is_empty()
 	# Read the condition before the swing wears it, so the blow that takes the
 	# blade to 0 still lands at full strength.
-	var condition_scale := _condition_damage_scale()
-	_wear_weapon()
+	var condition_scale := _condition_damage_scale() if armed else 1.0
+	if armed:
+		_wear_weapon()
 	var forward := _facing()
 	var scale := heavy_hitbox_scale if heavy else 1.0
 	var depth := attack_range * scale
@@ -156,7 +162,7 @@ func _swing(heavy: bool) -> void:
 			continue
 		struck[id] = true
 		var is_crit := _rng.randf() < crit_chance
-		var amount := (heavy_damage if heavy else light_damage) * (
+		var amount := current_attack_damage(heavy) * (
 			crit_multiplier if is_crit else 1.0
 		) * _outgoing_damage_multiplier() * condition_scale
 		if enemy.has_method(&"take_damage"):
@@ -176,6 +182,30 @@ func _swing(heavy: bool) -> void:
 	if last_hit_count > 0:
 		if _body.has_method(&"add_camera_shake"):
 			_body.call(&"add_camera_shake", 0.16 if heavy else 0.09)
+
+
+## Base damage of the equipped weapon, or the bare-hand values. Public so the
+## HUD/tests can show what a swing will do without simulating a hit.
+func current_attack_damage(heavy := false) -> float:
+	var weapon := _equipped_weapon()
+	if weapon.is_empty():
+		return unarmed_heavy_damage if heavy else unarmed_light_damage
+	return float(
+		weapon.get("heavy_damage", heavy_damage) if heavy
+		else weapon.get("damage", light_damage)
+	)
+
+
+func _equipped_weapon() -> Dictionary:
+	if _body == null:
+		return {}
+	var inventory := _body.get_node_or_null("InventorySystem")
+	if inventory == null:
+		return {}
+	var id: StringName = inventory.get(&"equipped_weapon")
+	if id == &"":
+		return {}
+	return Lore.get_weapon(str(id))
 
 
 ## The attacking body's outgoing damage multiplier (Weapon Oil, Fury). A body

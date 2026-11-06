@@ -99,8 +99,10 @@ func _run() -> void:
 		return
 
 	# --- hotbar mirrors the inventory --------------------------------------
-	var leftover := int(inventory.call(&"add_item", &"konop", 5))
-	_check("adding 5 konop fits the inventory", leftover == 0)
+	# The starting club owns slot 0; put the fixture stack there explicitly so the
+	# hotbar slot-0 assertions are about the UI, not the starting loadout.
+	inventory.call(&"set_slot", 0, &"konop", 5)
+	_check("slot 0 holds the 5 konop", int(inventory.call(&"count_item", &"konop")) == 5)
 
 	var hud_slot := hud.get_node_or_null("Root/Hotbar/Slot0")
 	_check("HUD hotbar slot 0 exists", hud_slot != null)

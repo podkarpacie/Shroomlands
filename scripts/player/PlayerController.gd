@@ -97,6 +97,9 @@ signal landed(impact_speed: float)
 ## synchronizer, so `PlayerAnimator` plays `attack` on every peer rather than on
 ## the owner alone. It only ever grows; nothing compares it to a timestamp.
 @export var swing_seq: int = 0
+## Replicated weapon id: the owner writes it from its inventory, every peer reads
+## it in `SwingWeapon`, so a remote body's hand matches the owner's equip state.
+@export var equipped_weapon: StringName = &""
 ## Weapon wear, 0..100. `CombatSystem` takes one point per evaluated swing and
 ## halves the damage once it reaches 0; the Repair Bench restores it. Deliberately
 ## a single integer: no per-weapon equipment exists yet.
@@ -197,6 +200,13 @@ func _ready() -> void:
 	_zoom_target = camera_distance
 	_camera.fov = base_fov
 	_collect_head_meshes()
+	var inventory := get_node_or_null("InventorySystem")
+	if is_multiplayer_authority():
+		EventBus.weapon_changed.connect(_on_weapon_changed)
+		if inventory != null and inventory.has_method(&"ensure_starting_weapon"):
+			inventory.call(&"ensure_starting_weapon")
+		if inventory != null:
+			equipped_weapon = inventory.get(&"equipped_weapon")
 	# Start in the view the tunable asks for, on frame one: with the default
 	# first-person distance the eyes/arms must not render a third-person frame
 	# while `_process` eases in.
@@ -332,6 +342,11 @@ func _set_first_person(value: bool) -> void:
 ## Hides the head and cap meshes in first person and puts every one of them back
 ## the way it was found. The visibility is remembered at the moment the view
 ## hides them, so a mesh an artist (or a script) turned off stays off.
+func _on_weapon_changed(id: StringName) -> void:
+	if is_multiplayer_authority():
+		equipped_weapon = id
+
+
 func _set_head_visible(value: bool) -> void:
 	for mesh in _head_meshes:
 		if not is_instance_valid(mesh):

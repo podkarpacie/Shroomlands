@@ -15,6 +15,9 @@ const SYNC_INTERVAL := 0.1
 
 ## Empty slots are `{}`; a filled slot is always `{id: StringName, count: int}`.
 var slots: Array[Dictionary] = []
+## Weapon equipped in the right hand. Kept as an item id so it can be dropped,
+## unequipped and saved exactly like a slot; empty means bare hands.
+var equipped_weapon: StringName = &""
 
 var _warned_unknown: Dictionary = {}
 var _sync_pending := false
@@ -84,6 +87,41 @@ func to_sync_payload() -> Array:
 
 ## Adds up to `count` items and returns the leftover that did not fit (0 when
 ## everything was accepted). Partial stacks fill first, then empty slots.
+## Gives a new player the starting club and equips it. Called by the player
+## body on spawn and by the save loader for old saves that predate weapons.
+func ensure_starting_weapon() -> void:
+	if equipped_weapon != &"":
+		return
+	if count_item(&"mycelium_club") <= 0:
+		add_item(&"mycelium_club", 1)
+	equip_weapon(&"mycelium_club")
+
+
+func equip_weapon(id: StringName) -> bool:
+	if not Lore.is_weapon(str(id)) or count_item(id) <= 0:
+		return false
+	if equipped_weapon == id:
+		return true
+	equipped_weapon = id
+	EventBus.weapon_changed.emit(id)
+	EventBus.inventory_changed.emit()
+	return true
+
+
+func unequip_weapon() -> void:
+	if equipped_weapon == &"":
+		return
+	equipped_weapon = &""
+	EventBus.weapon_changed.emit(&"")
+	EventBus.inventory_changed.emit()
+
+
+## Drops the equip when its item is no longer carried.
+func _sync_equipped() -> void:
+	if equipped_weapon != &"" and count_item(equipped_weapon) <= 0:
+		unequip_weapon()
+
+
 func add_item(id: StringName, count: int) -> int:
 	_ensure_slots()
 	if id == &"" or count <= 0:
@@ -156,6 +194,7 @@ func remove_item(id: StringName, count: int) -> int:
 
 	var removed := count - remaining
 	if removed > 0:
+		_sync_equipped()
 		EventBus.inventory_changed.emit()
 		if hotbar_touched:
 			EventBus.hotbar_changed.emit()
@@ -205,6 +244,7 @@ func set_slot(index: int, id: StringName, count: int) -> void:
 		return
 	_warn_unknown(id)
 	slots[index] = {"id": id, "count": mini(count, max_stack(id))}
+	_sync_equipped()
 	_changed(index)
 
 
@@ -213,6 +253,7 @@ func clear_slot(index: int) -> void:
 	if index < 0 or index >= SLOT_COUNT or (slots[index] as Dictionary).is_empty():
 		return
 	slots[index] = {}
+	_sync_equipped()
 	_changed(index)
 
 
@@ -290,6 +331,8 @@ func drop_slot(index: int, drop_all := false) -> Dictionary:
 	var held := int(slot.get("count", 0))
 	var dropped := held if drop_all else 1
 	slots[index] = {} if dropped >= held else {"id": id, "count": held - dropped}
+	if equipped_weapon == id and count_item(id) <= 0:
+		unequip_weapon()
 	EventBus.item_removed.emit(String(id), dropped)
 	_changed(index)
 	return {"id": id, "count": dropped}
@@ -308,6 +351,14 @@ func use_slot(index: int) -> bool:
 	if slot.is_empty() or int(slot.get("count", 0)) <= 0:
 		return false
 	var id := StringName(slot.get("id", &""))
+	if Lore.is_weapon(str(id)):
+		# Double-click equips/unequips; a weapon is never eaten.
+		if equipped_weapon == id:
+			unequip_weapon()
+			EventBus.toast_requested.emit("Unequipped %s" % Lore.item_display_name(str(id)))
+		elif equip_weapon(id):
+			EventBus.toast_requested.emit("Equipped %s" % Lore.item_display_name(str(id)))
+		return true
 	var stats := _stats()
 	if stats == null or bool(stats.call(&"is_dead")):
 		return false
@@ -367,7 +418,7 @@ func to_dict() -> Dictionary:
 		if slot.is_empty():
 			continue
 		packed[str(index)] = [String(slot.get("id", &"")), int(slot.get("count", 0))]
-	return {"slots": packed}
+	return {"slots": packed, "weapon": String(equipped_weapon)}
 
 
 ## Replaces the whole inventory from `to_dict()`. Malformed entries are skipped.
@@ -392,12 +443,19 @@ func from_dict(data: Dictionary) -> void:
 			if id == &"" or count <= 0:
 				continue
 			slots[index] = {"id": id, "count": mini(count, max_stack(id))}
+	var weapon := StringName(str(data.get("weapon", "")))
+	equipped_weapon = (
+		weapon if Lore.is_weapon(str(weapon)) and count_item(weapon) > 0 else &""
+	)
+	EventBus.weapon_changed.emit(equipped_weapon)
 	EventBus.inventory_changed.emit()
 	EventBus.hotbar_changed.emit()
 
 
 ## Stack size for an id. `Lore` may override `MAX_STACK` with `stack_size`.
 func max_stack(id: StringName) -> int:
+	if Lore.is_weapon(str(id)):
+		return 1
 	var limit := int(Lore.get_mushroom(str(id)).get("stack_size", MAX_STACK))
 	return maxi(limit, 1)
 
@@ -417,7 +475,8 @@ func _changed(index: int) -> void:
 
 
 func _warn_unknown(id: StringName) -> void:
-	if Lore.is_mushroom(str(id)) or Lore.is_potion(str(id)) or Lore.RESOURCES.has(str(id)):
+	if Lore.is_mushroom(str(id)) or Lore.is_potion(str(id)) \
+			or Lore.is_weapon(str(id)) or Lore.RESOURCES.has(str(id)):
 		return
 	if _warned_unknown.has(id):
 		return
