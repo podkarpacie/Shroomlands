@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 39 headless test suites, **1872 assertions**, all green - including a run with a
+- 39 headless test suites, **1874 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -96,12 +96,12 @@ Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere`
 `test_audio` 78, `test_chat` 24, `test_combat` 47, `test_consumables` 36, `test_effects` 40,
 `test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
 `test_horror_search` 33, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 47,
-`test_limbs` 15, `test_lobby` 98, `test_lore` 322, `test_models` 41, `test_movement` 30,
+`test_limbs` 15, `test_lobby` 98, `test_lore` 322, `test_models` 43, `test_movement` 30,
 `test_movement_block` 15, `test_network` 41, `test_party_ui` 18, `test_pause` 76,
 `test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 37, `test_run_timer` 20,
 `test_save` 58, `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51,
 `test_ui` 60, `test_vocation` 70, `test_voice_and_leader` 21, `test_weapon` 28 -
-**1872 assertions**.
+**1874 assertions**.
 
 ### Continuous integration
 
@@ -112,7 +112,7 @@ every pull request: it downloads the official Godot 4.7.2 Linux binary (cached b
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
 39 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1872). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1874). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -251,7 +251,7 @@ files sit next to it.
 
 | File | Height | Geometry | Contents |
 | --- | --- | --- | --- |
-| `assets/models/player_rigged.gltf` | 1.80 m | 21 boxes, 252 triangles, 20 bones | rigged mushroom humanoid: crimson domed cap, cream stem body, arms/hands, dark eyes; six keyframed clips (`idle`, `walk`, `run`, `attack`, `draw`, `holster`) |
+| `assets/models/player_rigged.gltf` | 1.80 m | 21 boxes, 276 triangles, 20 bones | rigged mushroom humanoid: crimson domed cap, cream stem body, arms with thumbed hands, dark eyes; six keyframed clips (`idle`, `walk`, `run`, `attack`, `draw`, `holster`) |
 | `assets/models/player.gltf` | 1.80 m | 15 boxes, 180 triangles | static pre-rig mushroom humanoid; no scene instantiates it any more, `player_rigged.gltf` replaced it |
 | `assets/models/blightling.gltf` | 1.50 m | 15 boxes, 180 triangles | hostile fungal creature: squat olive body, violet thorned cap, glowing orange eyes, claws |
 | `assets/models/glowcap.gltf` | 0.57 m | 10 boxes, 120 triangles | small teal-capped glowing mushroom, cream stem |
@@ -259,6 +259,14 @@ files sit next to it.
 
 Heights are metres: Blockbench works in 16-unit blocks, so 16 units = 1 m and the glTF needs no
 scaling on import.
+
+The player's eyes are a two-texel patch in the 64x128 atlas. They were fully transparent in the
+Blockbench export while the material alpha-masks below 0.05, which made the face blank in every
+build; the texels are now near-black and the eyes read from the front. Each hand also carries a
+second primitive with a small thumb box (the `.bbmodel` source does not have those primitives yet,
+so a re-export from Blockbench would need to add them again). `assets/models/player.gltf`,
+`glowcap.gltf` and `emberstem.gltf` are unreferenced legacy props; they were reviewed for this pass
+and left as-is.
 
 ### Mushroom species models
 

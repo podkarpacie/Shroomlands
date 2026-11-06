@@ -28,6 +28,10 @@ const DEATH_SECONDS := 0.45
 ## tinting `albedo_color` (a near-white tint is invisible on a texture).
 const FLASH_COLOR := Color(1.0, 0.45, 0.3, 1.0)
 const FLASH_ENERGY := 2.5
+## The blightling's eyes burn a dull orange in the dark. They keep this glow
+## through the hit flash, so a struck creature still reads as alive.
+const EYE_COLOR := Color(1.0, 0.38, 0.08, 1.0)
+const EYE_ENERGY := 1.7
 
 @export var max_hp := 60.0
 @export var move_speed := 2.6
@@ -72,6 +76,7 @@ var _death_tween: Tween = null
 ## One private copy of the model's material, shared by every mesh of this
 ## creature, so a flash never tints its neighbours.
 var _material: StandardMaterial3D = null
+var _eye_material: StandardMaterial3D = null
 
 @onready var _model: Node3D = $Model
 @onready var _collision: CollisionShape3D = $CollisionShape3D
@@ -400,9 +405,33 @@ func _setup_materials() -> void:
 		var mesh_instance := node as MeshInstance3D
 		if _material == null:
 			_material = _local_material(mesh_instance)
+		var piece := String(mesh_instance.name).to_lower()
+		if piece.begins_with("eye"):
+			mesh_instance.material_override = _eye_glow_material()
+			continue
 		if _material != null:
 			mesh_instance.material_override = _material
 	_restore_materials()
+
+
+## A self-lit copy of the creature material, used only by the eye meshes. The
+## model's atlas already paints them dark, so the emission is what makes them
+## read at the far end of a corridor.
+func _eye_glow_material() -> StandardMaterial3D:
+	if _eye_material != null:
+		return _eye_material
+	if _model == null:
+		return null
+	for node in _model.find_children("eye*", "MeshInstance3D", true, false):
+		_eye_material = _local_material(node as MeshInstance3D)
+		if _eye_material != null:
+			break
+	if _eye_material == null:
+		return null
+	_eye_material.emission_enabled = true
+	_eye_material.emission = EYE_COLOR
+	_eye_material.emission_energy_multiplier = EYE_ENERGY
+	return _eye_material
 
 
 ## Duplicates the model's material so one creature's flash never tints its

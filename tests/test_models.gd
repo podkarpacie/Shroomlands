@@ -120,11 +120,26 @@ func _check_enemies() -> void:
 		"two enemies never share a material (a flash stays on one)",
 		material != null and other_material != null and material != other_material
 	)
-	var all_share := true
+	var eye_material := first.get("_eye_material") as StandardMaterial3D
+	_check("the eyes own a second material", eye_material != null and eye_material != material)
+	var body_share := true
+	var eyes_glow := true
 	for node in meshes:
-		if (node as MeshInstance3D).material_override != material:
-			all_share = false
-	_check("every mesh of one enemy uses that single material", all_share)
+		var mesh_instance := node as MeshInstance3D
+		if String(mesh_instance.name).to_lower().begins_with("eye"):
+			if mesh_instance.material_override != eye_material:
+				eyes_glow = false
+		elif mesh_instance.material_override != material:
+			body_share = false
+	_check("every body mesh uses the body material", body_share)
+	_check(
+		"the eye meshes use the glowing eye material (%s, energy %.1f)" % [
+			eye_material.emission if eye_material != null else "none",
+			eye_material.emission_energy_multiplier if eye_material != null else 0.0,
+		],
+		eyes_glow and eye_material != null and eye_material.emission_enabled
+			and eye_material.emission_energy_multiplier > 0.0
+	)
 
 	if material == null:
 		return

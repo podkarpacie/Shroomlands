@@ -48,12 +48,5 @@ desktop.ini
 __pycache__/
 *.pyc
 
-# Screenshot/debug captures are local-only.
-tests/_capture*.gd
-tests/_capture*.gd.uid
-tests/_town_spawn*.png
-tests/_town_spawn*.png.import
-tests/_weapon_*.png
-tests/_weapon_*.png.import
-tests/_review_*.png
-tests/_review_*.png.import
+# Screenshot/debug captures and throwaway harnesses are local-only.
+tests/_*

@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **39 test suites / 1872 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **39 test suites / 1874 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -87,6 +87,27 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `test_layered_forest` verifies 4/8/6+ solids and layer 1.
 - **Player / blightling**: reviewed; the meshes are clean blocky art, no missing parts. The club is
   the equippable item from the previous pass.
+
+## Model review pass 2 (character close-ups)
+Full-body front/back and hand close-up renders of the player rig and blightling found three real
+defects that the first contact sheet missed:
+- **The player had no face.** Both eye meshes sample a single atlas texel each ((38,76) and
+  (43,76)), those texels were fully transparent, and the material uses `alphaMode: MASK` with
+  `alphaCutoff 0.05` — so both eyes were cut out and the head rendered blank. The texels are now
+  near-black (`#261A16`) in the glTF texture, the sidecar PNG and the `.bbmodel`; in-engine capture
+  shows the eyes clearly.
+- **The hands were plain boxes.** Each hand now carries a second primitive with a thumb box
+  (+12 triangles per hand) on the inner-front edge; the 21-mesh contract is unchanged.
+- **The blightling's eyes did not glow.** They shared the body material, so in daylight they read
+  as flat brown squares. `Enemy._setup_materials` now gives the `eye*` meshes their own emissive
+  material (`EYE_COLOR = (1.0, 0.38, 0.08)`, energy 1.7) that survives the hit flash; the claws
+  were scaled 1.35x so they read at a distance.
+- **Colour check, not just eyeballing**: `konop` cap average is (179,214,166) against its
+  (156-182, 203-216, 150-168) albedo, `fury` (161,61,43) vs (194,67,42), `borowik` (243,187,95) vs
+  (224,144,80) — the earlier "washed out" caps were the 1.6 glow energy, and 0.65 now tracks the
+  texture.
+- `player.gltf`, `glowcap.gltf` and `emberstem.gltf` were rendered and reviewed; all three are
+  unreferenced legacy props with no defects, so they were left alone and documented as such.
 
 ## Weapon item and player-model review
 - **The "rod" was not in the player glTF.** The character mesh has no club; `SwingWeapon.gd` built a
