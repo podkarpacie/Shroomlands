@@ -1,9 +1,10 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/VerdantBloom.gd" id="1_world"]
 [ext_resource type="PackedScene" path="res://scenes/world/mushroom_node.tscn" id="2_mushroom"]
 [ext_resource type="Shader" path="res://assets/shaders/ground.gdshader" id="3_ground_shader"]
 [ext_resource type="PackedScene" path="res://scenes/world/area_gate.tscn" id="4_gate"]
+[ext_resource type="PackedScene" path="res://scenes/world/spore_bloom.tscn" id="5_hazard"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_macro"]
 frequency = 0.012
@@ -261,3 +262,12 @@ mushroom_id = &"motoko"
 [node name="Mushroom12" parent="." instance=ExtResource("2_mushroom")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 1)
 mushroom_id = &"motoko"
+
+[node name="SporeBloom1" parent="." instance=ExtResource("5_hazard")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -6)
+
+[node name="SporeBloom2" parent="." instance=ExtResource("5_hazard")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, 9)
+
+[node name="SporeBloom3" parent="." instance=ExtResource("5_hazard")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, 17)

@@ -15,6 +15,11 @@ blender --background --factory-startup --python tools/blender/mushroom_forge.py
 # One species only
 blender --background --factory-startup --python tools/blender/mushroom_forge.py -- --only fury
 
+# Hazards (Spore Bloom) into assets/models/hazards/
+blender --background --factory-startup --python tools/blender/mushroom_forge.py -- --set hazards
+python3 tools/blender/validate_models.py --set hazards
+blender --background --factory-startup --python tools/blender/render_sheet.py -- --set hazards --out /tmp/hazards.png
+
 # Contract check (plain CPython, exits 1 on failure)
 python3 tools/blender/validate_models.py
 
@@ -40,7 +45,7 @@ The game code, not the artist, defines what a valid model is:
 | Mesh nodes named `stem*`, `cap*` or `glow*` | `scripts/world/ModelGlow.gd` treats `cap*`/`glow*` as the emissive cap |
 | Exactly one material and one embedded texture | `ModelGlow.merge` bakes surface 0 (body) and surface 1 (cap) into a MultiMesh |
 | Feet at y = 0, +Y up | `MushroomNode` and `HeldItem` place the model by its origin |
-| Height 0.30–0.85 m | Matches the harvest collider and the hand/item scale |
+| Height 0.30–0.85 m (hazards up to 1.00 m) | Matches the harvest collider and the hand/item scale |
 | ≤ 400 triangles, one primitive per mesh | Scenery is instanced; the whole set is ~2.1k tris |
 
 `validate_models.py` enforces all of it. Run it before committing; a model that
@@ -69,6 +74,13 @@ warts   spikes  veins   halo   droop  bracket  gills  tilt
 Then run the forge, the validator and the render sheet, look at the sheet, and
 `git add` the `.gltf` plus the regenerated `<id>_0.png` texture (Godot extracts
 the embedded image on import).
+
+## Hazard set
+
+`--set hazards` builds `assets/models/hazards/` instead of the species models. The Spore Bloom
+reuses the same node/material contract (`cap*` parts glow, one embedded palette texture), so
+`ModelGlow`, the hitbox and the render sheet all work unchanged; the validator allows it up to
+1.00 m and the same 400-triangle budget. Gameplay lives in `scripts/world/SporeBloom.gd`.
 
 ## Scope
 

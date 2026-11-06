@@ -1,0 +1,56 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/SporeBloom.gd" id="1_bloom"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_bloom"]
+radius = 0.5
+height = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_stem"]
+albedo_color = Color(0.29, 0.29, 0.2, 1)
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_stem"]
+material = SubResource("StandardMaterial3D_stem")
+top_radius = 0.3
+bottom_radius = 0.38
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cap"]
+albedo_color = Color(0.54, 0.6, 0.18, 1)
+roughness = 0.9
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_bloom"]
+properties/0/path = NodePath(".:state")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+properties/1/path = NodePath(".:dead")
+properties/1/spawn = true
+properties/1/replication_mode = 2
+
+[sub_resource type="SphereMesh" id="SphereMesh_cap"]
+material = SubResource("StandardMaterial3D_cap")
+radius = 0.45
+height = 0.4
+
+[node name="SporeBloom" type="StaticBody3D" groups=["hazard"]]
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("1_bloom")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("CylinderShape3D_bloom")
+
+[node name="Stem" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+mesh = SubResource("CylinderMesh_stem")
+
+[node name="Cap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+mesh = SubResource("SphereMesh_cap")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+root_path = NodePath("..")
+replication_config = SubResource("SceneReplicationConfig_bloom")
+public_visibility = true

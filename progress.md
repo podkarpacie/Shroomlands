@@ -1,13 +1,13 @@
 # Shroomlands — Progress
 
-Status: MVP + items + rig + first person shipped. `main` is clean and CI green.
+Status: MVP + items + rig + first person + hazard shipped. `main` is clean and CI green.
 
 ## Goal
 Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots, craft, then push
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **28 test suites / 1548 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **29 test suites / 1570 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -49,6 +49,19 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
 
+## Hazards (done)
+- **Spore Bloom** — `scenes/world/spore_bloom.tscn` + `scripts/world/SporeBloom.gd`, model
+  `assets/models/hazards/spore_bloom.gltf` (262 tris, Blender-forged by the same pipeline).
+- Arms at 2.5 m, swells 0.6 s, bursts into a 3 m toxic cloud for 6 s at 3 damage per 0.75 s;
+  leaving the radius stops the damage. 20 HP, so two light swings destroy it before it bursts;
+  no loot either way.
+- `CombatSystem` now accepts the `hazard` group alongside `enemy`; the bloom sits on layer 32
+  so it is hittable but never blocks movement. Server-authoritative like `Enemy`, with remote
+  players damaged through `Stats.apply_damage_rpc`; `state`/`dead` replicate so clients see
+  the swell and the cloud.
+- `test_spore_bloom.gd` (22 assertions) covers arming, burst, ticking, leaving the cloud,
+  two real swings destroying it, and the no-loot rule.
+
 ## Player
 - 20-bone Blockbench rig, six keyframed clips (idle/walk/run/attack/draw/**holster**), unskinned
   rigid-segment animation. `PlayerAnimator` picks the clip from measured position deltas so
@@ -62,7 +75,7 @@ into a layered RNG mushroom forest for better loot and worse enemies.
 1. ~~**The town**~~ — done, see "The town hub" above.
 2. **Layered RNG forest** — path graph with forks, dead ends, hazard blooms, and random structures
    (house / mini-castle / dungeon) with loot; deeper layers = stronger enemies + better mushrooms.
-3. **Spore Bloom hazard** — proximity-detonated toxic cloud, destroyable at range.
+3. ~~**Spore Bloom hazard**~~ — done, see "Hazards" above.
 4. Then: equipment + armour repair (unlocks Armour Patch), throwables (Spore Bomb), darkness
    (unlocks Nighteye), deeper-layer enemies, shop economy depth.
 

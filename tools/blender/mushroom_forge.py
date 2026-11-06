@@ -6,6 +6,7 @@ Builds one low-poly, palette-textured glTF per species into
 beyond the bundled glTF exporter.
 
     blender --background --factory-startup --python tools/blender/mushroom_forge.py
+    blender --background --factory-startup --python tools/blender/mushroom_forge.py -- --set hazards
 
 Why this exists: the shipped species models came from Blockbench on Windows,
 which left no editable source in the repo. This script is the source of truth
@@ -33,6 +34,7 @@ import bpy
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT_DIR = os.path.join(REPO, "assets", "models", "mushrooms")
+HAZARD_DIR = os.path.join(REPO, "assets", "models", "hazards")
 
 PALETTE_COLS = 4
 PALETTE_ROWS = 2
@@ -136,6 +138,17 @@ SPECIES = {
         cap_light="#c2432a", gill="#6b2418", accent="#ffb028", ember="#ff7a1a",
         height=0.64, stem_r=0.084, cap_r=0.245, cap_h=0.195, tiers=3,
         dome=1.0, rings=3, spikes=7, veins=True,
+    ),
+}
+
+
+# Hazards share the mesh/material contract but may be larger than a gatherable.
+HAZARDS = {
+    "spore_bloom": dict(
+        body="#4a4a32", body_dark="#34341f", cap="#8a9a2e", cap_dark="#5f6b1e",
+        cap_light="#b6c94a", gill="#3f4520", accent="#2e3218", ember="#c8ff5a",
+        height=0.84, stem_r=0.258, cap_r=0.345, cap_h=0.225, tiers=2,
+        dome=0.55, rings=1, spots=0, warts=9, veins=9,
     ),
 }
 
@@ -497,15 +510,22 @@ def export_embedded(objs, mid, path):
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
-    out_dir = os.path.join(OUT_DIR)
-    os.makedirs(out_dir, exist_ok=True)
+    which = argv[argv.index("--set") + 1] if "--set" in argv else "all"
+    sets = [
+        ("mushrooms", SPECIES, OUT_DIR),
+        ("hazards", HAZARDS, HAZARD_DIR),
+    ]
 
-    for mid, spec in SPECIES.items():
-        if only and mid != only:
+    for name, specs, out_dir in sets:
+        if which not in ("all", name):
             continue
-        path, objs = build_model(mid, spec, out_dir)
-        tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objs)
-        print("FORGED %-9s parts=%2d tris=%3d -> %s" % (mid, len(objs), tris, path))
+        os.makedirs(out_dir, exist_ok=True)
+        for mid, spec in specs.items():
+            if only and mid != only:
+                continue
+            path, objs = build_model(mid, spec, out_dir)
+            tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objs)
+            print("FORGED %-11s parts=%2d tris=%3d -> %s" % (mid, len(objs), tris, path))
 
 
 if __name__ == "__main__":

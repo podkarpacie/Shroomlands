@@ -19,6 +19,9 @@ extends Node
 ## works, while an enemy with one gets a more forgiving silhouette.
 const ENEMY_LAYER := 16
 const HURTBOX_LAYER := 32
+## Anything in this group is a valid swing target but is not an `Enemy`: a
+## Spore Bloom joins it so it can be destroyed at range before it bursts.
+const HAZARD_GROUP := &"hazard"
 const HIT_LIMIT := 16
 ## Damage multiplier once the weapon reaches 0 condition. Wear is deliberately
 ## coarse for this phase: a broken weapon still swings, it just hits softer.
@@ -145,7 +148,7 @@ func _swing(heavy: bool) -> void:
 
 	var struck := {}
 	for result: Dictionary in results:
-		var enemy := _enemy_from(result.get("collider") as Object)
+		var enemy := _damageable_from(result.get("collider") as Object)
 		if enemy == null or bool(enemy.get("dead")):
 			continue
 		var id := enemy.get_instance_id()
@@ -201,11 +204,12 @@ func _condition_damage_scale() -> float:
 	return BROKEN_CONDITION_DAMAGE if int(_body.get(&"weapon_condition")) <= 0 else 1.0
 
 
-## Walks up from a body or Area3D collider to the creature that owns it.
-func _enemy_from(collider: Object) -> Node:
+## Walk up from a body or hurtbox to the node that owns the damage contract.
+## Enemies and hazards both expose `dead` and `take_damage`.
+func _damageable_from(collider: Object) -> Node:
 	var node := collider as Node
 	while node != null:
-		if node.is_in_group(&"enemy"):
+		if node.is_in_group(&"enemy") or node.is_in_group(HAZARD_GROUP):
 			return node
 		node = node.get_parent()
 	return null

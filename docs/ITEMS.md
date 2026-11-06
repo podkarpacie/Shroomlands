@@ -117,6 +117,9 @@ within ~2.5 m it swells for 0.6 s and bursts into a toxic cloud (3 m radius, dam
 tick, 6 s). Destroyable at range before it bursts. Deeper layers place them on narrow path
 segments so they punish careless running.
 
+Shipped values: 20 HP (two light swings), 3 damage per 0.75 s while inside, three fixed spawns in
+the Verdant Bloom. The layered forest will place more on its path segments.
+
 ---
 
 ## 6. Effect system the code needs

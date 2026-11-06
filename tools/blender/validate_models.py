@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Validate the mushroom glTFs against the contract the game relies on.
+"""Validate the generated glTFs against the contract the game relies on.
 
 Runs on plain CPython (no Blender): reads the JSON, checks node naming,
 single material/texture, embedded buffers, triangle budget, UVs and the
 feet-at-origin / height rules. Exit code 1 on any failure.
 
-    python3 tools/blender/validate_models.py [--gltf DIR]
+    python3 tools/blender/validate_models.py
+    python3 tools/blender/validate_models.py --set hazards
+    python3 tools/blender/validate_models.py --gltf /some/dir   # mushrooms only
 """
 
 import argparse
@@ -19,8 +21,14 @@ SPECIES = [
     "konop", "shitake", "motoko", "borowik", "kazar", "kora",
     "altak", "bedak", "celtus", "pesta", "fury",
 ]
+HAZARDS = ["spore_bloom"]
+
 MAX_TRIS = 400
-MIN_HEIGHT, MAX_HEIGHT = 0.30, 0.85
+MIN_HEIGHT = 0.30
+MUSHROOM_MAX_HEIGHT = 0.85
+HAZARD_MAX_HEIGHT = 1.00
+
+ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "models")
 
 
 def node_matrix(node):
@@ -58,7 +66,7 @@ def apply(m, p):
     return [sum(m[i][j] * p[j] for j in range(3)) + m[i][3] for i in range(3)]
 
 
-def check_file(path, mid):
+def check_file(path, max_height):
     errors = []
     with open(path, encoding="utf-8") as handle:
         data = json.load(handle)
@@ -146,40 +154,55 @@ def check_file(path, mid):
     height = maxs[1] - mins[1]
     if abs(mins[1]) > 0.01:
         errors.append("feet are at y=%.3f, not 0 (the model would float/sink)" % mins[1])
-    if not (MIN_HEIGHT <= height <= MAX_HEIGHT):
-        errors.append("height %.3f outside %.2f-%.2f m" % (height, MIN_HEIGHT, MAX_HEIGHT))
+    if not (MIN_HEIGHT <= height <= max_height):
+        errors.append("height %.3f outside %.2f-%.2f m" % (height, MIN_HEIGHT, max_height))
 
     return errors, {"tris": tris, "height": height, "parts": len(names)}
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--gltf", default=os.path.join(
-        os.path.dirname(__file__), "..", "..", "assets", "models", "mushrooms"))
-    args = parser.parse_args()
-
+def validate_set(name, ids, directory, max_height):
     failures = 0
     total_tris = 0
-    for mid in SPECIES:
-        path = os.path.join(args.gltf, "%s.gltf" % mid)
+    for mid in ids:
+        path = os.path.join(directory, "%s.gltf" % mid)
         if not os.path.exists(path):
-            print("FAIL %-9s missing %s" % (mid, path))
+            print("FAIL %-11s missing %s" % (mid, path))
             failures += 1
             continue
-        errors, stats = check_file(path, mid)
+        errors, stats = check_file(path, max_height)
         if errors:
             failures += 1
-            print("FAIL %-9s %s" % (mid, "; ".join(errors)))
+            print("FAIL %-11s %s" % (mid, "; ".join(errors)))
         else:
             total_tris += stats["tris"]
-            print("OK   %-9s parts=%2d tris=%3d height=%.3fm" % (
+            print("OK   %-11s parts=%2d tris=%3d height=%.3fm" % (
                 mid, stats["parts"], stats["tris"], stats["height"]))
+    print("%s: total_tris %d" % (name, total_tris))
+    return failures
 
-    print("total_tris", total_tris)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--set", default="all", choices=["all", "mushrooms", "hazards"])
+    parser.add_argument("--gltf", default=None,
+                        help="validate the mushroom contract against one directory")
+    args = parser.parse_args()
+
+    if args.gltf:
+        failures = validate_set("models", SPECIES, args.gltf, MUSHROOM_MAX_HEIGHT)
+    else:
+        failures = 0
+        if args.set in ("all", "mushrooms"):
+            failures += validate_set("mushrooms", SPECIES,
+                                     os.path.join(ROOT, "mushrooms"), MUSHROOM_MAX_HEIGHT)
+        if args.set in ("all", "hazards"):
+            failures += validate_set("hazards", HAZARDS,
+                                     os.path.join(ROOT, "hazards"), HAZARD_MAX_HEIGHT)
+
     if failures:
         print("FAILED %d model(s)" % failures)
         return 1
-    print("OK all %d models" % len(SPECIES))
+    print("OK all models")
     return 0
 
 

@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 28 headless test suites, **1548 assertions**, all green - including a run with a
+- 29 headless test suites, **1570 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -40,6 +40,7 @@ and Windows/Web exports.
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, position, HP/stamina, inventory. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice |
 | Town hub | Done (travel is offline-only) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
+| Spore Bloom hazard | Done | Fat veined mushroom: arms at 2.5 m, swells 0.6 s, bursts into a 3 m toxic cloud for 6 s (3 damage per 0.75 s). Destroyable at range for no loot; three spawns in the Verdant Bloom |
 | Export Web + Desktop | Done | Windows Desktop, Web (nothreads), Windows Server presets; all boot |
 | Hosting (playit.gg) | Done | `tools/run_server.ps1` (ENet or WebSocket), `tools/serve_web.ps1`, [`docs/HOSTING.md`](docs/HOSTING.md); the lobby has a Port field for tunnelled public ports |
 
@@ -94,8 +95,9 @@ Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat
 `test_holding` 26, `test_inventory` 31, `test_isolation` 22, `test_limbs` 15,
 `test_lobby` 98, `test_lore` 322, `test_models` 41, `test_movement` 30,
 `test_movement_block` 15, `test_network` 41, `test_pause` 76, `test_player` 20,
-`test_plots` 86, `test_rig` 48, `test_save` 58, `test_shop` 29, `test_sync` 68,
-`test_town` 51, `test_ui` 60, `test_vocation` 70 - **1548 assertions**.
+`test_plots` 86, `test_rig` 48, `test_save` 58, `test_shop` 29,
+`test_spore_bloom` 22, `test_sync` 68, `test_town` 51, `test_ui` 60, `test_vocation` 70 -
+**1570 assertions**.
 
 ### Continuous integration
 
@@ -104,9 +106,9 @@ Current counts: `test_alchemy` 26, `test_audio` 78, `test_chat` 24, `test_combat
 [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on every push to `main` and
 every pull request: it downloads the official Godot 4.7.2 Linux binary (cached between runs),
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
-28 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
+29 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1548). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1570). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -223,7 +225,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   28 headless suites, net_harness, capture_frame, network proofs
+tests/                   29 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
