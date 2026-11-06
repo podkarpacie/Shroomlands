@@ -126,6 +126,14 @@ func _run() -> void:
 		float(stats.get("hp")) < 96.0
 	)
 
+	# --- an unimplemented throwable is not a snack -------------------------
+	inventory.call(&"set_slot", 6, &"spore_bomb", 1)
+	_check("a throwable is refused, not eaten", not bool(inventory.call(&"use_slot", 6)))
+	_check(
+		"the refused bomb stays in the bag (%d)" % int(inventory.call(&"count_item", &"spore_bomb")),
+		int(inventory.call(&"count_item", &"spore_bomb")) == 1
+	)
+
 	# --- a dead body refuses food ------------------------------------------
 	stats.call(&"take_damage", 9999.0)
 	_check("the test body is dead", bool(stats.call(&"is_dead")))

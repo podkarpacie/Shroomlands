@@ -372,6 +372,13 @@ func use_slot(index: int) -> bool:
 		message = "You eat %s" % Lore.item_display_name(str(id))
 	elif not potion.is_empty():
 		effect = potion.get("effect", {})
+		if effect.has("throwable"):
+			# Nothing can throw yet; refusing keeps the item instead of eating
+			# the gold it cost for no effect.
+			EventBus.toast_requested.emit(
+				"%s needs a throwing arm - not yet" % Lore.item_display_name(str(id))
+			)
+			return false
 		message = "You drink %s" % Lore.item_display_name(str(id))
 	else:
 		EventBus.toast_requested.emit(

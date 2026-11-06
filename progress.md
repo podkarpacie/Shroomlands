@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **39 test suites / 1893 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **39 test suites / 1895 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -33,7 +33,8 @@ Findings from a code review of inventory/stats/combat/enemy/run/forest code, all
 - **Death penalty loophole.** Integer division made a single-item stack free; the drop is now
   rounded up.
 - **Spore Bomb sold a no-op.** Gated in the shop and the alchemy table with the other unimplemented
-  potions; the Nighteye gate text no longer claims there is no darkness.
+  potions, and using one already in the bag now refuses instead of consuming it; the Nighteye gate
+  text no longer claims there is no darkness.
 - **Levels and gathering paid nothing.** Melee damage now gains 3% per level, and gathering pays a
   fifth of the species' value in XP.
 

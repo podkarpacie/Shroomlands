@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 39 headless test suites, **1893 assertions**, all green - including a run with a
+- 39 headless test suites, **1895 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -93,7 +93,7 @@ Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | Fo
 ```
 
 Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere` 19,
-`test_audio` 78, `test_chat` 24, `test_combat` 51, `test_consumables` 36, `test_effects` 40,
+`test_audio` 78, `test_chat` 24, `test_combat` 51, `test_consumables` 38, `test_effects` 40,
 `test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 38, `test_holding` 26,
 `test_horror_search` 33, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 47,
 `test_limbs` 15, `test_lobby` 98, `test_lore` 322, `test_models` 43, `test_movement` 30,
@@ -101,7 +101,7 @@ Current counts: `test_alchemy` 26, `test_area_persistence` 14, `test_atmosphere`
 `test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 41, `test_run_timer` 22,
 `test_save` 67, `test_shop` 29, `test_spore_bloom` 22, `test_sync` 68, `test_town` 51,
 `test_ui` 60, `test_vocation` 70, `test_voice_and_leader` 21, `test_weapon` 28 -
-**1893 assertions**.
+**1895 assertions**.
 
 ### Continuous integration
 
@@ -112,7 +112,7 @@ every pull request: it downloads the official Godot 4.7.2 Linux binary (cached b
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
 39 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1893). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1895). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation

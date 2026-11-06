@@ -38,7 +38,7 @@ Get-ChildItem tests/test_*.gd | ForEach-Object {
 ```
 
 Tests are `extends SceneTree` scripts run with `--script`. They must all exit 0.
-Current state: **39 suites, 1893 assertions, 0 failures.** CI runs the same set on every push
+Current state: **39 suites, 1895 assertions, 0 failures.** CI runs the same set on every push
 (`.github/workflows/tests.yml`).
 
 **A fresh clone cannot run the suites until assets are imported.** No `.godot/` cache means no
