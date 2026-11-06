@@ -30,6 +30,8 @@ func _ready() -> void:
 	_base_energy = light_energy
 	on = false
 	visible = false
+	Party.leader_changed.connect(_on_leader_changed)
+	_apply_role()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -70,6 +72,9 @@ func _process(delta: float) -> void:
 
 
 func toggle() -> void:
+	if not Party.is_leader(_body()):
+		EventBus.toast_requested.emit("Only the leader carries the spore-lamp")
+		return
 	if battery <= 0.0:
 		EventBus.toast_requested.emit("The spore-lamp is dead")
 		return
@@ -99,10 +104,34 @@ func _flicker() -> void:
 	light_energy = _base_energy * (0.55 + 0.45 * absf(sin(t * 9.0)))
 
 
-func _ui_blocked() -> bool:
+## A non-leader's lamp is inert: no toggle, no drain, no beam.
+func _apply_role() -> void:
+	var body := _body()
+	if body == null:
+		return
+	if Party.is_leader(body):
+		set_process(true)
+		return
+	if on:
+		on = false
+		visible = false
+		light_energy = _base_energy
+	set_process(false)
+
+
+func _on_leader_changed(_peer_id: int) -> void:
+	_apply_role()
+
+
+func _body() -> Node3D:
 	var node := get_parent()
 	while node != null:
-		if "ui_blocking" in node:
-			return bool(node.get(&"ui_blocking"))
+		if node.is_in_group(&"player"):
+			return node as Node3D
 		node = node.get_parent()
-	return false
+	return null
+
+
+func _ui_blocked() -> bool:
+	var body := _body()
+	return body != null and "ui_blocking" in body and bool(body.get(&"ui_blocking"))

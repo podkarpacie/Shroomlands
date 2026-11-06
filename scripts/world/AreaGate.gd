@@ -9,6 +9,8 @@ extends StaticBody3D
 ## 1-5 for a Layered Forest gate, 0 to leave the layer unchanged. Set before
 ## `Main.enter_area` so the destination area and its enemies agree on the depth.
 @export var target_layer := 0
+## Forest return gates set this: the leader's lamp is the party's only way home.
+@export var requires_leader := false
 
 @onready var _label: Label3D = get_node_or_null(^"Label")
 
@@ -24,6 +26,11 @@ func get_interaction_text() -> String:
 
 
 func interact(_player: Node) -> void:
+	if requires_leader and not Party.leader_is_near(global_position, 14.0):
+		EventBus.toast_requested.emit(
+			"The leader carries the lamp - you cannot leave without them"
+		)
+		return
 	var main := get_tree().get_first_node_in_group(&"main")
 	if main == null or not main.has_method(&"enter_area"):
 		EventBus.toast_requested.emit("The gate is sealed")

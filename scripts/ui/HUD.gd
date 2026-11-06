@@ -36,6 +36,7 @@ const BUFF_ROW_WIDTH := 310.0
 @onready var _hp_bar: ProgressBar = $Root/Vitals/HPBar
 @onready var _stamina_bar: ProgressBar = $Root/Vitals/StaminaBar
 @onready var _stamina_value: Label = $Root/Vitals/StaminaValue
+@onready var _mic_label: Label = $Root/Vitals/MicLabel
 @onready var _level_label: Label = $Root/Progression/LevelLabel
 @onready var _biome_label: Label = $Root/Progression/BiomeLabel
 @onready var _xp_bar: ProgressBar = $Root/Progression/XPBar
@@ -106,6 +107,7 @@ func _process(delta: float) -> void:
 		var tint := _damage_flash.modulate
 		tint.a = DAMAGE_FLASH_ALPHA * (_damage_flash_left / DAMAGE_FLASH_SECONDS)
 		_damage_flash.modulate = tint
+	_update_mic()
 	_plot_status_left = maxf(_plot_status_left - delta, 0.0)
 	if _plot_status_left <= 0.0:
 		_plot_status_left = PLOT_STATUS_INTERVAL
@@ -851,6 +853,25 @@ func _on_plot_changed(_plot_id: int) -> void:
 
 
 ## Compact plot line, shown only while the player stands on one of the plots.
+## The voice meter is the only feedback that the microphone is live and that the
+## creatures can hear it. Offline/headless there is no mic, so it says so.
+func _update_mic() -> void:
+	if _mic_label == null:
+		return
+	var player := Game.get_local_player()
+	var voice := player.get_node_or_null("VoiceInput") if player != null else null
+	if voice == null or not bool(voice.call(&"is_enabled")):
+		_mic_label.text = "MIC  off  (V)"
+		_mic_label.modulate = Color(1.0, 1.0, 1.0, 0.55)
+		return
+	var loudness := clampf(float(voice.get(&"loudness")), 0.0, 1.0)
+	var bars := int(round(loudness * 6.0))
+	_mic_label.text = "MIC  %s%s" % ["#".repeat(bars), ".".repeat(6 - bars)]
+	_mic_label.modulate = (
+		Color(1.0, 0.55, 0.45) if loudness > 0.6 else Color(0.7, 1.0, 0.7)
+	)
+
+
 func _refresh_plot_status() -> void:
 	var system := _plot_system()
 	_bind_player()

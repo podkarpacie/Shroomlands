@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **32 test suites / 1701 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **33 test suites / 1722 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -48,6 +48,17 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   `tools/blender/render_sheet.py` produces a Cycles contact sheet for visual review.
 - Contract held: 0.35-0.71 m tall, feet at origin, ~2.1k tris for the whole set.
   `test_models.gd` still passes, including the merged two-surface scenery MultiMesh.
+
+## Voice hearing & the leader (YAPYAP loop)
+- **The monster hears you**: `VoiceInput.gd` captures microphone RMS on a private, muted bus and
+  emits a 5-24 m disturbance every 0.4 s while loud. `Enemy` investigates it, so speech is a real
+  aggro source. `V` toggles it; the HUD has a six-bar mic meter; `push_voice()` is the tested path.
+- **One leader, one lamp**: `Party.gd` (autoload) names the leader (peer 1 by default, the local
+  player offline). Only that player's `SporeLamp` toggles, drains and beams; a passed lamp dies.
+- **No going back without them**: forest `ReturnGate` and the layer-5 `ExitGate` set
+  `requires_leader`; the gate refuses unless a living leader is within 14 m.
+- `test_voice_and_leader.gd` (21 assertions) covers loud/quiet radii, leader-only lamp, and the
+  blocked/allowed return.
 
 ## Horror search (first pass, YAPYAP-style)
 - Night layers: `LayeredForest.is_dark` on 3-5, sun 0.10, low ambient, dim sky, thick fog.
@@ -98,6 +109,16 @@ into a layered RNG mushroom forest for better loot and worse enemies.
   hidden, ±85° pitch, arms + club + held item visible (`FpArms.gd` overrides arm bones after the
   AnimationPlayer). Limit: the FP arms are the third-person block arms, and attack/draw one-shots do
   not move them.
+
+## Horror game loop (objective checklist)
+- [x] Spore/mushroom horror setting, many paths, five depth layers
+- [x] Monster hears the player (microphone loudness -> disturbances -> investigation)
+- [x] One leader with the only lamp; return gate refuses without them
+- [x] Dark layers, searchable crates, light/noise aggro, extraction gates
+- [ ] Extraction timer and an inescapable "Blight" if the party overstays
+- [ ] Carried loot can be lost (death/extraction stakes)
+- [ ] Leader handoff UI and a party HUD marker
+- [ ] Structure variety (mini-castle / dungeon) and area persistence in saves
 
 ## Next (the design the user described)
 1. ~~**The town**~~ — done, see "The town hub" above.

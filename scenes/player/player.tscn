@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/PlayerController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/player/PlayerStats.gd" id="2_stats"]
@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://scripts/player/HeldItem.gd" id="11_held_item"]
 [ext_resource type="Script" path="res://scripts/player/FpArms.gd" id="12_fp_arms"]
 [ext_resource type="Script" path="res://scripts/player/SporeLamp.gd" id="13_lamp"]
+[ext_resource type="Script" path="res://scripts/player/VoiceInput.gd" id="14_voice"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -65,6 +66,9 @@ spot_range = 22.0
 spot_angle = 30.0
 spot_angle_attenuation = 1.2
 script = ExtResource("13_lamp")
+
+[node name="VoiceInput" type="Node" parent="."]
+script = ExtResource("14_voice")
 
 [node name="InteractRay" type="RayCast3D" parent="."]
 target_position = Vector3(0, 0, -3.5)

@@ -302,6 +302,7 @@ func _build_gates() -> void:
 	)
 	if return_gate == null:
 		return
+	return_gate.set(&"requires_leader", true)
 
 	var exit: Vector2 = _run.position_of(_run.exit_id)
 	if layer < LAYER_COUNT:
@@ -310,8 +311,10 @@ func _build_gates() -> void:
 		_make_gate("DescentGate", FOREST_PATH, label, "Descend to", layer + 1,
 			Vector3(exit.x, 0.0, exit.y + 4.0))
 	else:
-		_make_gate("ExitGate", TOWN_PATH, "Mycoria", "Return to", 0,
+		var exit_gate := _make_gate("ExitGate", TOWN_PATH, "Mycoria", "Return to", 0,
 			Vector3(exit.x, 0.0, exit.y + 4.0))
+		if exit_gate != null:
+			exit_gate.set(&"requires_leader", true)
 
 
 func _make_gate(
