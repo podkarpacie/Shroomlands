@@ -28,9 +28,9 @@ const WALL_THICKNESS := 0.45
 ## Half-width of the walkable gap in the north wall.
 const GATE_HALF_WIDTH := 3.0
 
-const GROUND_COLOR := Color(0.29, 0.38, 0.22)
+const GROUND_COLOR := Color(0.20, 0.28, 0.16)
 const SOIL_COLOR := Color(0.24, 0.18, 0.12)
-const PATH_COLOR := Color(0.56, 0.51, 0.37)
+const PATH_COLOR := Color(0.42, 0.38, 0.28)
 const WALL_COLOR := Color(0.42, 0.45, 0.34)
 const HUT_BODY_COLOR := Color(0.70, 0.65, 0.50)
 

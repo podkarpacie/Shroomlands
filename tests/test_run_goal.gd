@@ -96,6 +96,11 @@ func _run() -> void:
 	# --- death costs half of every stack -------------------------------
 	_inventory.call(&"add_item", &"konop", 10)
 	_inventory.call(&"add_item", &"shitake", 1)
+	# The character itself must survive the death: club, worn gear, found page.
+	_inventory.call(&"ensure_starting_weapon")
+	_inventory.call(&"add_item", &"quiet_boots", 1)
+	_inventory.call(&"equip_gear", &"quiet_boots")
+	_inventory.call(&"add_item", &"page_1", 1)
 	var held := int(_inventory.call(&"count_item", &"konop"))
 	_check("the test carries 10 konops", held == 10)
 	_stats.call(&"take_damage", 999.0)
@@ -106,8 +111,32 @@ func _run() -> void:
 	_check("a lone item is still lost (1 -> %d)" % int(_inventory.call(&"count_item", &"shitake")),
 		int(_inventory.call(&"count_item", &"shitake")) == 0)
 	_check("the run records the death", int(_game.get(&"run_deaths")) == 1)
+	_check("death keeps the club (%d, %s)" % [
+			int(_inventory.call(&"count_item", &"mycelium_club")),
+			String(_inventory.get(&"equipped_weapon")),
+		],
+		int(_inventory.call(&"count_item", &"mycelium_club")) == 1
+			and StringName(_inventory.get(&"equipped_weapon")) == &"mycelium_club")
+	_check("death keeps the worn gear (feet %s)" % _inventory.call(&"gear_in_slot", "feet"),
+		int(_inventory.call(&"count_item", &"quiet_boots")) == 1
+			and StringName(_inventory.call(&"gear_in_slot", "feet")) == &"quiet_boots")
+	_check("death keeps the journal page (%d)" % int(_inventory.call(&"count_item", &"page_1")),
+		int(_inventory.call(&"count_item", &"page_1")) == 1)
 	_stats.call(&"respawn")
 	await _wait(3)
+	# Safety net: if the club is ever missing, respawn hands it back.
+	var club_slot := _slot_of(_inventory, &"mycelium_club")
+	_inventory.call(&"drop_slot", club_slot, true)
+	_check("the test can lose the club (%d)" % int(_inventory.call(&"count_item", &"mycelium_club")),
+		int(_inventory.call(&"count_item", &"mycelium_club")) == 0)
+	_stats.call(&"respawn")
+	await _wait(3)
+	_check("respawn restores the club (%d, %s)" % [
+			int(_inventory.call(&"count_item", &"mycelium_club")),
+			String(_inventory.get(&"equipped_weapon")),
+		],
+		int(_inventory.call(&"count_item", &"mycelium_club")) == 1
+			and StringName(_inventory.get(&"equipped_weapon")) == &"mycelium_club")
 
 	# --- extraction closes the run and shows the summary ---------------
 	var gold_before := int(_game.get(&"gold"))
@@ -176,15 +205,22 @@ func _run() -> void:
 		gate2.call(&"interact", _player)
 	await _wait(12)
 	var before_descend := _summaries
-	var summaries_before := _summary.duplicate()
+	var gold_before_descent := int(_game.get(&"gold"))
+	var quota := int(_game.get(&"run_quota"))
+	_game.set(&"run_gold", quota)
 	_main.call(&"_swap_area", FOREST_PATH, 2)
 	await _wait(12)
-	_check("descending finishes the previous layer (%d -> %d summaries)" % [
-			before_descend, _summaries
+	var last := _game.get(&"last_run") as Dictionary
+	_check("descending does not open the results modal (%d summaries)" % _summaries,
+		_summaries == before_descend)
+	_check("the descent still closes the run (layer %s, met %s)" % [
+			last.get("layer", "?"), last.get("met", "?")
 		],
-		_summaries == before_descend + 1)
-	_check("the finished summary is layer 1 (%s)" % int(_summary.get("layer", 0)),
-		int(_summary.get("layer", 0)) == 1)
+		int(last.get("layer", 0)) == 1 and bool(last.get("met", false)))
+	_check("the descent still pays the quota bonus (%d -> %d)" % [
+			gold_before_descent, int(_game.get(&"gold"))
+		],
+		int(_game.get(&"gold")) == gold_before_descent + int(quota / 2))
 	_check("the new run is layer 2 (%s)" % int(_game.get(&"run_layer")),
 		int(_game.get(&"run_layer")) == 2)
 	if panel != null:
@@ -197,6 +233,15 @@ func _run() -> void:
 func _on_run_finished(summary: Dictionary) -> void:
 	_summaries += 1
 	_summary = summary
+
+
+func _slot_of(inventory: Node, id: StringName) -> int:
+	var slots: Array = inventory.get(&"slots")
+	for index in slots.size():
+		var slot: Dictionary = slots[index]
+		if not slot.is_empty() and StringName(slot.get("id", &"")) == id:
+			return index
+	return -1
 
 
 func _wait(frames: int) -> void:

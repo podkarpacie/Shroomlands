@@ -124,7 +124,7 @@ func _run() -> void:
 	for id: String in (chest.get("loot") as Array):
 		if (Lore.RESOURCES as Dictionary).has(id):
 			resource_ids.append(id)
-	_check("the hut chest drops crafting materials (%s)" % resource_ids,
+	_check("the hut chest drops crafting materials (%s)" % str(resource_ids),
 		not resource_ids.is_empty())
 	var items_before := _inventory_total(inventory)
 	var gold_before := int(_game.get("gold"))

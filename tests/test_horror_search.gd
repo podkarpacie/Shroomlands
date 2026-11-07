@@ -73,6 +73,13 @@ func _run() -> void:
 	await _wait(12)
 	var night := _main.get_node_or_null("World") as Node3D
 	_check("layer 3 is a different world", night != null and night != shallow)
+	if night != null:
+		# The Choir stalker has its own suite; free it so this test stays about
+		# the lamp, the crates and the noise channel.
+		var stalker := night.find_child("ChoirStalker", true, false)
+		_check("layer 3 spawns the Choir stalker", stalker != null)
+		if stalker != null:
+			stalker.queue_free()
 	if night == null:
 		_finish()
 		return

@@ -231,7 +231,8 @@ func _swap_area(path: String, requested_layer := -1) -> bool:
 	# layer, which used to skip the summary and the quota bonus. Close first,
 	# then start the new run so its counters are the ones that survive.
 	if was_forest:
-		Game.finish_run()
+		# Descending closes the layer quietly; extraction opens the summary.
+		Game.finish_run(path != LAYERED_FOREST_PATH)
 	if path == LAYERED_FOREST_PATH:
 		Game.start_run(layer)
 	if previous != null and is_instance_valid(previous):

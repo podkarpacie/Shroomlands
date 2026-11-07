@@ -71,13 +71,13 @@ func _build_club() -> void:
 	_club.name = "Club"
 	add_child(_club)
 
-	var wood := Color(0.44, 0.29, 0.15)
-	var cap := Color(0.26, 0.78, 0.62)
-	var glow := Color(0.38, 1.0, 0.78)
+	var wood := Color(0.36, 0.24, 0.13)
+	var cap := Color(0.22, 0.50, 0.42)
+	var glow := Color(0.40, 0.78, 0.60)
 	_club.add_child(_cylinder(0.034, 0.050, 0.58, wood, 7, Vector3(0.0, 0.29, 0.0)))
 	_club.add_child(_cylinder(0.058, 0.062, 0.16, wood.darkened(0.28), 8, Vector3(0.0, 0.08, 0.0)))
 	_club.add_child(_cylinder(0.075, 0.075, 0.06, wood.lightened(0.20), 9, Vector3(0.0, 0.56, 0.0)))
-	var head := _sphere(0.155, 0.21, cap, 12, 6, 0.9)
+	var head := _sphere(0.145, 0.20, cap, 12, 6, 0.18)
 	head.position = Vector3(0.0, 0.66, 0.0)
 	head.scale = Vector3(1.0, 0.78, 1.0)
 	_club.add_child(head)
@@ -86,7 +86,7 @@ func _build_club() -> void:
 		var knot := _sphere(0.048, 0.036, wood.lightened(0.12), 7, 3, 0.0)
 		knot.position = Vector3(cos(angle) * 0.11, 0.62, sin(angle) * 0.11)
 		_club.add_child(knot)
-		var spot := _sphere(0.030, 0.018, glow, 6, 3, 1.5)
+		var spot := _sphere(0.026, 0.015, glow, 6, 3, 0.45)
 		spot.position = Vector3(cos(angle) * 0.09, 0.73, sin(angle) * 0.09)
 		_club.add_child(spot)
 

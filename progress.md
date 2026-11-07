@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **43 test suites / 2055 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **43 test suites / 2066 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -54,6 +54,29 @@ The review's build order starts with skills from actions:
   mushrooms (`glowcap`, `emberstem`, `venomveil`, `sunheart`, `blightroot`, `geodecap`) are retired
   from `docs/MVP_SPEC.md` in favour of the eleven shipped species. Forest layers no longer carry
   level ranges; depth is position-gated, not level-gated.
+
+## v0.5.1 — external playtest fixes
+A playtest of v0.5.0 found one critical bug and several polish issues:
+- **Death deleted the club and gear.** The rounded-up loot loss treated a one-item stack as half
+  and removed it; the club, worn gear and journal pages had no replacement source, so one death
+  left the character permanently unarmed. `_drop_run_loot` now skips weapons, gear and notes, and
+  `respawn()` calls `ensure_starting_weapon()` as a safety net. Tested by dying with a club, boots
+  and a page equipped, then dropping the club and respawning.
+- **HUD overlaps.** The vitals card is taller so `MIC` is not clipped; the progression card grew to
+  hold Run/Leader/Loot; the party card shrinks to its line count instead of a large empty box.
+- **First-person arms and club.** Upper and lower arm meshes are hidden in first person (only the
+  fist and prop remain), the fist shrinks, the club is darker and less emissive, and the satchel
+  icon matches. The inventory also stopped calling the club a "Curiosity" and now shows its real
+  weapon description.
+- **Layers 1-2 read as flat noon.** They now use a damp twilight: lower sun, ambient and sky, and
+  close fog. The town gets the same dusk treatment and a darker plaza.
+- **The Choir answered silent players**, and only layers 4-5 had one. The echo now requires a
+  disturbance heard in the last 12 s, and layers 3-5 spawn the stalker.
+- **Every descent opened the QUOTA MISSED modal.** Descending closes the run quietly (and still
+  pays the bonus); extraction is the only path that opens the results panel.
+- **Docs**: `docs/screenshots` regenerated for v0.5.1 (15 frames: lobby, town, satchel, gathering,
+  combat, death, plots, vocation, chat, journal, skills, workshop, layers 1/3/4); the lobby footer
+  now says v0.5.1 instead of v0.1.0.
 
 ## The Choir stalker (design review step 1)
 - **A noise hunter**: one spawn per layer on 4-5, near the structure, 300 HP, 2.9 m/s and no

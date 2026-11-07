@@ -913,6 +913,18 @@ func _update_party() -> void:
 			var suffix := " (you)" if peer_id == local_id else ""
 			lines.append("%s%s%s" % [marker, str(entry.get("name", "")), suffix])
 	_party_label.text = "\n".join(lines)
+	_fit_party_panel()
+
+
+## The party card grows with its line count instead of holding a large empty
+## grey box. Called after every text update.
+func _fit_party_panel() -> void:
+	var panel := get_node_or_null("Root/PartyBackdrop") as Control
+	if panel == null or _party_label == null:
+		return
+	var lines := maxi(_party_label.text.count("\n") + 1, 1)
+	var needed := 16.0 + 18.0 * float(lines)
+	panel.offset_bottom = panel.offset_top + needed
 
 
 func _on_leader_changed(_peer_id: int) -> void:

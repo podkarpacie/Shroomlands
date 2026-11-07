@@ -77,6 +77,9 @@ var _stagger_left := 0.0
 var _investigate_left := 0.0
 var _echo_left := 0.0
 var _echo_announced := false
+## Seconds since this creature last heard a disturbance. The echo answers a
+## voice, so a silent player nearby gets no answer at all.
+var _heard_noise_left := 0.0
 var _disturbance := Vector3.ZERO
 var _gravity := Vector3.DOWN * 9.8
 var _rng := RandomNumberGenerator.new()
@@ -127,6 +130,7 @@ func _physics_process(delta: float) -> void:
 	_attack_timer = maxf(_attack_timer - delta, 0.0)
 	_apply_gravity(delta)
 
+	_heard_noise_left = maxf(_heard_noise_left - delta, 0.0)
 	if _stagger_left > 0.0:
 		# Let a heavy hit actually move the body before the AI reasserts itself.
 		_stagger_left = maxf(_stagger_left - delta, 0.0)
@@ -184,6 +188,9 @@ func movement_goal() -> Vector3:
 func _echo_tick(delta: float, target: Node3D) -> void:
 	if not hunts_noise or not is_multiplayer_authority():
 		return
+	if _heard_noise_left <= 0.0:
+		# It only answers something it heard; silence is safe.
+		return
 	_echo_left = maxf(_echo_left - delta, 0.0)
 	if _echo_left > 0.0:
 		return
@@ -231,6 +238,7 @@ func _on_disturbance(position: Vector3, radius: float) -> void:
 	if _flat_distance(position) > radius:
 		return
 	_disturbance = position
+	_heard_noise_left = 12.0
 	# The stalker remembers noise longer than a normal creature.
 	_investigate_left = 10.0 if hunts_noise else 4.0
 

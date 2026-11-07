@@ -106,8 +106,10 @@ func note_run_death() -> void:
 		run_deaths += 1
 
 
-## Closes the expedition, stores/returns the summary and notifies the UI.
-func finish_run() -> Dictionary:
+## Closes the expedition, stores/returns the summary and notifies the UI. A
+## descent passes `show_summary = false`: the run still closes and pays, but the
+## results modal belongs to extraction, not to every layer change.
+func finish_run(show_summary := true) -> Dictionary:
 	var met := run_gold >= run_quota and run_quota > 0
 	var bonus := int(run_quota / 2) if met else 0
 	var summary := {
@@ -126,7 +128,8 @@ func finish_run() -> Dictionary:
 	# Extracting is Survival practice, quota or not.
 	add_skill_xp(&"survival", 15 if met else 6)
 	last_run = summary
-	EventBus.run_finished.emit(summary)
+	if show_summary:
+		EventBus.run_finished.emit(summary)
 	return summary
 
 
@@ -222,8 +225,6 @@ func vocation_affinity() -> String:
 	return str(vocation.get("affinity", ""))
 
 
-## Grants xp and returns how many levels were gained. A maxed skill stops
-## collecting xp instead of overflowing a bar it can never fill.
 ## Records a found chapter and announces it exactly once.
 func discover_note(id: String) -> bool:
 	if not Lore.is_note(id) or discovered_notes.has(id):
@@ -237,6 +238,8 @@ func has_note(id: String) -> bool:
 	return discovered_notes.has(id)
 
 
+## Grants xp and returns how many levels were gained. A maxed skill stops
+## collecting xp instead of overflowing a bar it can never fill.
 func add_skill_xp(id: StringName, amount: int) -> int:
 	var key := String(id)
 	if amount <= 0 or not Lore.SKILLS.has(key):

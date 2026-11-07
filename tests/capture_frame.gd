@@ -565,6 +565,23 @@ func _nearest_mushroom() -> Node3D:
 	return best
 
 
+## The town's plot row sits at (5, 20); its floating signs fill any close shot.
+func _enemy_away_from_plots() -> Node3D:
+	var best: Node3D = null
+	var best_distance := INF
+	for node: Node in get_nodes_in_group(&"enemy"):
+		var body := node as Node3D
+		if body == null:
+			continue
+		if body.global_position.z > 10.0 and body.global_position.x > 0.0:
+			continue
+		var distance := body.global_position.distance_to(_player.global_position)
+		if distance < best_distance:
+			best = body
+			best_distance = distance
+	return best if best != null else _nearest_enemy()
+
+
 func _nearest_enemy() -> Node3D:
 	var best: Node3D = null
 	var best_distance := INF
@@ -582,7 +599,9 @@ func _nearest_enemy() -> Node3D:
 ## Combat frame: stand in front of a live creature, swing for real and capture
 ## while the hit flash is still on its material.
 func _capture_combat() -> void:
-	var enemy := _nearest_enemy()
+	# The plot-row creature stands among the plot-sign Label3Ds, which read as
+	# giant glyphs from two metres away. Prefer a creature on the other side.
+	var enemy := _enemy_away_from_plots()
 	_check("a creature is available for the combat capture", enemy != null)
 	if enemy == null:
 		return
@@ -678,6 +697,12 @@ func _capture_death() -> void:
 	_check("the player has a Stats component", stats != null)
 	if stats == null:
 		return
+	# Away from the plot signs so the overlay is not read through giant glyphs.
+	var spawn_marker := _player.get_parent().find_child("PlayerSpawn", true, false) as Node3D
+	if spawn_marker != null:
+		_player.global_position = spawn_marker.global_position + Vector3(0.0, 0.0, -2.5)
+		_player.reset_physics_interpolation()
+		await _wait_physics(2)
 	stats.call(&"die")
 	await _wait_physics(3)
 	var hud := _main_hud()

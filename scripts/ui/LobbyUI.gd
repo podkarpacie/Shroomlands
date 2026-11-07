@@ -27,7 +27,7 @@ const TRANSPORT_HINT := "Desktop: ENet/UDP · Browser: WebSocket/TCP"
 const WEB_TRANSPORT_NOTE := "Server must run in websocket mode"
 ## The subtitle is one line, so the long lore blurb is cut on a word boundary.
 const SUBTITLE_CHARS := 84
-const RELEASE := "v0.1.0"
+const RELEASE := "v0.5.1"
 ## Scene-tree metadata the gameplay scene reads to bind the saved sensitivity.
 const SENSITIVITY_META := &"mouse_sensitivity"
 

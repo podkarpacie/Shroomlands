@@ -424,9 +424,9 @@ func die() -> void:
 
 
 ## Death in a run costs half of every carried stack, rounded up, so even a
-## single mushroom is a real loss. The player keeps their equipped weapon and
-## purse: this is a loot stake, not a full wipe, so a bad run still leaves the
-## expedition worth finishing.
+## single mushroom is a real loss. Weapons, worn gear, found notes and the purse
+## are kept: they are the character, not the loot, and there is no way to
+## replace a lost club. This is a loot stake, not a full wipe.
 func _drop_run_loot() -> void:
 	var inventory := get_parent().get_node_or_null("InventorySystem")
 	Game.note_run_death()
@@ -440,6 +440,10 @@ func _drop_run_loot() -> void:
 		totals[id] = int(totals.get(id, 0)) + int(slot.get("count", 0))
 	var lost := 0
 	for id: StringName in totals:
+		# Rounding up must never eat the club, the gear you are wearing or a
+		# journal page: those are permanent character progress.
+		if Lore.is_weapon(str(id)) or Lore.is_gear(str(id)) or Lore.is_note(str(id)):
+			continue
 		var drop := int(ceili(float(totals[id]) / 2.0))
 		if drop > 0:
 			lost += int(inventory.call(&"remove_item", id, drop))
@@ -454,6 +458,11 @@ func respawn() -> void:
 	hp = max_hp
 	stamina = max_stamina
 	_teleport_to_spawn()
+	# Safety net: a body that somehow lost the starting club (an old bug, a
+	# hand-edited save) gets one back on respawn. Nothing else hands out weapons.
+	var inventory := get_parent().get_node_or_null("InventorySystem")
+	if inventory != null and inventory.has_method(&"ensure_starting_weapon"):
+		inventory.call(&"ensure_starting_weapon")
 	EventBus.hp_changed.emit(hp, max_hp)
 	EventBus.stamina_changed.emit(stamina, max_stamina)
 	EventBus.player_respawned.emit()

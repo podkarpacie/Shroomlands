@@ -94,7 +94,7 @@ func _ready() -> void:
 	_build_gates()
 	_tint_environment()
 	_setup_blight_spawner()
-	if layer >= 4:
+	if layer >= 3:
 		_setup_stalker_spawner()
 	_start_run()
 
@@ -115,7 +115,7 @@ func _start_run() -> void:
 	if not is_multiplayer_authority():
 		return
 	EventBus.run_timer_changed.emit(time_left)
-	if layer >= 4:
+	if layer >= 3:
 		_spawn_stalker()
 
 
@@ -233,7 +233,7 @@ func _setup_stalker_spawner() -> void:
 
 
 func _spawn_stalker() -> void:
-	if _stalker_holder == null or layer < 4:
+	if _stalker_holder == null or layer < 3:
 		return
 	var origin := Vector3.ZERO
 	if structure_id >= 0:
@@ -653,9 +653,11 @@ func _tint_environment() -> void:
 			environment.fog_light_color = tint.darkened(0.72)
 			environment.fog_density = 0.014 + 0.002 * layer
 		else:
-			environment.ambient_light_energy = 0.9
-			environment.background_energy_multiplier = 1.0
-			environment.fog_light_color = tint
-			environment.fog_density = 0.004 + 0.0015 * layer
+			# Layers 1-2 are still daylight, but a close, damp forest twilight:
+			# the flat noon look made the placeholder ground read as a plane.
+			environment.ambient_light_energy = 0.55 - 0.04 * (layer - 1)
+			environment.background_energy_multiplier = 0.75
+			environment.fog_light_color = tint.darkened(0.25)
+			environment.fog_density = 0.011 + 0.002 * layer
 	if _sun != null:
-		_sun.light_energy = 0.10 if is_dark else 1.25 - 0.07 * layer
+		_sun.light_energy = 0.10 if is_dark else 0.72 - 0.04 * layer

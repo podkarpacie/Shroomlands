@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 43 headless test suites, **2055 assertions**, all green - including a run with a
+- 43 headless test suites, **2066 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -40,7 +40,7 @@ and Windows/Web exports.
 | **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, found journal chapters, vocation, action skills, equipped gear, active area + forest layer, position, HP/stamina, inventory, weapon condition. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice, and a +25% skill-XP affinity for the matching action skill |
 | Action skills | Done | Foraging, Alchemy, Combat and Survival level from doing (gather / brew / kill / search + extract), with four perks that change real numbers: +1 mushroom per harvest at 5/10/15, cheaper brew fees, +2% damage per Combat level, longer lamp battery and faster searches. Saved with the run and shown on the pause menu's Skills page |
-| The Choir stalker | Done | Layers 4-5 spawn one noise-first hunter near the structure. It follows the loudest recent disturbance even when you are inside its aggro range, and answers a nearby voice with a muffled whisper (synthesised cue — the microphone is not recorded). One spawn per layer, 300 HP, no respawn. |
+| The Choir stalker | Done | Layers 3-5 spawn one noise-first hunter near the structure. It follows the loudest recent disturbance even when you are inside its aggro range, and answers a nearby voice with a muffled whisper (synthesised cue — the microphone is not recorded). One spawn per layer, 300 HP, no respawn. |
 | Found journal | Done | Crate1 in every structure carries that layer's chapter of an earlier expedition's journal. Five chapters, one per depth, each pointing at one of the three factions; looting a page unlocks it in the pause-menu Journal, and the chapters survive a save. |
 | Resources & gear | Done | The hut, castle and dungeon chests/crates drop fibre, fossilized caps, hardened mycelium, spore crystals, infested ore and (layer-5 dungeon) the ancient core. The town **Workshop** crafts four slot items — quiet boots (-40% noise), muffled pack (-50% crate noise), bright lamp (+35% beam, +25% battery) and mycelium vest (-15% damage) — which multiply with the Survival/Combat perks and are worn by double-clicking in the satchel |
 | Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, **workshop**, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
@@ -49,10 +49,10 @@ and Windows/Web exports.
 | First-person & atmosphere | Done | Starts at the eyes; a screen pass adds a biome tint, a danger vignette/grain and a small chroma split, while quiet creaks/whispers/drips and a heartbeat quicken near creatures |
 | Server-authoritative run props | Done | Crate searches are validated by the server, opened on every peer and paid to the searching owner; the Blight spawns through a `MultiplayerSpawner` so all peers see the hunter |
 | Equippable weapon | Done | The starting club is a real inventory item: 12/22 damage, 4/7 bare-handed, double-click in the satchel equips/unequips, its own save key and replicated hand state. Unequipping or dropping it leaves the hand empty |
-| Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and dying in the forest costs half of every carried stack |
+| Run goal & death stakes | Done | Each layer has a loot quota (40 + 20×layer g) fed by containers and mushrooms; a HUD counter tracks it, meeting it pays a bonus, extraction opens a results panel, and descending closes the layer quietly. Dying costs half of each carried stack but keeps the club, worn gear and journal pages |
 | Extraction pressure | Done | A server-owned 180 s run clock per layer, replicated to every peer (countdown and Blight warning included); at zero one Blight is released — 100k HP, 400 m aggro, 6.4 m/s, 90 damage — and cannot be fought, only escaped through the leader-gated gate |
 | Voice hearing & the leader | First pass | Microphone loudness (`V`) feeds the same disturbance channel as light and noise (5-24 m), a HUD meter shows the level, and only the replicated party leader can light the spore-lamp. The forest return gate refuses until a living leader is within 14 m |
-| Horror search | First pass | Night layers 3-5, a battery spore-lamp (`F`) whose beam draws creatures from 16 m, three searchable crates per structure whose noise pulls them from 14 m, and enemies that investigate light and sound. The run clock, loot-on-death and the Choir stalker (layers 4-5) are in |
+| Horror search | First pass | Night layers 3-5, a battery spore-lamp (`F`) whose beam draws creatures from 16 m, three searchable crates per structure whose noise pulls them from 14 m, and enemies that investigate light and sound. The run clock, loot-on-death and the Choir stalker (layers 3-5) are in |
 | Spore Bloom hazard | Done | Fat veined mushroom: arms at 2.5 m, swells 0.6 s, bursts into a 3 m toxic cloud for 6 s (3 damage per 0.75 s). Destroyable at range for no loot; three spawns in the Verdant Bloom |
 | Export Web + Desktop | Done | Windows Desktop, Web (nothreads), Windows Server presets; all boot |
 | Hosting (playit.gg) | Done | `tools/run_server.ps1` (ENet or WebSocket), `tools/serve_web.ps1`, [`docs/HOSTING.md`](docs/HOSTING.md); the lobby has a Port field for tunnelled public ports |
@@ -97,15 +97,15 @@ Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | Fo
 ```
 
 Current counts: `test_alchemy` 27, `test_area_persistence` 14, `test_atmosphere` 19,
-`test_audio` 78, `test_chat` 24, `test_choir` 15, `test_combat` 51, `test_consumables` 38, `test_effects` 40,
+`test_audio` 78, `test_chat` 24, `test_choir` 17, `test_combat` 51, `test_consumables` 38, `test_effects` 40,
 `test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 39, `test_gear` 54,
-`test_holding` 26, `test_horror_search` 34, `test_inventory` 31, `test_isolation` 22, `test_journal` 45,
+`test_holding` 26, `test_horror_search` 35, `test_inventory` 31, `test_isolation` 22, `test_journal` 45,
 `test_layered_forest` 48, `test_limbs` 15, `test_lobby` 98, `test_lore` 312, `test_models` 43,
 `test_movement` 30, `test_movement_block` 15, `test_network` 41, `test_party_ui` 18,
-`test_pause` 76, `test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 42,
+`test_pause` 76, `test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 48,
 `test_run_timer` 22, `test_save` 70, `test_shop` 29, `test_skills` 49, `test_spore_bloom` 22,
 `test_sync` 69, `test_town` 51, `test_ui` 60, `test_vocation` 68, `test_voice_and_leader` 21,
-`test_weapon` 28 - **2055 assertions**.
+`test_weapon` 30 - **2066 assertions**.
 
 ### Continuous integration
 
@@ -116,7 +116,7 @@ every pull request: it downloads the official Godot 4.7.2 Linux binary (cached b
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
 39 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (2055). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (2066). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -530,8 +530,8 @@ back on for tools and tests.
 12. **Web build is single-threaded** (nothreads variant, no GDExtension). It boots and
     renders, but expect lower performance than desktop.
 13. **The Choir stalker echoes noise, not your actual voice.** It follows the loudest recent
-    disturbance and answers with a synthesised whisper; the microphone is never recorded or
-    replayed, by design.
+    disturbance and only answers after it has heard one; the reply is a synthesised whisper, and
+    the microphone is never recorded or replayed, by design.
 14. **Three potions have effects nothing applies.** Armour Patch (`repair_armor`), Nighteye
     Draught (`vision +1.0`) and Spore Bomb (`throwable`) stay in `Lore.POTIONS` and show in the
     shop and alchemy panels, but there is no armour system, the vision buff is not read by the

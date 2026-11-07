@@ -22,7 +22,7 @@ anchors_preset = 0
 offset_left = 18.0
 offset_top = 16.0
 offset_right = 328.0
-offset_bottom = 128.0
+offset_bottom = 150.0
 mouse_filter = 2
 
 [node name="Vitals" type="VBoxContainer" parent="Root"]
@@ -31,7 +31,7 @@ anchors_preset = 0
 offset_left = 30.0
 offset_top = 22.0
 offset_right = 316.0
-offset_bottom = 122.0
+offset_bottom = 144.0
 mouse_filter = 2
 theme_override_constants/separation = 3
 
@@ -74,7 +74,7 @@ anchor_right = 1.0
 offset_left = -318.0
 offset_top = 16.0
 offset_right = -18.0
-offset_bottom = 142.0
+offset_bottom = 212.0
 grow_horizontal = 0
 mouse_filter = 2
 
@@ -84,9 +84,9 @@ anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -318.0
-offset_top = 150.0
+offset_top = 220.0
 offset_right = -18.0
-offset_bottom = 274.0
+offset_bottom = 276.0
 grow_horizontal = 0
 mouse_filter = 2
 
@@ -109,7 +109,7 @@ anchor_right = 1.0
 offset_left = -306.0
 offset_top = 22.0
 offset_right = -30.0
-offset_bottom = 136.0
+offset_bottom = 206.0
 grow_horizontal = 0
 mouse_filter = 2
 theme_override_constants/separation = 2
@@ -168,9 +168,9 @@ visible = false
 layout_mode = 1
 anchors_preset = 0
 offset_left = 18.0
-offset_top = 136.0
+offset_top = 158.0
 offset_right = 526.0
-offset_bottom = 174.0
+offset_bottom = 196.0
 mouse_filter = 2
 
 [node name="PlotStatus" type="Label" parent="Root"]
@@ -178,9 +178,9 @@ visible = false
 layout_mode = 1
 anchors_preset = 0
 offset_left = 32.0
-offset_top = 143.0
+offset_top = 165.0
 offset_right = 514.0
-offset_bottom = 168.0
+offset_bottom = 190.0
 mouse_filter = 2
 
 [node name="Crosshair" type="Control" parent="Root"]

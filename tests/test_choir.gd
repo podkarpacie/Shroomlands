@@ -45,6 +45,9 @@ func _run() -> void:
 	_bind_authority(stalker)
 	stalker.global_position = player.global_position + Vector3(6.0, 0.0, 0.0)
 	await _wait(40)
+	_check("a silent player gets no answer (%d)" % _echoes, _echoes == 0)
+	bus.emit_signal(&"disturbance_emitted", player.global_position, 20.0)
+	await _wait(40)
 	_check("the stalker echoes a nearby voice (%d)" % _echoes, _echoes > 0)
 	_check("the echo announces itself once (%s)" % str(_toasts),
 		_toasts.any(func(text: String) -> bool: return text.contains("repeats your voice")))
@@ -52,9 +55,10 @@ func _run() -> void:
 	await _wait(30)
 	_check("the echo respects its interval (%d -> %d)" % [first, _echoes],
 		_echoes <= first + 3)
-	# Far away it stays silent.
+	# Far away it stays silent even when it hears the noise.
 	stalker.global_position = player.global_position + Vector3(40.0, 0.0, 0.0)
 	_echoes = 0
+	bus.emit_signal(&"disturbance_emitted", player.global_position, 100.0)
 	await _wait(40)
 	_check("no echo from across the layer (%d)" % _echoes, _echoes == 0)
 	stalker.queue_free()
@@ -106,6 +110,11 @@ func _run() -> void:
 	var main: Node = load(MAIN_SCENE_PATH).instantiate()
 	root.add_child(main)
 	await _wait(30)
+	main.call(&"_swap_area", FOREST_PATH, 3)
+	await _wait(16)
+	var night := main.get_node_or_null("World") as Node3D
+	_check("layer 3 spawns the Choir stalker",
+		night != null and night.find_child("ChoirStalker", true, false) != null)
 	main.call(&"_swap_area", FOREST_PATH, 4)
 	await _wait(16)
 	var deep := main.get_node_or_null("World") as Node3D

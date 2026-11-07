@@ -131,6 +131,18 @@ static func _resources() -> Dictionary:
 	return result if result is Dictionary else {}
 
 
+static func _weapons() -> Dictionary:
+	var lore := _lore()
+	if lore == null:
+		return {}
+	var script: Script = lore.get_script() as Script
+	if script == null:
+		return {}
+	var constants: Dictionary = script.get_script_constant_map()
+	var result: Variant = constants.get("WEAPONS", {})
+	return result if result is Dictionary else {}
+
+
 static func _journal() -> Dictionary:
 	var lore := _lore()
 	if lore == null:
@@ -176,6 +188,8 @@ static func color(id: String) -> Color:
 static func kind(id: String) -> String:
 	if id == "gold":
 		return "Currency"
+	if WEAPON_IDS.has(id):
+		return "Weapon"
 	if BUILD_NAMES.has(id):
 		return "Structure"
 	var rarity := _rarity(id)
@@ -217,6 +231,9 @@ static func description(id: String) -> String:
 	var resource: Dictionary = _resources().get(id, {})
 	if not resource.is_empty():
 		return str(resource.get("description", ""))
+	var weapon: Dictionary = _weapons().get(id, {})
+	if not weapon.is_empty():
+		return str(weapon.get("description", ""))
 	var gear: Dictionary = _gear().get(id, {})
 	if not gear.is_empty():
 		return str(gear.get("description", ""))
@@ -423,9 +440,9 @@ static func _note_model(id: String) -> Node3D:
 static func _club() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Model_mycelium_club"
-	var wood := Color(0.44, 0.29, 0.15)
-	var cap := Color(0.26, 0.78, 0.62)
-	var glow := Color(0.38, 1.0, 0.78)
+	var wood := Color(0.36, 0.24, 0.13)
+	var cap := Color(0.22, 0.50, 0.42)
+	var glow := Color(0.40, 0.78, 0.60)
 
 	var shaft := _cylinder(0.045, 0.065, 0.72, wood, 8)
 	shaft.position.y = 0.36
@@ -437,7 +454,7 @@ static func _club() -> Node3D:
 	band.position.y = 0.62
 	root.add_child(band)
 
-	var head := _sphere(0.19, 0.30, cap, 12, 6, 0.8)
+	var head := _sphere(0.19, 0.30, cap, 12, 6, 0.2)
 	head.position.y = 0.82
 	head.scale = Vector3(1.0, 0.85, 1.0)
 	root.add_child(head)
@@ -448,7 +465,7 @@ static func _club() -> Node3D:
 		root.add_child(knot)
 	for index in 4:
 		var angle := TAU * float(index) / 4.0 + 0.4
-		var spot := _sphere(0.028, 0.018, glow, 6, 3, 1.4)
+		var spot := _sphere(0.028, 0.018, glow, 6, 3, 0.5)
 		spot.position = Vector3(cos(angle) * 0.11, 0.92, sin(angle) * 0.11)
 		root.add_child(spot)
 	return root

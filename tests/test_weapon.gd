@@ -102,6 +102,10 @@ func _run() -> void:
 	_check("the club is an item visual", bool(visuals.all_ids().has("mycelium_club")))
 	var model = visuals.build_model("mycelium_club", 1.15)
 	_check("the club builds a preview model", model != null)
+	_check("the club is typed as a weapon (%s)" % str(visuals.call(&"kind", "mycelium_club")),
+		str(visuals.call(&"kind", "mycelium_club")) == "Weapon")
+	_check("the club has its real description (%s)" % str(visuals.call(&"description", "mycelium_club")).substr(0, 24),
+		str(visuals.call(&"description", "mycelium_club")).contains("knotted club"))
 	_finish()
 
 
