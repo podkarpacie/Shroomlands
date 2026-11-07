@@ -30,6 +30,7 @@ const SECTION_SETTINGS := "settings"
 const SECTION_CONTROLS := "controls"
 const SECTION_PLAYERS := "players"
 const SECTION_SKILLS := "skills"
+const SECTION_JOURNAL := "journal"
 
 ## Grouped for the Controls page. The key names are read from `InputMap` when
 ## the page is built, so a rebind shows up without touching this file.
@@ -77,6 +78,7 @@ const ACTION_LABELS := {
 @onready var _controls_button: Button = $Root/Center/Card/Margin/Content/Actions/ControlsButton
 @onready var _players_button: Button = $Root/Center/Card/Margin/Content/Actions/PlayersButton
 @onready var _skills_button: Button = $Root/Center/Card/Margin/Content/Actions/SkillsButton
+@onready var _journal_button: Button = $Root/Center/Card/Margin/Content/Actions/JournalButton
 @onready var _quit_to_menu_button: Button = (
 	$Root/Center/Card/Margin/Content/Actions/QuitToMenuButton
 )
@@ -136,6 +138,15 @@ const ACTION_LABELS := {
 )
 @onready var _skills_list: VBoxContainer = (
 	$Root/Center/Card/Margin/Content/Sections/SkillsSection/SkillsList
+)
+@onready var _journal_section: VBoxContainer = (
+	$Root/Center/Card/Margin/Content/Sections/JournalSection
+)
+@onready var _journal_title: Label = (
+	$Root/Center/Card/Margin/Content/Sections/JournalSection/JournalTitle
+)
+@onready var _journal_list: VBoxContainer = (
+	$Root/Center/Card/Margin/Content/Sections/JournalSection/JournalScroll/JournalMargin/JournalList
 )
 
 var _open := false
@@ -257,7 +268,7 @@ func toggle_section(id: String) -> void:
 func set_section(id: String) -> void:
 	if (
 		id != SECTION_NONE and id != SECTION_SETTINGS and id != SECTION_CONTROLS
-		and id != SECTION_PLAYERS and id != SECTION_SKILLS
+		and id != SECTION_PLAYERS and id != SECTION_SKILLS and id != SECTION_JOURNAL
 	):
 		return
 	_section = id
@@ -265,11 +276,13 @@ func set_section(id: String) -> void:
 	_controls_section.visible = id == SECTION_CONTROLS
 	_players_section.visible = id == SECTION_PLAYERS
 	_skills_section.visible = id == SECTION_SKILLS
+	_journal_section.visible = id == SECTION_JOURNAL
 	_idle_hint.visible = id == SECTION_NONE
 	_mark_section(_settings_button, id == SECTION_SETTINGS)
 	_mark_section(_controls_button, id == SECTION_CONTROLS)
 	_mark_section(_players_button, id == SECTION_PLAYERS)
 	_mark_section(_skills_button, id == SECTION_SKILLS)
+	_mark_section(_journal_button, id == SECTION_JOURNAL)
 	if id == SECTION_CONTROLS:
 		# Rebuilt on every open, so a rebind made in the project settings is
 		# reflected without reloading the scene.
@@ -279,6 +292,8 @@ func set_section(id: String) -> void:
 		_players_section.visible = _refresh_players() > 0
 	elif id == SECTION_SKILLS:
 		_refresh_skills()
+	elif id == SECTION_JOURNAL:
+		_refresh_journal()
 
 
 func is_section_open(id: String) -> bool:
@@ -386,6 +401,7 @@ func _connect_buttons() -> void:
 		_controls_button,
 		_players_button,
 		_skills_button,
+		_journal_button,
 		_quit_to_menu_button,
 		_quit_game_button,
 	]:
@@ -395,6 +411,7 @@ func _connect_buttons() -> void:
 	_controls_button.pressed.connect(toggle_section.bind(SECTION_CONTROLS))
 	_players_button.pressed.connect(toggle_section.bind(SECTION_PLAYERS))
 	_skills_button.pressed.connect(toggle_section.bind(SECTION_SKILLS))
+	_journal_button.pressed.connect(toggle_section.bind(SECTION_JOURNAL))
 	_quit_to_menu_button.pressed.connect(quit_to_menu)
 	_quit_game_button.pressed.connect(quit_game)
 	_music_slider.value_changed.connect(_on_music_slider_changed)
@@ -460,6 +477,53 @@ func _player_row(entry: Dictionary, is_local: bool) -> Control:
 	UITheme.style_label(values, 12, UITheme.DIM, 0)
 	row.add_child(values)
 	return row
+
+
+## The found-journal catalogue: one block per chapter, with the body and faction
+## clue for pages you have picked up and a layer hint for the rest.
+func _refresh_journal() -> void:
+	_clear(_journal_list)
+	for id: String in Lore.JOURNAL:
+		var note: Dictionary = Lore.JOURNAL[id]
+		var found := Game.has_note(id)
+		var title := Label.new()
+		title.text = "Chapter %d - %s" % [
+			int(note.get("chapter", 0)),
+			str(note.get("title", id)) if found else "not found",
+		]
+		UITheme.style_heading(title, 13, UITheme.ACCENT if found else UITheme.FAINT)
+		_journal_list.add_child(title)
+		var meta := Label.new()
+		if found:
+			var faction: Dictionary = Lore.FACTIONS.get(str(note.get("faction", "")), {})
+			meta.text = "Found in layer %d  ·  clue points at %s" % [
+				int(note.get("layer", 0)), str(faction.get("name", "someone")),
+			]
+		else:
+			meta.text = "Lost somewhere in layer %d" % int(note.get("layer", 0))
+		UITheme.style_label(meta, 11, UITheme.DIM, 0)
+		_journal_list.add_child(meta)
+		if not found:
+			continue
+		var body := Label.new()
+		body.text = str(note.get("body", ""))
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		UITheme.style_label(body, 12, UITheme.TEXT, 0)
+		_journal_list.add_child(body)
+		var clue := Label.new()
+		clue.text = "Clue: %s" % str(note.get("clue", ""))
+		clue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		UITheme.style_label(clue, 11, UITheme.AMBER, 0)
+		_journal_list.add_child(clue)
+
+
+## Read-only snapshot for the suite.
+func get_journal_text() -> String:
+	var lines: Array[String] = []
+	for child in _journal_list.get_children():
+		if child is Label:
+			lines.append((child as Label).text)
+	return "\n".join(lines)
 
 
 ## One row per action skill: name, level and the progress toward the next one.
@@ -768,6 +832,7 @@ func _style() -> void:
 	UITheme.style_heading(_controls_title, 15, UITheme.ACCENT_SOFT)
 	UITheme.style_heading(_players_title, 15, UITheme.ACCENT_SOFT)
 	UITheme.style_heading(_skills_title, 15, UITheme.ACCENT_SOFT)
+	UITheme.style_heading(_journal_title, 15, UITheme.ACCENT_SOFT)
 	for label: Label in [
 		$Root/Center/Card/Margin/Content/Sections/SettingsSection/MusicHeader/MusicLabel,
 		$Root/Center/Card/Margin/Content/Sections/SettingsSection/SfxHeader/SfxLabel,

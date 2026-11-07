@@ -56,6 +56,11 @@ const COLORS := {
 	"muffled_pack": Color(0.46, 0.34, 0.24),
 	"bright_lamp": Color(0.34, 0.78, 0.92),
 	"mycelium_vest": Color(0.56, 0.42, 0.22),
+	"page_1": Color(0.86, 0.80, 0.62),
+	"page_2": Color(0.82, 0.80, 0.66),
+	"page_3": Color(0.78, 0.74, 0.66),
+	"page_4": Color(0.80, 0.72, 0.58),
+	"page_5": Color(0.88, 0.84, 0.70),
 }
 
 const BUILD_NAMES := {
@@ -126,6 +131,18 @@ static func _resources() -> Dictionary:
 	return result if result is Dictionary else {}
 
 
+static func _journal() -> Dictionary:
+	var lore := _lore()
+	if lore == null:
+		return {}
+	var script: Script = lore.get_script() as Script
+	if script == null:
+		return {}
+	var constants: Dictionary = script.get_script_constant_map()
+	var result: Variant = constants.get("JOURNAL", {})
+	return result if result is Dictionary else {}
+
+
 static func _gear() -> Dictionary:
 	var lore := _lore()
 	if lore == null:
@@ -171,6 +188,9 @@ static func kind(id: String) -> String:
 		return "Resource"
 	if _gear().has(id):
 		return "Gear  ·  %s" % str((_gear()[id] as Dictionary).get("slot", "")).capitalize()
+	var note: Dictionary = _journal().get(id, {})
+	if not note.is_empty():
+		return "Journal  ·  Chapter %d" % int(note.get("chapter", 0))
 	return "Curiosity"
 
 
@@ -200,6 +220,9 @@ static func description(id: String) -> String:
 	var gear: Dictionary = _gear().get(id, {})
 	if not gear.is_empty():
 		return str(gear.get("description", ""))
+	var note: Dictionary = _journal().get(id, {})
+	if not note.is_empty():
+		return str(note.get("body", ""))
 	return "An unfamiliar piece of the Mycelium."
 
 
@@ -277,6 +300,8 @@ static func _procedural_model(id: String) -> Node3D:
 		return _club()
 	if GEAR_IDS.has(id):
 		return _gear_model(id)
+	if _journal().has(id):
+		return _note_model(id)
 	var potion := _potion_data(id)
 	if not potion.is_empty():
 		return _potion(id, str(potion.get("from", "")))
@@ -371,6 +396,26 @@ static func _gear_model(id: String) -> Node3D:
 					_box(Vector3(0.12, 0.18, 0.26), tint.darkened(0.15), Vector3(x, 0.46, 0.0))
 				)
 			root.add_child(_box(Vector3(0.42, 0.06, 0.30), tint.lightened(0.2), Vector3(0.0, 0.13, 0.0)))
+	return root
+
+
+## A curled journal page with a wax seal: one silhouette for every chapter.
+static func _note_model(id: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Model_%s" % id
+	var paper: Color = COLORS.get(id, Color(0.84, 0.79, 0.62))
+	var page := _box(Vector3(0.46, 0.012, 0.60), paper, Vector3(0.0, 0.02, 0.0))
+	page.rotation_degrees = Vector3(0.0, 8.0, 0.0)
+	root.add_child(page)
+	var fold := _box(Vector3(0.44, 0.015, 0.10), paper.darkened(0.12), Vector3(0.0, 0.024, -0.26))
+	fold.rotation_degrees = Vector3(-14.0, 8.0, 0.0)
+	root.add_child(fold)
+	var ink := _box(Vector3(0.30, 0.016, 0.02), paper.darkened(0.55), Vector3(0.0, 0.028, 0.14))
+	root.add_child(ink)
+	root.add_child(_box(Vector3(0.26, 0.016, 0.02), paper.darkened(0.45), Vector3(0.0, 0.028, 0.04)))
+	var seal := _sphere(0.07, 0.02, Color(0.62, 0.16, 0.18), 10, 3)
+	seal.position = Vector3(0.14, 0.03, -0.18)
+	root.add_child(seal)
 	return root
 
 

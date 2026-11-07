@@ -21,6 +21,8 @@ signal stamina_changed(current: float, max_stamina: float)
 signal xp_changed(current: int, needed: int)
 signal level_changed(new_level: int)
 signal skill_changed(skill_id: StringName, level: int, xp: int, needed: int)
+## A found journal chapter was added to the catalogue (fires once per id).
+signal note_discovered(note_id: String)
 signal skill_level_up(skill_id: StringName, level: int)
 ## A timed effect was applied, refreshed, expired or its countdown advanced.
 ## The HUD reads `PlayerStats.get_buffs()` when this fires.

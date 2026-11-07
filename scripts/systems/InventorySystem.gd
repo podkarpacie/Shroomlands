@@ -210,6 +210,10 @@ func add_item(id: StringName, count: int) -> int:
 		EventBus.inventory_changed.emit()
 		if hotbar_touched:
 			EventBus.hotbar_changed.emit()
+	# A journal page found in any container unlocks its chapter. Doing it here
+	# covers every grant path (chest, crate, server loot RPC) exactly once.
+	if remaining < count and Lore.is_note(str(id)):
+		Game.discover_note(str(id))
 	return remaining
 
 
@@ -406,6 +410,12 @@ func use_slot(index: int) -> bool:
 		elif equip_weapon(id):
 			EventBus.toast_requested.emit("Equipped %s" % Lore.item_display_name(str(id)))
 		return true
+	if Lore.is_note(str(id)):
+		# Reading is the catalogue's job; the page is never eaten.
+		EventBus.toast_requested.emit(
+			"%s - read it in Esc > Journal" % Lore.item_display_name(str(id))
+		)
+		return true
 	if Lore.is_gear(str(id)):
 		# Double-click equips/unequips; gear is never eaten.
 		var gear_slot := str(Lore.get_gear(str(id)).get("slot", ""))
@@ -533,7 +543,7 @@ func from_dict(data: Dictionary) -> void:
 
 ## Stack size for an id. `Lore` may override `MAX_STACK` with `stack_size`.
 func max_stack(id: StringName) -> int:
-	if Lore.is_weapon(str(id)) or Lore.is_gear(str(id)):
+	if Lore.is_weapon(str(id)) or Lore.is_gear(str(id)) or Lore.is_note(str(id)):
 		return 1
 	var limit := int(Lore.get_mushroom(str(id)).get("stack_size", MAX_STACK))
 	return maxi(limit, 1)
@@ -556,7 +566,7 @@ func _changed(index: int) -> void:
 func _warn_unknown(id: StringName) -> void:
 	if Lore.is_mushroom(str(id)) or Lore.is_potion(str(id)) \
 			or Lore.is_weapon(str(id)) or Lore.is_gear(str(id)) \
-			or Lore.RESOURCES.has(str(id)):
+			or Lore.is_note(str(id)) or Lore.RESOURCES.has(str(id)):
 		return
 	if _warned_unknown.has(id):
 		return

@@ -437,6 +437,52 @@ const WEAPONS := {
 	},
 }
 
+## The found journal: one chapter per depth layer, dropped by that layer's first
+## searchable crate. Each chapter points at one of the three factions; together
+## they are the readable half of the Great Blight mystery.
+const JOURNAL := {
+	"page_1": {
+		"id": "page_1", "chapter": 1, "layer": 1,
+		"title": "Ledger of the First Descent",
+		"author": "Quartermaster Ilse, first expedition",
+		"faction": "verdant_covenant",
+		"body": "Twelve of us went down with picks and lamps. The warden from the Verdant Covenant made us cut into the white root before we had mapped the first gallery. She said the wound would prove the blight was natural — that the Mycelium had always been sick. I signed for the picks. I should not have.",
+		"clue": "A Covenant warden ordered the first cut, and wanted the damage read as natural decay.",
+	},
+	"page_2": {
+		"id": "page_2", "chapter": 2, "layer": 2,
+		"title": "Field Notes, Second Descent",
+		"author": "Researcher Olek, Sporebound",
+		"faction": "sporebound",
+		"body": "The caps near the wound mutate faster than anything in the Hollows. New gills in three days. New colours in five. The Sporebound call this the next stage, and Olek writes it down like a birth, not a symptom. He will not stop measuring. He will not leave.",
+		"clue": "A Sporebound researcher is documenting the mutation as evolution, not damage.",
+	},
+	"page_3": {
+		"id": "page_3", "chapter": 3, "layer": 3,
+		"title": "The Choir Under the Roots",
+		"author": "Scout Meru, third expedition",
+		"faction": "pale_order",
+		"body": "We hear singing under the roots. Not wind. It answers when we speak and stops when we hold our breath. There is a Pale Order sigil cut into the shaft — a circle over a closed eye — and a note beneath it in their hand: SEAL IT, WHATEVER LIVES DOWN THERE. They knew. They did not say what they knew.",
+		"clue": "The Pale Order reached the singing first and left orders to seal it — and said nothing.",
+	},
+	"page_4": {
+		"id": "page_4", "chapter": 4, "layer": 4,
+		"title": "What the Choir Answered",
+		"author": "Quartermaster Ilse, last entry",
+		"faction": "verdant_covenant",
+		"body": "The singing answers our noise. Shout, and it comes closer. Light the lamp, and it knows where we are. It is not hunting us for food. It is answering the wound. Pinned here: a torn Covenant page and a Sporebound sample log, both dated the same week. They were both on the first descent. They have both been lying.",
+		"clue": "The Blight reacts to sound, and two factions were on the first descent together.",
+	},
+	"page_5": {
+		"id": "page_5", "chapter": 5, "layer": 5,
+		"title": "The First Mycelium",
+		"author": "the last of the first expedition",
+		"faction": "pale_order",
+		"body": "At the source. The tool that opened the First Mycelium carries Pale Order marks, but the order to cut was signed by a Covenant hand, and the Sporebound paid for the lamps. All three wanted something from the wound. The Choir is what came up to answer it. If you are reading this, you are already making noise.",
+		"clue": "All three factions paid for the first cut; the Choir is the wound's answer to noise.",
+	},
+}
+
 ## Craftable gear. One item per equipment slot; the multipliers are read by the
 ## system that owns the number (`PlayerStats` armour, `SporeLamp`, noise) so an
 ## item change takes effect without baking values into the player scene.
@@ -668,6 +714,22 @@ func is_gear(id: String) -> bool:
 	return GEAR.has(id)
 
 
+func is_note(id: String) -> bool:
+	return JOURNAL.has(id)
+
+
+func get_note(id: String) -> Dictionary:
+	return JOURNAL.get(id, {})
+
+
+## The chapter that belongs to a depth layer, or "" when the layer has none.
+func note_for_layer(layer: int) -> String:
+	for id: String in JOURNAL:
+		if int(JOURNAL[id].get("layer", 0)) == layer:
+			return id
+	return ""
+
+
 func get_gear(id: String) -> Dictionary:
 	return GEAR.get(id, {})
 
@@ -731,6 +793,8 @@ func item_display_name(id: String) -> String:
 		return str(WEAPONS[id]["name"])
 	if GEAR.has(id):
 		return str(GEAR[id]["name"])
+	if JOURNAL.has(id):
+		return str(JOURNAL[id]["title"])
 	return id
 
 

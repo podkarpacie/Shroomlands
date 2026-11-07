@@ -601,6 +601,7 @@ func validate_inventory_payload(slots: Array) -> bool:
 			or Lore.is_potion(str(raw_id))
 			or Lore.is_weapon(str(raw_id))
 			or Lore.is_gear(str(raw_id))
+			or Lore.is_note(str(raw_id))
 			or Lore.RESOURCES.has(str(raw_id))
 		)
 		if not known:

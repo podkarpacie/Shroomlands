@@ -92,6 +92,11 @@ custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Skills"
 
+[node name="JournalButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Journal"
+
 [node name="QuitToMenuButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
@@ -241,3 +246,26 @@ text = "Skills"
 [node name="SkillsList" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/SkillsSection"]
 layout_mode = 2
 theme_override_constants/separation = 6
+
+[node name="JournalSection" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="JournalTitle" type="Label" parent="Root/Center/Card/Margin/Content/Sections/JournalSection"]
+layout_mode = 2
+text = "Journal"
+
+[node name="JournalScroll" type="ScrollContainer" parent="Root/Center/Card/Margin/Content/Sections/JournalSection"]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="JournalMargin" type="MarginContainer" parent="Root/Center/Card/Margin/Content/Sections/JournalSection/JournalScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_right = 8
+
+[node name="JournalList" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/JournalSection/JournalScroll/JournalMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8

@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **41 test suites / 1995 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **42 test suites / 2040 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -54,6 +54,19 @@ The review's build order starts with skills from actions:
   mushrooms (`glowcap`, `emberstem`, `venomveil`, `sunheart`, `blightroot`, `geodecap`) are retired
   from `docs/MVP_SPEC.md` in favour of the eleven shipped species. Forest layers no longer carry
   level ranges; depth is position-gated, not level-gated.
+
+## Found journal (design review step 2)
+- **Five chapters**, one per depth layer (`Lore.JOURNAL`): the first expedition's ledger, a
+  Sporebound field log, the Pale Order seal under the roots, the Choir answering noise, and the
+  First Mycelium. Each chapter carries a `faction` from `Lore.FACTIONS` and a one-line `clue`.
+- **Where they are**: `Crate1` in every structure carries that layer's page, on top of the normal
+  crate loot. Looting a page unlocks the chapter exactly once, from any grant path, because
+  `InventorySystem.add_item` calls `Game.discover_note`.
+- **Where you read them**: pause menu → **Journal**. Found chapters show their faction, body and
+  clue; unfound ones show only the layer hint. Pages are saved as `notes` and are never eaten by
+  double-click.
+- **Tests**: `test_journal.gd` (45 assertions: data, layer mapping, Crate1 drop, one-shot
+  discovery, duplicate handling, catalogue text, save round-trip).
 
 ## Resources, gear and the Workshop (design review step 4)
 - **Sourcing**: every structure chest drops two materials and each of its three crates one, from a

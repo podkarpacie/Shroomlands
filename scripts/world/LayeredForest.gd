@@ -475,6 +475,12 @@ func _add_structure_loot(parent: Node3D) -> void:
 			crate_loot.append(species[_rng.randi_range(0, species.size() - 1)])
 		if not resources.is_empty():
 			crate_loot.append(resources[_rng.randi_range(0, resources.size() - 1)])
+		# Crate1 always carries the layer's journal chapter: one readable page per
+		# depth, so a party that searches the structure cannot miss the story.
+		if index == 0:
+			var page := Lore.note_for_layer(layer)
+			if not page.is_empty():
+				crate_loot.append(page)
 		crate.set(&"loot", crate_loot)
 		crate.set(&"gold", 5 + layer * 3)
 		parent.add_child(crate)

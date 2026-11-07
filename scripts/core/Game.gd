@@ -23,6 +23,8 @@ const VOCATION_SKILL_BONUS := 0.25
 
 var gold: int = STARTING_GOLD
 var discovered_mushrooms: Dictionary = {}
+## Found journal chapters (`page_1` .. `page_5`), saved with the run.
+var discovered_notes: Dictionary = {}
 ## Action skills: `{id: {level, xp}}`, persisted with the save and owned by the
 ## local peer (each player levels their own character).
 var skills: Dictionary = {}
@@ -222,6 +224,19 @@ func vocation_affinity() -> String:
 
 ## Grants xp and returns how many levels were gained. A maxed skill stops
 ## collecting xp instead of overflowing a bar it can never fill.
+## Records a found chapter and announces it exactly once.
+func discover_note(id: String) -> bool:
+	if not Lore.is_note(id) or discovered_notes.has(id):
+		return false
+	discovered_notes[id] = true
+	EventBus.note_discovered.emit(id)
+	return true
+
+
+func has_note(id: String) -> bool:
+	return discovered_notes.has(id)
+
+
 func add_skill_xp(id: StringName, amount: int) -> int:
 	var key := String(id)
 	if amount <= 0 or not Lore.SKILLS.has(key):
@@ -339,6 +354,7 @@ func get_local_player() -> Node:
 func reset_session() -> void:
 	gold = STARTING_GOLD
 	discovered_mushrooms.clear()
+	discovered_notes.clear()
 	skills.clear()
 	_ensure_skills()
 	chosen_vocation = &""
