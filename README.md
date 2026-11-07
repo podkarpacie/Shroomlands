@@ -11,7 +11,7 @@ and Windows/Web exports.
 
 ## Status
 
-- 40 headless test suites, **1938 assertions**, all green - including a run with a
+- 41 headless test suites, **1995 assertions**, all green - including a run with a
   level-30 character save on disk (the suites redirect `SaveSystem` to a private file;
   see [Tests](#tests)).
 - Desktop renderer: **Forward+**. Web renderer: **Compatibility (WebGL 2.0)** — see
@@ -35,12 +35,13 @@ and Windows/Web exports.
 | **E. PlotSystem** | Done | Six 12 m plots, buy with gold, daily fee settled from wall-clock time (offline included), 3-day expiry, 1 m grid building (hut/farm/workshop/chest), server-authoritative, `user://plots.json` |
 | **F. MultiplayerManager** | Done (ENet + WebSocket) | Host/join, player position sync, vitals sync, inventory sync, roster, global/local chat, server-side validation. ENet for desktop, WebSocket for browsers; one transport per server instance |
 | **G. UI** | Done | Themed HUD (vitals, biome, progression, icon hotbar, damage numbers), satchel, chat, build palette, vocation picker, lobby, pause menu |
-| Pause menu | Done | Esc opens Resume / Settings / Controls / Players / Quit to Menu / Quit Game. Settings are the lobby's (`settings.cfg`, same ranges and defaults), Controls is generated from `InputMap` at runtime, Players mirrors `Main.get_roster()`. Pauses the SceneTree only OFFLINE; a networked peer keeps simulating and shows "Paused (local)". Escape closes chat, satchel or build mode first, and never opens the menu on top of them |
+| Pause menu | Done | Esc opens Resume / Skills / Settings / Controls / Players / Quit to Menu / Quit Game. Settings are the lobby's (`settings.cfg`, same ranges and defaults), Controls is generated from `InputMap` at runtime, Players mirrors `Main.get_roster()`. Pauses the SceneTree only OFFLINE; a networked peer keeps simulating and shows "Paused (local)". Escape closes chat, satchel or build mode first, and never opens the menu on top of them |
 | **H. World** | Done (one biome) | Verdant Bloom placeholder terrain, mushroom nodes, decorative props, plot row, four enemy spawns |
-| **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, action skills, active area + forest layer, position, HP/stamina, inventory, weapon condition. Plots live server-side |
+| **I. SaveSystem** | Done | Atomic JSON save: level, XP, gold, discoveries, vocation, action skills, equipped gear, active area + forest layer, position, HP/stamina, inventory, weapon condition. Plots live server-side |
 | Vocation at level 20 | Done | Four vocations (Knight/Healer/Harvester/Ranger), modal picker, persisted choice, and a +25% skill-XP affinity for the matching action skill |
 | Action skills | Done | Foraging, Alchemy, Combat and Survival level from doing (gather / brew / kill / search + extract), with four perks that change real numbers: +1 mushroom per harvest at 5/10/15, cheaper brew fees, +2% damage per Combat level, longer lamp battery and faster searches. Saved with the run and shown on the pause menu's Skills page |
-| Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
+| Resources & gear | Done | The hut, castle and dungeon chests/crates drop fibre, fossilized caps, hardened mycelium, spore crystals, infested ore and (layer-5 dungeon) the ancient core. The town **Workshop** crafts four slot items — quiet boots (-40% noise), muffled pack (-50% crate noise), bright lamp (+35% beam, +25% battery) and mycelium vest (-15% damage) — which multiply with the Survival/Combat perks and are worn by double-clicking in the satchel |
+| Town hub | Done (server-authoritative travel) | Walled settlement **Mycoria**: spawn, shop, alchemy table, **workshop**, repair bench, plot board and the north gate to the Verdant Bloom. The HUD names the active area. The weapon wears one point per swing, deals half damage at 0, and the bench restores it at 2 g/point |
 | Layered forest | First pass | Five depth layers from one deterministic run: a winding spine with forks and dead ends, Spore Blooms on the spine, layer-correct mushrooms, and a structure that grows with depth — hut on 1, battlemented castle with torches on 2-3, pillared dungeon on 4-5 — each with a chest and three crates. The walls/posts/pillars are solid world geometry. Descent/return gates, enemies scaled by depth |
 | Party HUD & handoff | Done | The HUD lists every body in the group with `[LAMP]` on the leader; `L` hands the lamp to the nearest living forager within 8 m, and the server only accepts it from the current leader |
 | First-person & atmosphere | Done | Starts at the eyes; a screen pass adds a biome tint, a danger vignette/grain and a small chroma split, while quiet creaks/whispers/drips and a heartbeat quicken near creatures |
@@ -95,14 +96,14 @@ Get-ChildItem tests/test_*.gd | Where-Object { $_.BaseName -ne 'test_env' } | Fo
 
 Current counts: `test_alchemy` 27, `test_area_persistence` 14, `test_atmosphere` 19,
 `test_audio` 78, `test_chat` 24, `test_combat` 51, `test_consumables` 38, `test_effects` 40,
-`test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 39, `test_holding` 26,
-`test_horror_search` 34, `test_inventory` 31, `test_isolation` 22, `test_layered_forest` 47,
-`test_limbs` 15, `test_lobby` 98, `test_lore` 312, `test_models` 43, `test_movement` 30,
-`test_movement_block` 15, `test_network` 41, `test_party_ui` 18, `test_pause` 76,
-`test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 42, `test_run_timer` 22,
-`test_save` 69, `test_shop` 29, `test_skills` 49, `test_spore_bloom` 22, `test_sync` 68,
-`test_town` 51, `test_ui` 60, `test_vocation` 68, `test_voice_and_leader` 21, `test_weapon` 28 -
-**1938 assertions**.
+`test_forest_run` 67, `test_fp_camera` 52, `test_gathering` 39, `test_gear` 54,
+`test_holding` 26, `test_horror_search` 34, `test_inventory` 31, `test_isolation` 22,
+`test_layered_forest` 48, `test_limbs` 15, `test_lobby` 98, `test_lore` 312, `test_models` 43,
+`test_movement` 30, `test_movement_block` 15, `test_network` 41, `test_party_ui` 18,
+`test_pause` 76, `test_player` 18, `test_plots` 86, `test_rig` 48, `test_run_goal` 42,
+`test_run_timer` 22, `test_save` 70, `test_shop` 29, `test_skills` 49, `test_spore_bloom` 22,
+`test_sync` 69, `test_town` 51, `test_ui` 60, `test_vocation` 68, `test_voice_and_leader` 21,
+`test_weapon` 28 - **1995 assertions**.
 
 ### Continuous integration
 
@@ -113,7 +114,7 @@ every pull request: it downloads the official Godot 4.7.2 Linux binary (cached b
 does one `--import` pass because a fresh checkout has no `.godot/` cache, then runs the same
 39 suites. `tests/test_env.gd` is skipped - it is the isolation helper and exits 1 when
 run on its own. The job fails on a non-zero exit **or** a `FAIL` line, and prints the per-suite
-`PASS` counts plus the total (1938). It needs no secrets, no export templates and no network
+`PASS` counts plus the total (1995). It needs no secrets, no export templates and no network
 access beyond the Godot release download.
 
 ### Test isolation
@@ -233,7 +234,7 @@ scripts/
                          ShopUI, AlchemyUI, RepairUI, PlotBoardUI
   world/                 MushroomNode, Enemy, PlotSign, VerdantBloom, Town, AreaGate, Station
 resources/               MultiplayerSynchronizer replication configs
-tests/                   40 headless suites, net_harness, capture_frame, network proofs
+tests/                   41 headless suites, net_harness, capture_frame, network proofs
 tools/                   export_all, run_server, serve_web, run_two_clients,
                          generate_audio, server bootstrap
 docs/                    MVP_SPEC.md, HOSTING.md
@@ -510,9 +511,10 @@ back on for tools and tests.
 7. **No voice chat**, full skill trees, advanced crafting, raids/endgame, factions or the
    full Great Blight story. Vocation choice exists and grants a skill affinity, but the three
    trees behind each vocation do not; the four action skills are flat level+perk tracks, not
-   branching trees. Levels add melee damage (3% each) and Combat skill adds 2% more; there is one
-   weapon and no armour/equipment slots, no throwables (Spore Bomb is gated in the shop and the
-   table), and `Lore.RESOURCES` has no source or recipe yet.
+   branching trees. Levels add melee damage (3% each) and Combat skill adds 2% more. Gear is four
+   slots (body/feet/back/light) with fixed effects, not a mod system; the six resources now drop
+   from the structures and feed the Workshop. There are no throwables (Spore Bomb is gated in the
+   shop and the table).
 8. **No server browser or accounts.** Direct host/port only; no authentication, no
    character server, no anti-cheat. The server relays what each peer reports for
    player position, gold, inventory, vitals and discoveries, so there is no server-side

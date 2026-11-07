@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/alchemy.tscn" id="11_alchemy"]
 [ext_resource type="PackedScene" path="res://scenes/ui/repair.tscn" id="12_repair"]
 [ext_resource type="PackedScene" path="res://scenes/ui/plot_board.tscn" id="13_board"]
+[ext_resource type="PackedScene" path="res://scenes/ui/workshop.tscn" id="16_workshop"]
 [ext_resource type="PackedScene" path="res://scenes/ui/run_summary.tscn" id="14_run"]
 [ext_resource type="PackedScene" path="res://scenes/ui/screen_fx.tscn" id="15_fx"]
 [ext_resource type="Script" path="res://scripts/core/Atmosphere.gd" id="16_atmosphere"]
@@ -65,5 +66,7 @@ script = ExtResource("6_plots")
 [node name="RepairUI" parent="." instance=ExtResource("12_repair")]
 
 [node name="PlotBoardUI" parent="." instance=ExtResource("13_board")]
+
+[node name="WorkshopUI" parent="." instance=ExtResource("16_workshop")]
 
 [node name="RunSummary" parent="." instance=ExtResource("14_run")]

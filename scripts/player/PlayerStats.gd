@@ -241,6 +241,11 @@ func incoming_damage_multiplier() -> float:
 	var result := 1.0
 	for id: StringName in _buffs:
 		result *= float((_buffs[id] as Dictionary).get("armor_mult", 1.0))
+	# Worn armour is read from this body's own inventory, so the owner's vest
+	# applies to damage the owner resolves (remote hits arrive via the RPC).
+	var inventory := get_parent().get_node_or_null("InventorySystem")
+	if inventory != null and inventory.has_method(&"gear_multiplier"):
+		result *= float(inventory.call(&"gear_multiplier", "armor_mult"))
 	return result
 
 

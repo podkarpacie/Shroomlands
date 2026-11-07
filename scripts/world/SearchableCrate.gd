@@ -64,6 +64,9 @@ func _complete() -> void:
 		# The searcher levels Survival; the server's copy of a client body does
 		# not, so exactly one peer is paid.
 		Game.add_skill_xp(&"survival", 10)
+	# The searcher's pack muffles this search; the peer that searched reports it
+	# so the server hears the reduced radius.
+	Network.report_disturbance(global_position, noise_radius * _search_noise_scale())
 	if Network.mode == Network.CLIENT:
 		# The server owns the contents and the opened state.
 		searching = false
@@ -74,7 +77,6 @@ func _complete() -> void:
 	_grant_local()
 	if Network.mode == Network.SERVER:
 		apply_opened.rpc()
-	Network.report_disturbance(global_position, noise_radius)
 
 
 ## Server-side grant to its own player (offline or the host searched).
@@ -106,7 +108,6 @@ func request_open() -> void:
 	_apply_opened()
 	apply_opened.rpc()
 	main.call(&"send_loot", sender, loot, gold)
-	Network.report_disturbance(global_position, noise_radius)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -137,6 +138,16 @@ func _open_lid() -> void:
 	tween.set_parallel(true)
 	tween.tween_property(_lid, "rotation:x", -1.0, 0.3).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(_lid, "position:y", 0.82, 0.3)
+
+
+## The searcher's `muffled_pack` halves the radius; 1.0 without one.
+func _search_noise_scale() -> float:
+	if _searcher == null or not is_instance_valid(_searcher):
+		return 1.0
+	var inventory := _searcher.get_node_or_null("InventorySystem")
+	if inventory == null or not inventory.has_method(&"gear_multiplier"):
+		return 1.0
+	return float(inventory.call(&"gear_multiplier", "search_noise_mult"))
 
 
 func _flat_distance(point: Vector3) -> float:

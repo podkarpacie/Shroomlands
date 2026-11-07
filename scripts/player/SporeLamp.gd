@@ -20,21 +20,57 @@ var battery := 0.0
 var on := false
 
 var _base_energy := 7.0
+var _base_range := 22.0
+var _base_battery := 90.0
 var _alert_left := 0.0
 var _warned_low := false
 var _warned_empty := false
 
 
 func _ready() -> void:
-	# Survival levels stretch the battery; recompute the capacity first so the
-	# recharge cap uses the same number.
-	battery_seconds *= Game.survival_lamp_scale()
-	battery = battery_seconds
+	# Remember the exported values: Survival and the Bright Lamp scale them, and
+	# the numbers must be re-derived when gear changes rather than multiplied
+	# into the scene defaults again.
 	_base_energy = light_energy
+	_base_range = spot_range
+	_base_battery = battery_seconds
+	_apply_gear()
+	battery = battery_seconds
 	on = false
 	visible = false
 	Party.leader_changed.connect(_on_leader_changed)
+	if not EventBus.gear_changed.is_connected(_apply_gear):
+		EventBus.gear_changed.connect(_apply_gear)
 	_apply_role()
+
+
+## Survival levels and the Bright Lamp both scale the beam and the battery.
+func _apply_gear() -> void:
+	var inventory := _inventory()
+	var range_mult := 1.0
+	var energy_mult := 1.0
+	var battery_mult := 1.0
+	if inventory != null and inventory.has_method(&"gear_multiplier"):
+		range_mult = float(inventory.call(&"gear_multiplier", "lamp_range_mult"))
+		energy_mult = float(inventory.call(&"gear_multiplier", "lamp_energy_mult"))
+		battery_mult = float(inventory.call(&"gear_multiplier", "battery_mult"))
+	spot_range = _base_range * range_mult
+	light_energy = _base_energy * energy_mult
+	battery_seconds = _base_battery * Game.survival_lamp_scale() * battery_mult
+	battery = minf(battery, battery_seconds) if battery > 0.0 else battery_seconds
+
+
+## Gear that muffles the wearer (`quiet_boots`).
+func _noise_scale() -> float:
+	var inventory := _inventory()
+	if inventory == null or not inventory.has_method(&"gear_multiplier"):
+		return 1.0
+	return float(inventory.call(&"gear_multiplier", "noise_mult"))
+
+
+func _inventory() -> Node:
+	var body := _body()
+	return body.get_node_or_null("InventorySystem") if body != null else null
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -51,7 +87,7 @@ func _process(delta: float) -> void:
 		_alert_left -= delta
 		if _alert_left <= 0.0:
 			_alert_left = alert_interval
-			Network.report_disturbance(global_position, alert_radius)
+			Network.report_disturbance(global_position, alert_radius * _noise_scale())
 		if battery <= 0.0:
 			on = false
 			visible = false
@@ -84,7 +120,7 @@ func toggle() -> void:
 	on = not on
 	visible = on
 	# The switch itself is a small sound; the beam pulses while it stays on.
-	Network.report_disturbance(global_position, toggle_noise_radius)
+	Network.report_disturbance(global_position, toggle_noise_radius * _noise_scale())
 	EventBus.toast_requested.emit(
 		"Spore-lamp %s (%d%%)" % ["on" if on else "off", roundi(battery_ratio() * 100.0)]
 	)

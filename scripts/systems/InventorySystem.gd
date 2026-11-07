@@ -18,6 +18,9 @@ var slots: Array[Dictionary] = []
 ## Weapon equipped in the right hand. Kept as an item id so it can be dropped,
 ## unequipped and saved exactly like a slot; empty means bare hands.
 var equipped_weapon: StringName = &""
+## Gear equipped per slot (`feet`, `back`, `light`, `body`), slot -> item id.
+## One item per slot; equipping a second replaces the first.
+var equipped_gear: Dictionary = {}
 
 var _warned_unknown: Dictionary = {}
 var _sync_pending := false
@@ -116,10 +119,55 @@ func unequip_weapon() -> void:
 	EventBus.inventory_changed.emit()
 
 
+## Equips a gear item into its slot, replacing whatever was there.
+func equip_gear(id: StringName) -> bool:
+	var info := Lore.get_gear(str(id))
+	if info.is_empty() or count_item(id) <= 0:
+		return false
+	var slot := str(info.get("slot", ""))
+	if slot.is_empty():
+		return false
+	if String(equipped_gear.get(slot, "")) != String(id):
+		equipped_gear[slot] = String(id)
+		EventBus.gear_changed.emit()
+		EventBus.inventory_changed.emit()
+	return true
+
+
+func unequip_gear(slot: String) -> void:
+	if not equipped_gear.has(slot):
+		return
+	equipped_gear.erase(slot)
+	EventBus.gear_changed.emit()
+	EventBus.inventory_changed.emit()
+
+
+## Multiplies one gear effect over every equipped item, e.g. `armor_mult`
+## (0.85 for the vest) or `noise_mult` (0.6 for the boots). Missing keys are 1.
+func gear_multiplier(key: String) -> float:
+	var result := 1.0
+	for slot: String in equipped_gear:
+		var info := Lore.get_gear(str(equipped_gear[slot]))
+		result *= float(info.get(key, 1.0))
+	return result
+
+
+func gear_in_slot(slot: String) -> StringName:
+	return StringName(str(equipped_gear.get(slot, "")))
+
+
 ## Drops the equip when its item is no longer carried.
 func _sync_equipped() -> void:
 	if equipped_weapon != &"" and count_item(equipped_weapon) <= 0:
 		unequip_weapon()
+	var stale: Array[String] = []
+	for slot: String in equipped_gear:
+		if count_item(StringName(str(equipped_gear[slot]))) <= 0:
+			stale.append(slot)
+	for slot: String in stale:
+		equipped_gear.erase(slot)
+	if not stale.is_empty():
+		EventBus.gear_changed.emit()
 
 
 func add_item(id: StringName, count: int) -> int:
@@ -331,8 +379,7 @@ func drop_slot(index: int, drop_all := false) -> Dictionary:
 	var held := int(slot.get("count", 0))
 	var dropped := held if drop_all else 1
 	slots[index] = {} if dropped >= held else {"id": id, "count": held - dropped}
-	if equipped_weapon == id and count_item(id) <= 0:
-		unequip_weapon()
+	_sync_equipped()
 	EventBus.item_removed.emit(String(id), dropped)
 	_changed(index)
 	return {"id": id, "count": dropped}
@@ -357,6 +404,15 @@ func use_slot(index: int) -> bool:
 			unequip_weapon()
 			EventBus.toast_requested.emit("Unequipped %s" % Lore.item_display_name(str(id)))
 		elif equip_weapon(id):
+			EventBus.toast_requested.emit("Equipped %s" % Lore.item_display_name(str(id)))
+		return true
+	if Lore.is_gear(str(id)):
+		# Double-click equips/unequips; gear is never eaten.
+		var gear_slot := str(Lore.get_gear(str(id)).get("slot", ""))
+		if String(equipped_gear.get(gear_slot, "")) == String(id):
+			unequip_gear(gear_slot)
+			EventBus.toast_requested.emit("Unequipped %s" % Lore.item_display_name(str(id)))
+		elif equip_gear(id):
 			EventBus.toast_requested.emit("Equipped %s" % Lore.item_display_name(str(id)))
 		return true
 	var stats := _stats()
@@ -425,7 +481,11 @@ func to_dict() -> Dictionary:
 		if slot.is_empty():
 			continue
 		packed[str(index)] = [String(slot.get("id", &"")), int(slot.get("count", 0))]
-	return {"slots": packed, "weapon": String(equipped_weapon)}
+	return {
+		"slots": packed,
+		"weapon": String(equipped_weapon),
+		"gear": equipped_gear.duplicate(),
+	}
 
 
 ## Replaces the whole inventory from `to_dict()`. Malformed entries are skipped.
@@ -454,14 +514,26 @@ func from_dict(data: Dictionary) -> void:
 	equipped_weapon = (
 		weapon if Lore.is_weapon(str(weapon)) and count_item(weapon) > 0 else &""
 	)
+	equipped_gear.clear()
+	var saved_gear: Variant = data.get("gear", {})
+	if saved_gear is Dictionary:
+		for slot: Variant in (saved_gear as Dictionary):
+			var id := StringName(str((saved_gear as Dictionary)[slot]))
+			var info := Lore.get_gear(str(id))
+			if info.is_empty() or str(info.get("slot", "")) != str(slot):
+				continue
+			if count_item(id) <= 0:
+				continue
+			equipped_gear[str(slot)] = String(id)
 	EventBus.weapon_changed.emit(equipped_weapon)
+	EventBus.gear_changed.emit()
 	EventBus.inventory_changed.emit()
 	EventBus.hotbar_changed.emit()
 
 
 ## Stack size for an id. `Lore` may override `MAX_STACK` with `stack_size`.
 func max_stack(id: StringName) -> int:
-	if Lore.is_weapon(str(id)):
+	if Lore.is_weapon(str(id)) or Lore.is_gear(str(id)):
 		return 1
 	var limit := int(Lore.get_mushroom(str(id)).get("stack_size", MAX_STACK))
 	return maxi(limit, 1)
@@ -483,7 +555,8 @@ func _changed(index: int) -> void:
 
 func _warn_unknown(id: StringName) -> void:
 	if Lore.is_mushroom(str(id)) or Lore.is_potion(str(id)) \
-			or Lore.is_weapon(str(id)) or Lore.RESOURCES.has(str(id)):
+			or Lore.is_weapon(str(id)) or Lore.is_gear(str(id)) \
+			or Lore.RESOURCES.has(str(id)):
 		return
 	if _warned_unknown.has(id):
 		return

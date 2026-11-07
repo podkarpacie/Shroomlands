@@ -443,11 +443,16 @@ func _add_torch(parent: Node3D, position: Vector3) -> void:
 ## The one chest and three crates every structure carries.
 func _add_structure_loot(parent: Node3D) -> void:
 	var species: Array[String] = Lore.mushrooms_in_layer(layer)
+	var resources := _resource_pool()
 	var loot: Array[String] = []
 	for _index in 2:
 		if species.is_empty():
 			break
 		loot.append(species[_rng.randi_range(0, species.size() - 1)])
+	# The chest is the reliable material drop: two from this structure's table.
+	for _index in 2:
+		if not resources.is_empty():
+			loot.append(resources[_rng.randi_range(0, resources.size() - 1)])
 
 	var chest := CHEST_SCENE.instantiate() as Node3D
 	chest.name = "Chest"
@@ -468,10 +473,23 @@ func _add_structure_loot(parent: Node3D) -> void:
 		var crate_loot: Array[String] = []
 		if not species.is_empty():
 			crate_loot.append(species[_rng.randi_range(0, species.size() - 1)])
+		if not resources.is_empty():
+			crate_loot.append(resources[_rng.randi_range(0, resources.size() - 1)])
 		crate.set(&"loot", crate_loot)
 		crate.set(&"gold", 5 + layer * 3)
 		parent.add_child(crate)
 		generated_crates += 1
+
+
+## Materials this structure can drop: hut fibre, castle hard goods, dungeon
+## crystals and ore. The ancient core only appears in a layer-5 dungeon.
+func _resource_pool() -> Array[String]:
+	var pool: Array[String] = []
+	for id: String in Lore.STRUCTURE_RESOURCES.get(structure_kind, []):
+		pool.append(id)
+	if structure_kind == 2 and layer >= 5:
+		pool.append("ancient_core")
+	return pool
 
 
 func _add_box(

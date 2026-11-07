@@ -79,6 +79,12 @@ station_title = "Alchemy"
 prompt = "Alchemy table — brew potions"
 panel_node_name = &"AlchemyUI"
 
+[node name="Workshop" parent="." instance=ExtResource("2_station")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 17, 0, 4)
+station_title = "Workshop"
+prompt = "Workshop — craft gear"
+panel_node_name = &"WorkshopUI"
+
 [node name="RepairBench" parent="." instance=ExtResource("2_station")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 0, -21.5)
 station_title = "Repair"

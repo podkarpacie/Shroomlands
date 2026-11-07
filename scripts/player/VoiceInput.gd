@@ -89,6 +89,9 @@ func _emit() -> float:
 	var body := get_parent() as Node3D
 	var origin := body.global_position if body != null else Vector3.ZERO
 	var radius := lerpf(min_radius, max_radius, loudness)
+	var inventory := body.get_node_or_null("InventorySystem") if body != null else null
+	if inventory != null and inventory.has_method(&"gear_multiplier"):
+		radius *= float(inventory.call(&"gear_multiplier", "noise_mult"))
 	Network.report_disturbance(origin, radius)
 	return radius
 

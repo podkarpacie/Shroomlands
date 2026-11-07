@@ -22,6 +22,9 @@ const RESOURCE_IDS: Array[String] = [
 ]
 const BUILD_IDS: Array[String] = ["hut", "farm", "workshop", "chest"]
 const WEAPON_IDS: Array[String] = ["mycelium_club"]
+const GEAR_IDS: Array[String] = [
+	"quiet_boots", "muffled_pack", "bright_lamp", "mycelium_vest"
+]
 
 ## Fallback tints for the painted icons and the procedural models. Names always
 ## use the Lore rarity colour; these are species recognition only.
@@ -49,6 +52,10 @@ const COLORS := {
 	"workshop": Color(0.58, 0.62, 0.66),
 	"chest": Color(0.72, 0.50, 0.26),
 	"mycelium_club": Color(0.44, 0.29, 0.15),
+	"quiet_boots": Color(0.52, 0.36, 0.22),
+	"muffled_pack": Color(0.46, 0.34, 0.24),
+	"bright_lamp": Color(0.34, 0.78, 0.92),
+	"mycelium_vest": Color(0.56, 0.42, 0.22),
 }
 
 const BUILD_NAMES := {
@@ -68,6 +75,7 @@ static func all_ids() -> Array[String]:
 	ids.append_array(RESOURCE_IDS)
 	ids.append_array(BUILD_IDS)
 	ids.append_array(WEAPON_IDS)
+	ids.append_array(GEAR_IDS)
 	return ids
 
 
@@ -118,6 +126,18 @@ static func _resources() -> Dictionary:
 	return result if result is Dictionary else {}
 
 
+static func _gear() -> Dictionary:
+	var lore := _lore()
+	if lore == null:
+		return {}
+	var script: Script = lore.get_script() as Script
+	if script == null:
+		return {}
+	var constants: Dictionary = script.get_script_constant_map()
+	var result: Variant = constants.get("GEAR", {})
+	return result if result is Dictionary else {}
+
+
 static func display_name(id: String) -> String:
 	if id == "gold":
 		return "Gold"
@@ -149,6 +169,8 @@ static func kind(id: String) -> String:
 		return "Mushroom  ·  %s" % rarity.capitalize() if not rarity.is_empty() else "Mushroom"
 	if _resources().has(id):
 		return "Resource"
+	if _gear().has(id):
+		return "Gear  ·  %s" % str((_gear()[id] as Dictionary).get("slot", "")).capitalize()
 	return "Curiosity"
 
 
@@ -175,6 +197,9 @@ static func description(id: String) -> String:
 	var resource: Dictionary = _resources().get(id, {})
 	if not resource.is_empty():
 		return str(resource.get("description", ""))
+	var gear: Dictionary = _gear().get(id, {})
+	if not gear.is_empty():
+		return str(gear.get("description", ""))
 	return "An unfamiliar piece of the Mycelium."
 
 
@@ -250,6 +275,8 @@ static func _procedural_model(id: String) -> Node3D:
 		return _mushroom(id)
 	if WEAPON_IDS.has(id):
 		return _club()
+	if GEAR_IDS.has(id):
+		return _gear_model(id)
 	var potion := _potion_data(id)
 	if not potion.is_empty():
 		return _potion(id, str(potion.get("from", "")))
@@ -308,6 +335,42 @@ static func _mushroom(id: String) -> Node3D:
 		var spot := _sphere(0.045, 0.030, spot_color, 8, 4, 1.2)
 		spot.position = Vector3(cos(angle) * 0.22, 0.79 + sin(angle * 1.7) * 0.025, sin(angle) * 0.22)
 		root.add_child(spot)
+	return root
+
+
+## One small silhouette per gear slot, so the satchel and the hotbar read at a
+## glance: boots, a pack, a crystal lamp and a vest.
+static func _gear_model(id: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Model_%s" % id
+	var tint: Color = COLORS.get(id, Color(0.6, 0.6, 0.6))
+	match id:
+		"quiet_boots":
+			for x: float in [-0.13, 0.13]:
+				root.add_child(_box(Vector3(0.18, 0.12, 0.34), tint, Vector3(x, 0.07, 0.02)))
+				root.add_child(_box(Vector3(0.16, 0.16, 0.12), tint.darkened(0.2), Vector3(x, 0.16, -0.11)))
+		"muffled_pack":
+			var body := _box(Vector3(0.36, 0.36, 0.22), tint, Vector3(0.0, 0.32, 0.0))
+			body.rotation_degrees = Vector3(-8.0, 0.0, 0.0)
+			root.add_child(body)
+			root.add_child(_box(Vector3(0.32, 0.09, 0.26), tint.lightened(0.15), Vector3(0.0, 0.50, 0.0)))
+			for x: float in [-0.12, 0.12]:
+				root.add_child(
+					_box(Vector3(0.05, 0.32, 0.05), tint.darkened(0.25), Vector3(x, 0.30, -0.13))
+				)
+		"bright_lamp":
+			root.add_child(_cylinder(0.06, 0.09, 0.30, tint.darkened(0.2), 10, Vector3(0.0, 0.15, 0.0)))
+			var glow := _sphere(0.16, 0.16, tint.lightened(0.35), 12, 6, 1.6)
+			glow.position = Vector3(0.0, 0.38, 0.0)
+			root.add_child(glow)
+			root.add_child(_box(Vector3(0.18, 0.04, 0.18), tint.darkened(0.3), Vector3(0.0, 0.02, 0.0)))
+		"mycelium_vest":
+			root.add_child(_box(Vector3(0.46, 0.44, 0.28), tint, Vector3(0.0, 0.34, 0.0)))
+			for x: float in [-0.27, 0.27]:
+				root.add_child(
+					_box(Vector3(0.12, 0.18, 0.26), tint.darkened(0.15), Vector3(x, 0.46, 0.0))
+				)
+			root.add_child(_box(Vector3(0.42, 0.06, 0.30), tint.lightened(0.2), Vector3(0.0, 0.13, 0.0)))
 	return root
 
 

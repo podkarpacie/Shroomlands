@@ -125,6 +125,13 @@ func _check_inventory_payload(main: Node, inventory: Node, max_stack: int) -> vo
 	_check("a payload holds one entry per slot (%d)" % good.size(), good.size() == 48)
 	_check("a payload of the owner's own slots is accepted", bool(main.call(&"validate_inventory_payload", good)))
 	_check("the payload carries the gathered stack", _count_konop(good) == 3)
+	# Gear ids are real items too: the mirror must not reject a client carrying
+	# a crafted piece.
+	var original_slot: Dictionary = (good[0] as Dictionary).duplicate()
+	good[0] = {"id": &"mycelium_vest", "count": 1}
+	_check("a payload with crafted gear is accepted",
+		bool(main.call(&"validate_inventory_payload", good)))
+	good[0] = original_slot
 
 	_check_rejects(main, good, "a truncated payload", func(payload: Array) -> void: payload.pop_back())
 	_check_rejects(main, good, "an oversized payload", func(payload: Array) -> void: payload.append({}))

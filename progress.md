@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **40 test suites / 1938 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **41 test suites / 1995 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -54,6 +54,22 @@ The review's build order starts with skills from actions:
   mushrooms (`glowcap`, `emberstem`, `venomveil`, `sunheart`, `blightroot`, `geodecap`) are retired
   from `docs/MVP_SPEC.md` in favour of the eleven shipped species. Forest layers no longer carry
   level ranges; depth is position-gated, not level-gated.
+
+## Resources, gear and the Workshop (design review step 4)
+- **Sourcing**: every structure chest drops two materials and each of its three crates one, from a
+  kind-specific table — hut: fibre + fossilized caps; castle: hardened mycelium, spore crystals,
+  fossilized caps, fibre; dungeon: infested ore, spore crystals, hardened mycelium. The
+  **ancient core** only appears in a layer-5 dungeon. All six `Lore.RESOURCES` are reachable.
+- **Gear**: four craftable slot items, one per slot, worn by double-clicking in the satchel:
+  - `quiet_boots` (feet) — -40% radius on voice and lamp noise
+  - `muffled_pack` (back) — -50% radius on crate-search noise
+  - `bright_lamp` (light) — +35% beam range, +25% energy and battery (multiplies the Survival perk)
+  - `mycelium_vest` (body) — -15% incoming damage
+- **Workshop**: a fifth town station with recipes from materials + gold, duplicate refusal and a
+  full-satchel refund. The pause menu's Skills page also lists the worn gear per slot.
+- **Tests**: `test_gear.gd` (54 assertions: data, slots, all four effects, crate noise, Workshop,
+  save round-trip) plus a resource-drop assertion in `test_layered_forest`, a gear payload in
+  `test_sync` and a gear round-trip in `test_save`.
 
 ## The town hub (done)
 - **Mycoria** — walled settlement, the spawn area, plot row just outside the north gate.
@@ -296,6 +312,8 @@ defects that the first contact sheet missed:
 - No dedicated sound-only stalker: creatures investigate noise/light and the Blight is
   time-based; no hunter tracks voice loudness alone.
 - No anti-cheat: peers report their own HP, gold, inventory, position; the server validates shape only.
+- Gear is four fixed slot items, not a mod/affix system; resource nodes are structure loot rather
+  than world nodes you mine.
 - One transport per server instance (ENet XOR WebSocket).
 - Web renderer is Compatibility/WebGL2 — Forward+ is impossible in 4.7.2's web template.
 - No voice chat, skill trees, accounts, server browser, TLS.

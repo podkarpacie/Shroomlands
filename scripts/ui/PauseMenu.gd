@@ -494,6 +494,34 @@ func _refresh_skills() -> void:
 		perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UITheme.style_label(perk, 11, UITheme.FAINT, 0)
 		_skills_list.add_child(perk)
+	_refresh_gear()
+
+
+## The worn gear, one row per slot. Kept on the same page: it is the other half
+## of "what my character has".
+func _refresh_gear() -> void:
+	var title := Label.new()
+	title.text = "Equipped gear"
+	UITheme.style_heading(title, 13, UITheme.ACCENT_SOFT)
+	_skills_list.add_child(title)
+	var player := Game.get_local_player()
+	var inventory := player.get_node_or_null("InventorySystem") if player != null else null
+	var gear: Dictionary = inventory.get(&"equipped_gear") if inventory != null else {}
+	for slot: String in ["body", "feet", "back", "light"]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var slot_label := Label.new()
+		slot_label.text = slot.capitalize()
+		slot_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		UITheme.style_label(slot_label, 12, UITheme.DIM, 0)
+		row.add_child(slot_label)
+		var id := str(gear.get(slot, ""))
+		var item_label := Label.new()
+		item_label.text = Lore.item_display_name(id) if not id.is_empty() else "empty"
+		item_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		UITheme.style_label(item_label, 12, UITheme.TEXT if not id.is_empty() else UITheme.FAINT, 0)
+		row.add_child(item_label)
+		_skills_list.add_child(row)
 
 
 ## Read-only snapshot for the suite: one line per skill, in `Lore.SKILLS` order.

@@ -437,6 +437,54 @@ const WEAPONS := {
 	},
 }
 
+## Craftable gear. One item per equipment slot; the multipliers are read by the
+## system that owns the number (`PlayerStats` armour, `SporeLamp`, noise) so an
+## item change takes effect without baking values into the player scene.
+const GEAR := {
+	"quiet_boots": {
+		"id": "quiet_boots",
+		"name": "Quiet Boots",
+		"slot": "feet",
+		"description": "Spore-felt soles. The forest hears less of you.",
+		"noise_mult": 0.6,
+		"recipe": {"resources": {"mycelium_fiber": 3}, "fee": 20},
+	},
+	"muffled_pack": {
+		"id": "muffled_pack",
+		"name": "Muffled Pack",
+		"slot": "back",
+		"description": "A padded satchel. Searching a crate no longer rings the whole layer.",
+		"search_noise_mult": 0.5,
+		"recipe": {"resources": {"mycelium_fiber": 4, "fossilized_caps": 1}, "fee": 25},
+	},
+	"bright_lamp": {
+		"id": "bright_lamp",
+		"name": "Bright Lamp",
+		"slot": "light",
+		"description": "A crystal-cored lamp: a longer beam and a bigger battery.",
+		"lamp_range_mult": 1.35,
+		"lamp_energy_mult": 1.25,
+		"battery_mult": 1.25,
+		"recipe": {"resources": {"spore_crystals": 2, "mycelium_fiber": 1}, "fee": 30},
+	},
+	"mycelium_vest": {
+		"id": "mycelium_vest",
+		"name": "Mycelium Vest",
+		"slot": "body",
+		"description": "Layered hardened mycelium. Blows land softer.",
+		"armor_mult": 0.85,
+		"recipe": {"resources": {"hardened_mycelium": 3, "mycelium_fiber": 2}, "fee": 35},
+	},
+}
+
+## What each structure kind drops. 0 = hut, 1 = castle, 2 = dungeon. The ancient
+## core is appended only to a layer-5 dungeon (`LayeredForest._resource_pool`).
+const STRUCTURE_RESOURCES := {
+	0: ["mycelium_fiber", "mycelium_fiber", "fossilized_caps"],
+	1: ["hardened_mycelium", "spore_crystals", "fossilized_caps", "mycelium_fiber"],
+	2: ["infested_ore", "infested_ore", "spore_crystals", "hardened_mycelium"],
+}
+
 const RESOURCES := {
 	"mycelium_fiber": {
 		"id": "mycelium_fiber",
@@ -616,6 +664,14 @@ func is_weapon(id: String) -> bool:
 	return WEAPONS.has(id)
 
 
+func is_gear(id: String) -> bool:
+	return GEAR.has(id)
+
+
+func get_gear(id: String) -> Dictionary:
+	return GEAR.get(id, {})
+
+
 func get_weapon(id: String) -> Dictionary:
 	return WEAPONS.get(id, {})
 
@@ -673,6 +729,8 @@ func item_display_name(id: String) -> String:
 		return str(RESOURCES[id]["name"])
 	if WEAPONS.has(id):
 		return str(WEAPONS[id]["name"])
+	if GEAR.has(id):
+		return str(GEAR[id]["name"])
 	return id
 
 

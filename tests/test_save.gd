@@ -78,6 +78,8 @@ func _run() -> void:
 	inventory.call(&"add_item", &"bedak", 3)
 	_player.set(&"weapon_condition", 37)
 	_game.call(&"apply_skills", {"foraging": {"level": 4, "xp": 30}})
+	inventory.call(&"add_item", &"mycelium_vest", 1)
+	inventory.call(&"equip_gear", &"mycelium_vest")
 	var expected_inventory: Dictionary = inventory.call(&"to_dict")
 	# Set last: physics would pull a body that is left standing in the air.
 	_player.global_position = RICH_POSITION
@@ -120,6 +122,7 @@ func _run() -> void:
 	_game.set(&"chosen_vocation", &"")
 	inventory.call(&"from_dict", {})
 	_game.call(&"apply_skills", {})
+	inventory.call(&"unequip_gear", "body")
 	_player.global_position = Vector3(0.0, 1.2, 0.0)
 
 	_check("load_now() reads the file back", bool(_saves.call(&"load_now")))
@@ -152,6 +155,8 @@ func _run() -> void:
 		_player.global_position.is_equal_approx(RICH_POSITION))
 	_check("the weapon condition round-trips (%d)" % int(_player.get(&"weapon_condition")),
 		int(_player.get(&"weapon_condition")) == 37)
+	_check("the worn vest round-trips (%s)" % inventory.call(&"gear_in_slot", "body"),
+		StringName(inventory.call(&"gear_in_slot", "body")) == &"mycelium_vest")
 	_check("foraging round-trips (Lv %d, %d xp)" % [
 			int(_game.call(&"skill_level", "foraging")), int(_game.call(&"skill_xp", "foraging"))
 		],
