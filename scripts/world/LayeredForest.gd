@@ -60,6 +60,8 @@ var _blight_spawned := false
 var _blight_announced := false
 var _blight_holder: Node3D = null
 var _blight_spawner: MultiplayerSpawner = null
+var _stalker_holder: Node3D = null
+var _stalker_spawner: MultiplayerSpawner = null
 
 var _run = null
 var _props: Node3D = null
@@ -92,6 +94,8 @@ func _ready() -> void:
 	_build_gates()
 	_tint_environment()
 	_setup_blight_spawner()
+	if layer >= 4:
+		_setup_stalker_spawner()
 	_start_run()
 
 
@@ -111,6 +115,8 @@ func _start_run() -> void:
 	if not is_multiplayer_authority():
 		return
 	EventBus.run_timer_changed.emit(time_left)
+	if layer >= 4:
+		_spawn_stalker()
 
 
 func _physics_process(delta: float) -> void:
@@ -210,6 +216,57 @@ func _make_blight(data: Variant) -> Node:
 	blight.scale = Vector3(1.45, 1.45, 1.45)
 	blight.set_multiplayer_authority(1)
 	return blight
+
+
+## One Choir stalker per deep layer. It spawns near the structure so a party that
+## goes for the loot meets the thing that follows sound.
+func _setup_stalker_spawner() -> void:
+	_stalker_holder = Node3D.new()
+	_stalker_holder.name = "StalkerHolder"
+	add_child(_stalker_holder)
+	_stalker_spawner = MultiplayerSpawner.new()
+	_stalker_spawner.name = "StalkerSpawner"
+	_stalker_spawner.spawn_path = NodePath("../StalkerHolder")
+	_stalker_spawner.spawn_limit = 1
+	_stalker_spawner.spawn_function = _make_stalker
+	add_child(_stalker_spawner)
+
+
+func _spawn_stalker() -> void:
+	if _stalker_holder == null or layer < 4:
+		return
+	var origin := Vector3.ZERO
+	if structure_id >= 0:
+		var centre: Vector2 = _run.position_of(structure_id)
+		origin = Vector3(centre.x + 9.0, 0.0, centre.y + 9.0)
+	if Network.mode == Network.OFFLINE or _stalker_spawner == null:
+		_stalker_holder.add_child(_make_stalker(origin))
+	else:
+		_stalker_spawner.spawn(origin)
+
+
+## The noise hunter: slower than a blightling, much harder to lose, and it pays
+## no respawn.
+func _make_stalker(data: Variant) -> Node:
+	var stalker := ENEMY_SCENE.instantiate() as Node3D
+	if stalker == null:
+		return null
+	stalker.name = "ChoirStalker"
+	stalker.set(&"max_hp", 300.0)
+	stalker.set(&"move_speed", 2.9)
+	stalker.set(&"aggro_range", 40.0)
+	stalker.set(&"attack_damage", 26.0)
+	stalker.set(&"attack_cooldown", 1.5)
+	stalker.set(&"xp_reward", 25)
+	stalker.set(&"respawn_seconds", 99999.0)
+	stalker.set(&"hunts_noise", true)
+	stalker.set(&"echo_radius", 14.0)
+	stalker.set(&"echo_interval", 7.0)
+	stalker.scale = Vector3(1.2, 1.2, 1.2)
+	if data is Vector3:
+		stalker.position = data
+	stalker.set_multiplayer_authority(1)
+	return stalker
 
 
 func _exit_tree() -> void:

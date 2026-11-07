@@ -23,6 +23,9 @@ signal level_changed(new_level: int)
 signal skill_changed(skill_id: StringName, level: int, xp: int, needed: int)
 ## A found journal chapter was added to the catalogue (fires once per id).
 signal note_discovered(note_id: String)
+## The Choir stalker answered a nearby voice. `voice_position` is where the
+## sound came from, `stalker_position` where the answer came back.
+signal choir_echo(stalker_position: Vector3, voice_position: Vector3)
 signal skill_level_up(skill_id: StringName, level: int)
 ## A timed effect was applied, refreshed, expired or its countdown advanced.
 ## The HUD reads `PlayerStats.get_buffs()` when this fires.

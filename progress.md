@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **42 test suites / 2040 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **43 test suites / 2055 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -54,6 +54,17 @@ The review's build order starts with skills from actions:
   mushrooms (`glowcap`, `emberstem`, `venomveil`, `sunheart`, `blightroot`, `geodecap`) are retired
   from `docs/MVP_SPEC.md` in favour of the eleven shipped species. Forest layers no longer carry
   level ranges; depth is position-gated, not level-gated.
+
+## The Choir stalker (design review step 1)
+- **A noise hunter**: one spawn per layer on 4-5, near the structure, 300 HP, 2.9 m/s and no
+  respawn. It hears disturbances from 40 m and remembers them for 10 s; for a noise hunter the
+  investigate branch comes before the aggro chase, so silence is the escape rather than distance.
+- **It answers**: within 14 m of a player it emits `EventBus.choir_echo` and plays the `whisper`
+  cue muffled at -14 dB, once every 7 s, replicated to every peer through `_echo_rpc`. A one-time
+  toast says "Something under the roots repeats your voice". The echo is synthesised; the
+  microphone is never recorded, so no party audio leaves the machine.
+- **Tests**: `test_choir.gd` (15 assertions: echo range/interval, silence at distance, noise-first
+  movement goal vs a normal creature, the layer-4 spawn, its stats, and no stalker on layer 1).
 
 ## Found journal (design review step 2)
 - **Five chapters**, one per depth layer (`Lore.JOURNAL`): the first expedition's ledger, a

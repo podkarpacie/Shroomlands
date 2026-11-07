@@ -44,6 +44,13 @@ const EYE_ENERGY := 1.7
 @export var xp_reward := 15
 @export var respawn_seconds := 12.0
 ## Idle drift stays inside this radius of the spawn point.
+## The Choir stalker ignores distance and follows *noise*: a lamp beam, a shout
+## or a crate search pulls it even when the player is close enough to see.
+@export var hunts_noise := false
+## How close the stalker must be before it answers a voice, and how often.
+@export var echo_radius := 14.0
+@export var echo_interval := 7.0
+
 @export var wander_radius := 6.0
 @export var wander_speed_scale := 0.45
 
@@ -68,6 +75,8 @@ var _stagger_left := 0.0
 ## A light beam or a noisy search it is walking toward, and how long the lead
 ## stays interesting. Zero means no investigation.
 var _investigate_left := 0.0
+var _echo_left := 0.0
+var _echo_announced := false
 var _disturbance := Vector3.ZERO
 var _gravity := Vector3.DOWN * 9.8
 var _rng := RandomNumberGenerator.new()
@@ -131,13 +140,9 @@ func _physics_process(delta: float) -> void:
 		_face(target.global_position, delta)
 		_brake(delta)
 		_try_bite(target)
-	elif target != null and distance <= aggro_range:
-		state = State.CHASE
-		_face(target.global_position, delta)
-		_steer_toward(target.global_position, move_speed, delta)
-	elif _investigate_left > 0.0:
-		# A lamp beam or a loud search pulled it here even though the player is
-		# outside aggro range.
+	elif _investigate_left > 0.0 and (hunts_noise or target == null or distance > aggro_range):
+		# A lamp beam or a loud search pulled it here. The Choir stalker follows
+		# the noise even inside aggro range: silence is the only escape.
 		state = State.CHASE
 		_investigate_left -= delta
 		_face(_disturbance, delta)
@@ -146,10 +151,62 @@ func _physics_process(delta: float) -> void:
 			_brake(delta)
 		else:
 			_steer_toward(_disturbance, move_speed * 0.9, delta)
+	elif target != null and distance <= aggro_range:
+		state = State.CHASE
+		_face(target.global_position, delta)
+		_steer_toward(target.global_position, move_speed, delta)
 	else:
 		state = State.IDLE
 		_wander(delta)
+	_echo_tick(delta, target)
 	move_and_slide()
+
+
+## The point the AI will steer toward next. A normal creature prefers the body
+## it can see; the Choir stalker prefers the loudest recent noise, even when a
+## player is inside its aggro range. Public so tests can assert the choice
+## without depending on collision physics.
+func movement_goal() -> Vector3:
+	var target := _nearest_player()
+	var distance := INF if target == null else _flat_distance(target.global_position)
+	if target != null and distance <= attack_range:
+		return target.global_position
+	if _investigate_left > 0.0 and (hunts_noise or target == null or distance > aggro_range):
+		return _disturbance
+	if target != null and distance <= aggro_range:
+		return target.global_position
+	return _wander_target
+
+
+## Answers a nearby voice with a muffled whisper, on every peer. The sound is a
+## synthesised cue (`whisper`, pitched low): recording and replaying the actual
+## microphone is deliberately not done.
+func _echo_tick(delta: float, target: Node3D) -> void:
+	if not hunts_noise or not is_multiplayer_authority():
+		return
+	_echo_left = maxf(_echo_left - delta, 0.0)
+	if _echo_left > 0.0:
+		return
+	if target == null or _flat_distance(target.global_position) > echo_radius:
+		return
+	_echo_left = echo_interval
+	if multiplayer.multiplayer_peer == null or Network.mode == Network.OFFLINE:
+		_echo_local(target.global_position)
+	else:
+		_echo_rpc.rpc(target.global_position)
+
+
+@rpc("authority", "call_local", "reliable")
+func _echo_rpc(voice_position: Vector3) -> void:
+	_echo_local(voice_position)
+
+
+func _echo_local(voice_position: Vector3) -> void:
+	EventBus.choir_echo.emit(global_position, voice_position)
+	Audio.play_sfx(&"whisper", 0.04, -14.0)
+	if not _echo_announced:
+		_echo_announced = true
+		EventBus.toast_requested.emit("Something under the roots repeats your voice")
 
 
 func is_dead() -> bool:
@@ -174,7 +231,8 @@ func _on_disturbance(position: Vector3, radius: float) -> void:
 	if _flat_distance(position) > radius:
 		return
 	_disturbance = position
-	_investigate_left = 4.0
+	# The stalker remembers noise longer than a normal creature.
+	_investigate_left = 10.0 if hunts_noise else 4.0
 
 
 ## Entry point for anything that hurts this creature. A peer that does not own
