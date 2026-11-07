@@ -26,6 +26,9 @@ var _warned_empty := false
 
 
 func _ready() -> void:
+	# Survival levels stretch the battery; recompute the capacity first so the
+	# recharge cap uses the same number.
+	battery_seconds *= Game.survival_lamp_scale()
 	battery = battery_seconds
 	_base_energy = light_energy
 	on = false

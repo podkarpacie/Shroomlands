@@ -588,6 +588,7 @@ func _connect_signals() -> void:
 	_track(EventBus.plot_purchased, _on_plot_changed)
 	_track(EventBus.plot_expired, _on_plot_changed)
 	_track(EventBus.vocation_chosen, _on_vocation_chosen)
+	_track(EventBus.skill_level_up, _on_skill_level_up)
 
 
 func _track(sig: Signal, handler: Callable) -> void:
@@ -844,6 +845,12 @@ func _on_player_respawned() -> void:
 		_on_stamina_changed(float(stats.get("stamina")), float(stats.get("max_stamina")))
 	else:
 		_paint_stamina()
+
+
+func _on_skill_level_up(skill_id: StringName, level: int) -> void:
+	var info: Dictionary = Lore.SKILLS.get(String(skill_id), {})
+	var name := str(info.get("name", String(skill_id)))
+	_on_toast_requested("%s level %d" % [name, level])
 
 
 func _on_toast_requested(text: String) -> void:

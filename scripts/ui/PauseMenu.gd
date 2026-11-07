@@ -29,6 +29,7 @@ const SECTION_NONE := ""
 const SECTION_SETTINGS := "settings"
 const SECTION_CONTROLS := "controls"
 const SECTION_PLAYERS := "players"
+const SECTION_SKILLS := "skills"
 
 ## Grouped for the Controls page. The key names are read from `InputMap` when
 ## the page is built, so a rebind shows up without touching this file.
@@ -75,6 +76,7 @@ const ACTION_LABELS := {
 @onready var _settings_button: Button = $Root/Center/Card/Margin/Content/Actions/SettingsButton
 @onready var _controls_button: Button = $Root/Center/Card/Margin/Content/Actions/ControlsButton
 @onready var _players_button: Button = $Root/Center/Card/Margin/Content/Actions/PlayersButton
+@onready var _skills_button: Button = $Root/Center/Card/Margin/Content/Actions/SkillsButton
 @onready var _quit_to_menu_button: Button = (
 	$Root/Center/Card/Margin/Content/Actions/QuitToMenuButton
 )
@@ -125,6 +127,15 @@ const ACTION_LABELS := {
 )
 @onready var _players_list: VBoxContainer = (
 	$Root/Center/Card/Margin/Content/Sections/PlayersSection/PlayersList
+)
+@onready var _skills_section: VBoxContainer = (
+	$Root/Center/Card/Margin/Content/Sections/SkillsSection
+)
+@onready var _skills_title: Label = (
+	$Root/Center/Card/Margin/Content/Sections/SkillsSection/SkillsTitle
+)
+@onready var _skills_list: VBoxContainer = (
+	$Root/Center/Card/Margin/Content/Sections/SkillsSection/SkillsList
 )
 
 var _open := false
@@ -244,16 +255,21 @@ func toggle_section(id: String) -> void:
 
 
 func set_section(id: String) -> void:
-	if id != SECTION_NONE and id != SECTION_SETTINGS and id != SECTION_CONTROLS and id != SECTION_PLAYERS:
+	if (
+		id != SECTION_NONE and id != SECTION_SETTINGS and id != SECTION_CONTROLS
+		and id != SECTION_PLAYERS and id != SECTION_SKILLS
+	):
 		return
 	_section = id
 	_settings_section.visible = id == SECTION_SETTINGS
 	_controls_section.visible = id == SECTION_CONTROLS
 	_players_section.visible = id == SECTION_PLAYERS
+	_skills_section.visible = id == SECTION_SKILLS
 	_idle_hint.visible = id == SECTION_NONE
 	_mark_section(_settings_button, id == SECTION_SETTINGS)
 	_mark_section(_controls_button, id == SECTION_CONTROLS)
 	_mark_section(_players_button, id == SECTION_PLAYERS)
+	_mark_section(_skills_button, id == SECTION_SKILLS)
 	if id == SECTION_CONTROLS:
 		# Rebuilt on every open, so a rebind made in the project settings is
 		# reflected without reloading the scene.
@@ -261,6 +277,8 @@ func set_section(id: String) -> void:
 	if id == SECTION_PLAYERS:
 		# An empty roster hides the whole block instead of drawing an empty one.
 		_players_section.visible = _refresh_players() > 0
+	elif id == SECTION_SKILLS:
+		_refresh_skills()
 
 
 func is_section_open(id: String) -> bool:
@@ -367,6 +385,7 @@ func _connect_buttons() -> void:
 		_settings_button,
 		_controls_button,
 		_players_button,
+		_skills_button,
 		_quit_to_menu_button,
 		_quit_game_button,
 	]:
@@ -375,6 +394,7 @@ func _connect_buttons() -> void:
 	_settings_button.pressed.connect(toggle_section.bind(SECTION_SETTINGS))
 	_controls_button.pressed.connect(toggle_section.bind(SECTION_CONTROLS))
 	_players_button.pressed.connect(toggle_section.bind(SECTION_PLAYERS))
+	_skills_button.pressed.connect(toggle_section.bind(SECTION_SKILLS))
 	_quit_to_menu_button.pressed.connect(quit_to_menu)
 	_quit_game_button.pressed.connect(quit_game)
 	_music_slider.value_changed.connect(_on_music_slider_changed)
@@ -440,6 +460,55 @@ func _player_row(entry: Dictionary, is_local: bool) -> Control:
 	UITheme.style_label(values, 12, UITheme.DIM, 0)
 	row.add_child(values)
 	return row
+
+
+## One row per action skill: name, level and the progress toward the next one.
+func _refresh_skills() -> void:
+	_clear(_skills_list)
+	for id: String in Lore.SKILLS:
+		var info: Dictionary = Lore.SKILLS[id]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var name_label := Label.new()
+		name_label.text = str(info.get("name", id))
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var tint: Color = info.get("color", UITheme.TEXT)
+		UITheme.style_label(name_label, 13, tint, 0)
+		row.add_child(name_label)
+		if id == Game.vocation_affinity():
+			name_label.text += "  (affinity)"
+		var level := Game.skill_level(id)
+		var values := Label.new()
+		if level >= Game.SKILL_MAX_LEVEL:
+			values.text = "Lv %d · MAX" % level
+		else:
+			values.text = "Lv %d · %d / %d" % [
+				level, Game.skill_xp(id), Game.skill_xp_to_level(level)
+			]
+		values.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		UITheme.style_label(values, 12, UITheme.DIM, 0)
+		row.add_child(values)
+		_skills_list.add_child(row)
+		var perk := Label.new()
+		perk.text = str(info.get("perk", ""))
+		perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		UITheme.style_label(perk, 11, UITheme.FAINT, 0)
+		_skills_list.add_child(perk)
+
+
+## Read-only snapshot for the suite: one line per skill, in `Lore.SKILLS` order.
+func get_skills_text() -> String:
+	var lines: Array[String] = []
+	for child in _skills_list.get_children():
+		if child is Label:
+			lines.append((child as Label).text)
+		elif child is HBoxContainer:
+			var parts: Array[String] = []
+			for inner in child.get_children():
+				if inner is Label:
+					parts.append((inner as Label).text)
+			lines.append(" · ".join(parts))
+	return "\n".join(lines)
 
 
 func _build_controls() -> void:
@@ -670,6 +739,7 @@ func _style() -> void:
 	UITheme.style_heading(_settings_title, 15, UITheme.ACCENT_SOFT)
 	UITheme.style_heading(_controls_title, 15, UITheme.ACCENT_SOFT)
 	UITheme.style_heading(_players_title, 15, UITheme.ACCENT_SOFT)
+	UITheme.style_heading(_skills_title, 15, UITheme.ACCENT_SOFT)
 	for label: Label in [
 		$Root/Center/Card/Margin/Content/Sections/SettingsSection/MusicHeader/MusicLabel,
 		$Root/Center/Card/Margin/Content/Sections/SettingsSection/SfxHeader/SfxLabel,

@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Modal vocation picker: one card per `Lore.VOCATIONS` entry, with the Polish
+## Modal vocation picker: one card per `Lore.VOCATIONS` entry, with the
 ## lore text the rest of the game already uses.
 ##
 ## It opens by itself the first time the local player reaches
@@ -256,7 +256,6 @@ func _build_card(id: String, vocation: Dictionary) -> Button:
 	var name_label := _label(str(vocation.get("name", id)), accent, 19, "Name")
 	name_label.add_theme_font_override("font", UITheme.bold_font())
 	body.add_child(name_label)
-	body.add_child(_label(str(vocation.get("polish", "")), PALETTE["dim"], 14, "Polish"))
 	body.add_child(_label(str(vocation.get("role", "")), PALETTE["text"], 12, "Role"))
 	var description := _label(
 		str(vocation.get("description", "")), PALETTE["dim"], 12, "Description"
@@ -265,13 +264,14 @@ func _build_card(id: String, vocation: Dictionary) -> Button:
 	description.custom_minimum_size = Vector2(0.0, DESCRIPTION_MIN_HEIGHT)
 	description.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(description)
-	body.add_child(_trees_row(vocation, accent))
+	var affinity := str(vocation.get("affinity", ""))
+	var skill: Dictionary = Lore.SKILLS.get(affinity, {})
 	body.add_child(
 		_label(
-			"Primary stat · %s" % str(vocation.get("primary_stat", "")),
+			"Affinity · %s" % str(skill.get("name", affinity.capitalize())),
 			PALETTE["dim"],
 			12,
-			"PrimaryStat"
+			"Affinity"
 		)
 	)
 	return card
@@ -290,33 +290,6 @@ func _label(text: String, color: Color, size: int, node_name := "") -> Label:
 	label.add_theme_constant_override("outline_size", 3)
 	return label
 
-
-## The three skill trees as chips; a flow container wraps them instead of
-## squeezing long names like "Weapon Master".
-func _trees_row(vocation: Dictionary, accent: Color) -> HFlowContainer:
-	var row := HFlowContainer.new()
-	row.name = "Trees"
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("h_separation", 4)
-	row.add_theme_constant_override("v_separation", 4)
-	var trees: Array = vocation.get("trees", [])
-	for index in trees.size():
-		var chip := PanelContainer.new()
-		chip.name = "Tree%d" % index
-		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var style := StyleBoxFlat.new()
-		style.bg_color = PALETTE["chip"]
-		style.border_color = Color(accent, 0.55)
-		style.set_border_width_all(1)
-		style.set_corner_radius_all(5)
-		style.content_margin_left = 6
-		style.content_margin_right = 6
-		style.content_margin_top = 2
-		style.content_margin_bottom = 3
-		chip.add_theme_stylebox_override("panel", style)
-		chip.add_child(_label(str(trees[index]), accent.lightened(0.25), 11))
-		row.add_child(chip)
-	return row
 
 
 func _style_card(id: String, selected: bool) -> void:

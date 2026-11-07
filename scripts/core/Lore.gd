@@ -23,8 +23,6 @@ const BIOMES := {
 	"verdant_bloom": {
 		"id": "verdant_bloom",
 		"name": "Verdant Bloom",
-		"polish": "Zielone Zagłębie",
-		"level_range": [1, 20],
 		"description": "Starting biome. Green/orange edible mushrooms, settlements, farms, first mycelium mines. Relatively safe.",
 		"danger": 1,
 		"color": Color(0.25, 0.55, 0.20),
@@ -32,8 +30,6 @@ const BIOMES := {
 	"violet_hollows": {
 		"id": "violet_hollows",
 		"name": "Violet Hollows",
-		"polish": "Fioletowe Pustkowia",
-		"level_range": [15, 35],
 		"description": "Hallucinogenic spores. Valuable but poisoning, visions, behavioural changes.",
 		"danger": 3,
 		"color": Color(0.45, 0.15, 0.55),
@@ -41,8 +37,6 @@ const BIOMES := {
 	"crimson_rot": {
 		"id": "crimson_rot",
 		"name": "Crimson Rot",
-		"polish": "Szkarłatny Rozkład",
-		"level_range": [30, 50],
 		"description": "Infected red-black fungi with glowing growths. Rare toxins, upgrade materials.",
 		"danger": 5,
 		"color": Color(0.65, 0.08, 0.12),
@@ -50,8 +44,6 @@ const BIOMES := {
 	"deep_mycelium": {
 		"id": "deep_mycelium",
 		"name": "The Deep Mycelium",
-		"polish": "Głęboka Grzybnia",
-		"level_range": [40, 65],
 		"description": "Underground: mineral-capped mushrooms, glowing spores, mycelium veins.",
 		"danger": 6,
 		"color": Color(0.15, 0.25, 0.35),
@@ -59,11 +51,42 @@ const BIOMES := {
 	"pale_crown": {
 		"id": "pale_crown",
 		"name": "The Pale Crown",
-		"polish": "Blada Korona",
-		"level_range": [60, 100],
 		"description": "Legendary giant white/golden mushrooms. Contains the source of the Mycelium.",
 		"danger": 9,
 		"color": Color(0.85, 0.85, 0.70),
+	},
+}
+
+## RuneScape-style action skills. Every skill levels from *doing* the thing, and
+## each one owns one concrete perk (see `Game` for the thresholds).
+const SKILLS := {
+	"foraging": {
+		"id": "foraging",
+		"name": "Foraging",
+		"description": "Picking mushrooms. Each threshold adds +1 to every harvest.",
+		"perk": "+1 mushroom per harvest at levels 5 / 10 / 15",
+		"color": Color(0.55, 0.85, 0.45),
+	},
+	"alchemy": {
+		"id": "alchemy",
+		"name": "Alchemy",
+		"description": "Brewing potions. Each level shaves 1 g off every recipe fee.",
+		"perk": "-1 g brew fee per level (minimum 1 g)",
+		"color": Color(0.80, 0.55, 0.95),
+	},
+	"combat": {
+		"id": "combat",
+		"name": "Combat",
+		"description": "Killing creatures. Each level adds 2% melee damage.",
+		"perk": "+2% melee damage per level",
+		"color": Color(0.95, 0.55, 0.40),
+	},
+	"survival": {
+		"id": "survival",
+		"name": "Survival",
+		"description": "Searching crates and extracting. The lamp lasts longer and searches are quicker.",
+		"perk": "+5% lamp battery and -2% search time per level",
+		"color": Color(0.55, 0.80, 0.95),
 	},
 }
 
@@ -71,38 +94,30 @@ const VOCATIONS := {
 	"knight": {
 		"id": "knight",
 		"name": "Knight",
-		"polish": "Rycerz",
-		"role": "Tank / Melee",
-		"description": "Specjalizuje się w mieczach, tarczach i ciężkiej zbroi z utwardzonej grzybni. Przyciąga uwagę przeciwników.",
-		"trees": ["Guardian", "Berserker", "Weapon Master"],
-		"primary_stat": "vitality",
+		"role": "Front line / Melee",
+		"description": "Fights with the mycelium club and the heaviest armour the forest allows. Stands between the party and the dark.",
+		"affinity": "combat",
 	},
 	"healer": {
 		"id": "healer",
 		"name": "Healer",
-		"polish": "Uzdrowiciel",
-		"role": "Healing / Alchemy / Control",
-		"description": "Najlepiej wykorzystuje mikstury i lecznicze grzyby. Tworzy trucizny, bomby zarodnikowe i antidota.",
-		"trees": ["Herbalist", "Plague Doctor", "Spore Alchemist"],
-		"primary_stat": "wisdom",
+		"role": "Support / Alchemy",
+		"description": "Turns mushrooms into draughts that keep the party standing. Reads a bad recipe before it reads a good fight.",
+		"affinity": "alchemy",
 	},
 	"harvester": {
 		"id": "harvester",
 		"name": "Harvester",
-		"polish": "Zbieracz",
 		"role": "Gathering / Economy",
-		"description": "Wydobywa grzybnię mineralną, sporoidy i złoża zarodników. Uprawia jadalne i rzadkie odmiany grzybów. Dostarcza surowce innym klasom.",
-		"trees": ["Miner", "Cultivator", "Forager"],
-		"primary_stat": "endurance",
+		"description": "Reads the forest floor for the species the run needs. A full satchel keeps the quota moving.",
+		"affinity": "foraging",
 	},
 	"ranger": {
 		"id": "ranger",
 		"name": "Ranger",
-		"polish": "Tropiciel",
-		"role": "Ranged / Exploration / Hunting",
-		"description": "Posługuje się łukami z włókien grzybni. Tropi rzadkie stworzenia i lokalizuje zasoby. Używa pułapek oraz strzał zarodnikowych.",
-		"trees": ["Sharpshooter", "Trapper", "Beaststalker"],
-		"primary_stat": "agility",
+		"role": "Scouting / Extraction",
+		"description": "Carries the lamp, searches the crates and calls the way out. Quicker and quieter in the dark.",
+		"affinity": "survival",
 	},
 }
 
@@ -376,14 +391,12 @@ const DEPTH_LAYERS := {
 	"1": {
 		"id": 1,
 		"name": "The Shallows",
-		"level_range": [1, 10],
 		"species": ["konop", "shitake", "motoko"],
 		"danger": "Sparring enemies, teaching traps",
 	},
 	"2": {
 		"id": 2,
 		"name": "The Thicket",
-		"level_range": [10, 22],
 		"species": [
 			"altak", "bedak", "borowik", "kazar", "konop", "kora", "motoko", "shitake"
 		],
@@ -392,7 +405,6 @@ const DEPTH_LAYERS := {
 	"3": {
 		"id": 3,
 		"name": "The Rotting Hollow",
-		"level_range": [22, 35],
 		"species": [
 			"altak", "bedak", "borowik", "celtus", "kazar", "konop", "kora", "pesta"
 		],
@@ -401,14 +413,12 @@ const DEPTH_LAYERS := {
 	"4": {
 		"id": 4,
 		"name": "The Gloomroot",
-		"level_range": [35, 50],
 		"species": ["altak", "celtus", "fury", "konop", "pesta"],
 		"danger": "Low light, elites",
 	},
 	"5": {
 		"id": 5,
 		"name": "The Pale Depths",
-		"level_range": [50, 100],
 		"species": ["fury", "konop"],
 		"danger": "Legendary spawns, raids",
 	},

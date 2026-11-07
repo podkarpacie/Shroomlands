@@ -121,6 +121,8 @@ func _run() -> void:
 	var home := _main.get_node_or_null("World") as Node3D
 	_check("the player is back in town", home != null and home.scene_file_path == TOWN_PATH)
 	_check("the summary fired once", _summaries == 1)
+	_check("extracting pays survival xp (%d)" % int(_game.call(&"skill_xp", "survival")),
+		int(_game.call(&"skill_xp", "survival")) > 0)
 	_check("the run met its quota", bool(_summary.get("met", false)))
 	_check("the summary stores the loot (%d)" % int(_summary.get("gold", 0)),
 		int(_summary.get("gold", 0)) == 65)

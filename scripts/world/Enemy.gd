@@ -279,6 +279,7 @@ func _award_xp(attacker: Node) -> void:
 		# `Game` is the documented XP funnel and forwards to the local player.
 		_xp_paid = true
 		Game.add_xp(xp_reward)
+		Game.add_skill_xp(&"combat", maxi(1, xp_reward / 4))
 		return
 	if not attacker.has_method(&"add_xp"):
 		return

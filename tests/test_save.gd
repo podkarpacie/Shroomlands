@@ -77,6 +77,7 @@ func _run() -> void:
 	inventory.call(&"add_item", &"shitake", 12)
 	inventory.call(&"add_item", &"bedak", 3)
 	_player.set(&"weapon_condition", 37)
+	_game.call(&"apply_skills", {"foraging": {"level": 4, "xp": 30}})
 	var expected_inventory: Dictionary = inventory.call(&"to_dict")
 	# Set last: physics would pull a body that is left standing in the air.
 	_player.global_position = RICH_POSITION
@@ -102,6 +103,8 @@ func _run() -> void:
 	_check("the save file carries hp and stamina",
 		parsed.has("hp") and parsed.has("stamina"))
 	_check("the save file carries the inventory", parsed.get("inventory") is Dictionary)
+	_check("the save file carries the skill block (%s)" % parsed.get("skills", "?"),
+		parsed.get("skills") is Dictionary and (parsed.get("skills") as Dictionary).has("foraging"))
 	_check("the save file carries the weapon condition (%s)" % parsed.get("weapon_condition", "?"),
 		int(parsed.get("weapon_condition", -1)) == 37)
 	_check("the saved position is an Array of 3 numbers",
@@ -116,6 +119,7 @@ func _run() -> void:
 	(_game.get(&"discovered_mushrooms") as Dictionary).clear()
 	_game.set(&"chosen_vocation", &"")
 	inventory.call(&"from_dict", {})
+	_game.call(&"apply_skills", {})
 	_player.global_position = Vector3(0.0, 1.2, 0.0)
 
 	_check("load_now() reads the file back", bool(_saves.call(&"load_now")))
@@ -148,6 +152,11 @@ func _run() -> void:
 		_player.global_position.is_equal_approx(RICH_POSITION))
 	_check("the weapon condition round-trips (%d)" % int(_player.get(&"weapon_condition")),
 		int(_player.get(&"weapon_condition")) == 37)
+	_check("foraging round-trips (Lv %d, %d xp)" % [
+			int(_game.call(&"skill_level", "foraging")), int(_game.call(&"skill_xp", "foraging"))
+		],
+		int(_game.call(&"skill_level", "foraging")) == 4
+			and int(_game.call(&"skill_xp", "foraging")) == 30)
 	_check("the ranger bonus is applied once, not twice (walk %.2f)" % float(_player.get("walk_speed")),
 		is_equal_approx(float(_player.get("walk_speed")), 5.3))
 

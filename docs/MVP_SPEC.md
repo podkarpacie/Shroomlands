@@ -21,13 +21,17 @@ World secret: someone deliberately damaged the First Mycelium (The Great Blight)
 
 ## 2. BIOMES (5)
 
-| # | id | Name | Polish | Lvl | Danger | Description |
-|---|---|---|---|---|---|---|
-| 1 | `verdant_bloom` | Verdant Bloom | Zielone Zagłębie | 1-20 | 1 | Starting biome. Green/orange edible mushrooms, settlements, farms, first mycelium mines. Relatively safe. Colour (0.25, 0.55, 0.20) |
-| 2 | `violet_hollows` | Violet Hollows | Fioletowe Pustkowia | 15-35 | 3 | Hallucinogenic spores. Valuable but poisoning, visions, behavioural changes. Colour (0.45, 0.15, 0.55) |
-| 3 | `crimson_rot` | Crimson Rot | Szkarłatny Rozkład | 30-50 | 5 | Infected red-black fungi with glowing growths. Rare toxins, upgrade materials. Colour (0.65, 0.08, 0.12) |
-| 4 | `deep_mycelium` | The Deep Mycelium | Głęboka Grzybnia | 40-65 | 6 | Underground: mineral-capped mushrooms, glowing spores, mycelium veins. Colour (0.15, 0.25, 0.35) |
-| 5 | `pale_crown` | The Pale Crown | Blada Korona | 60-100 | 9 | Legendary giant white/golden mushrooms. Contains the source of the Mycelium. Colour (0.85, 0.85, 0.70) |
+The five world regions are lore for now; the playable forest is five *depth layers*
+(`Lore.DEPTH_LAYERS`), not a biome each. Depth is unlocked by reaching the next gate as a party,
+not by a character level — there are no level gates on the descent gates.
+
+| # | id | Name | Danger | Description |
+|---|---|---|---|---|
+| 1 | `verdant_bloom` | Verdant Bloom | 1 | Starting region. Green/orange edible mushrooms, settlements, farms, first mycelium mines. Relatively safe. Colour (0.25, 0.55, 0.20) |
+| 2 | `violet_hollows` | Violet Hollows | 3 | Hallucinogenic spores. Valuable but poisoning, visions, behavioural changes. Colour (0.45, 0.15, 0.55) |
+| 3 | `crimson_rot` | Crimson Rot | 5 | Infected red-black fungi with glowing growths. Rare toxins, upgrade materials. Colour (0.65, 0.08, 0.12) |
+| 4 | `deep_mycelium` | The Deep Mycelium | 6 | Underground: mineral-capped mushrooms, glowing spores, mycelium veins. Colour (0.15, 0.25, 0.35) |
+| 5 | `pale_crown` | The Pale Crown | 9 | Legendary giant white/golden mushrooms. Contains the source of the Mycelium. Colour (0.85, 0.85, 0.70) |
 
 MVP implements **Verdant Bloom only**.
 
@@ -35,18 +39,22 @@ MVP implements **Verdant Bloom only**.
 
 ## 3. VOCATIONS (4) — unlock at level 20, max 4
 
-| id | Name | Polish | Role | Trees | Primary stat |
-|---|---|---|---|---|---|
-| `knight` | Knight | Rycerz | Tank / Melee | Guardian, Berserker, Weapon Master | vitality |
-| `healer` | Healer | Uzdrowiciel | Healing / Alchemy / Control | Herbalist, Plague Doctor, Spore Alchemist | wisdom |
-| `harvester` | Harvester | Zbieracz | Gathering / Economy | Miner, Cultivator, Forager | endurance |
-| `ranger` | Ranger | Tropiciel | Ranged / Exploration / Hunting | Sharpshooter, Trapper, Beaststalker | agility |
+Vocations are specialisations on top of the action skills. The affinity names the skill the
+vocation leans on; the three behind-the-scenes trees are not built yet, so the cards do not
+promise them.
 
-Descriptions (Polish, verbatim from lore):
-- **Knight**: "Specjalizuje się w mieczach, tarczach i ciężkiej zbroi z utwardzonej grzybni. Przyciąga uwagę przeciwników."
-- **Healer**: "Najlepiej wykorzystuje mikstury i lecznicze grzyby. Tworzy trucizny, bomby zarodnikowe i antidota."
-- **Harvester**: "Wydobywa grzybnię mineralną, sporoidy i złoża zarodników. Uprawia jadalne i rzadkie odmiany grzybów. Dostarcza surowce innym klasom."
-- **Ranger**: "Posługuje się łukami z włókien grzybni. Tropi rzadkie stworzenia i lokalizuje zasoby. Używa pułapek oraz strzał zarodnikowych."
+| id | Name | Role | Affinity |
+|---|---|---|---|
+| `knight` | Knight | Front line / Melee | combat |
+| `healer` | Healer | Support / Alchemy | alchemy |
+| `harvester` | Harvester | Gathering / Economy | foraging |
+| `ranger` | Ranger | Scouting / Extraction | survival |
+
+Descriptions (English; the card shows these verbatim):
+- **Knight**: "Fights with the mycelium club and the heaviest armour the forest allows. Stands between the party and the dark."
+- **Healer**: "Turns mushrooms into draughts that keep the party standing. Reads a bad recipe before it reads a good fight."
+- **Harvester**: "Reads the forest floor for the species the run needs. A full satchel keeps the quota moving."
+- **Ranger**: "Carries the lamp, searches the crates and calls the way out. Quicker and quieter in the dark."
 
 Below level 20 the player is a universal traveller.
 
@@ -54,24 +62,14 @@ Below level 20 the player is a universal traveller.
 
 ## 4. MUSHROOMS (core resource system)
 
-| id | Name | Rarity | Biomes | Toxicity | Uses |
-|---|---|---|---|---|---|
-| `glowcap` | Glowcap | common | verdant_bloom, deep_mycelium | 0 | light, vision_potion, basic_craft |
-| `emberstem` | Emberstem | common | verdant_bloom | 0 | food, regen_elixir |
-| `venomveil` | Venomveil | rare | violet_hollows, crimson_rot | 4 | poison, toxic_arrow, spore_bomb |
-| `sunheart` | Sunheart | very_rare | pale_crown, verdant_bloom | 0 | powerful_heal, paladin_upgrade |
-| `blightroot` | Blightroot | dangerous | crimson_rot | 8 | curse, mutation, blight_gear |
-| `geodecap` | Geodecap | rare | deep_mycelium | 1 | mineral, artificer_craft, hard_fiber |
+The shipped species are the eleven in `docs/ITEMS.md` and `Lore.MUSHROOMS`; that file is the
+source of truth for rarity, layers, toxicity, effects and brew recipes:
 
-Descriptions:
-- Glowcap: "Illuminates dark areas. Used in lamps, vision potions and basic crafting."
-- Emberstem: "Edible mushroom used for cooking and basic regeneration elixirs."
-- Venomveil: "Base for poisons, toxic arrows and spore bombs. Requires proper processing."
-- Sunheart: "Used for powerful healing potions and Paladin equipment upgrades."
-- Blightroot: "Infected fungus used to create curses, mutation potions and Great Blight related gear."
-- Geodecap: "Mineral mushroom containing crystals and hard fibres. Mined by Harvesters, used by Artificers."
+`konop`, `shitake`, `motoko`, `borowik`, `kazar`, `kora`, `altak`, `bedak`, `celtus`, `pesta`,
+`fury`.
 
-Each mushroom has: rarity, biome, toxicity, uses, **regrow time** (MVP: 45 s).
+The earlier spec-only ids (`glowcap`, `emberstem`, `venomveil`, `sunheart`, `blightroot`,
+`geodecap`) are retired — they never existed in the data and are not referenced by any scene.
 
 ---
 

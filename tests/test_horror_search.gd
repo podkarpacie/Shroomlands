@@ -144,6 +144,8 @@ func _run() -> void:
 	_check("the crate pays its loot", _inventory_total(inventory) == items_before + 1)
 	_check("the crate pays its gold", int(_game.get("gold")) == gold_before + 7)
 	_check("searching makes noise (%d)" % _disturbances, _disturbances > noise_before)
+	_check("opening a crate pays survival xp (%d)" % int(_game.call(&"skill_xp", "survival")),
+		int(_game.call(&"skill_xp", "survival")) > 0)
 
 	var items_after := _inventory_total(inventory)
 	var gold_after := int(_game.get("gold"))

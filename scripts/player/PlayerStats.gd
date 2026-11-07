@@ -477,7 +477,9 @@ func add_xp_rpc(amount: int) -> void:
 		return
 	if multiplayer.get_remote_sender_id() != 1:
 		return
-	add_xp(clampi(amount, 1, 100000))
+	var award := clampi(amount, 1, 100000)
+	add_xp(award)
+	Game.add_skill_xp(&"combat", maxi(1, award / 4))
 
 
 ## One level per call; `add_xp` loops so a single large gain can grant several.

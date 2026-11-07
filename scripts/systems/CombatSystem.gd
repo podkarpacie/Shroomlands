@@ -208,7 +208,7 @@ func level_damage_scale() -> float:
 	if _stats == null:
 		return 1.0
 	var level := maxi(int(_stats.get(&"level")), 1)
-	return 1.0 + LEVEL_DAMAGE_STEP * float(level - 1)
+	return (1.0 + LEVEL_DAMAGE_STEP * float(level - 1)) * Game.combat_skill_scale()
 
 
 func _equipped_weapon() -> Dictionary:

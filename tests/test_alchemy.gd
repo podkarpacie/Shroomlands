@@ -61,6 +61,8 @@ func _run() -> void:
 		"brewing consumes exactly one mushroom (%d left)" % int(inventory.call(&"count_item", &"konop")),
 		int(inventory.call(&"count_item", &"konop")) == 1
 	)
+	_check("brewing pays alchemy xp (%d)" % int(game.call(&"skill_xp", "alchemy")),
+		int(game.call(&"skill_xp", "alchemy")) == 8)
 	_check(
 		"brewing grants the output potion",
 		int(inventory.call(&"count_item", &"konop_draught")) == 1

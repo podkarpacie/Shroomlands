@@ -7,7 +7,7 @@ Shroomlands — 3D multiplayer expedition RPG. Spawn in a fungi town, buy plots,
 into a layered RNG mushroom forest for better loot and worse enemies.
 
 ## Current state
-- **39 test suites / 1895 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
+- **40 test suites / 1938 assertions, all exit 0.** CI (`.github/workflows/tests.yml`) runs them on
   every push. Two real-process multiplayer proofs (ENet 2-process, WebSocket 3-process) pass.
 - Exports: Windows ~107 MB (Forward+, launches and plays), Web ~40 MB (Compatibility/WebGL2).
 
@@ -37,6 +37,23 @@ Findings from a code review of inventory/stats/combat/enemy/run/forest code, all
   text no longer claims there is no darkness.
 - **Levels and gathering paid nothing.** Melee damage now gains 3% per level, and gathering pays a
   fifth of the species' value in XP.
+
+## Action skills and cleanup (design review, step 1)
+The review's build order starts with skills from actions:
+- **Four skills** (`Lore.SKILLS`): Foraging, Alchemy, Combat, Survival. Each starts at level 1,
+  needs `60 * level` xp to advance, caps at 20, and is saved as `skills`.
+- **XP from doing**: gathering, brewing, killing, crate searching and extracting. No kill-only funnel.
+- **Perks that change numbers**: +1 mushroom per harvest at Foraging 5/10/15; -1 g brew fee per
+  Alchemy level (min 1 g); +2% melee damage per Combat level; +5% lamp battery and -2% search time
+  per Survival level. A chosen vocation adds +25% XP to its affinity skill (Knight→Combat,
+  Healer→Alchemy, Harvester→Foraging, Ranger→Survival).
+- **Visible**: pause menu → Skills page (level, xp/next, perk line, affinity tag) and a level-up
+  toast. The action-skill test is `test_skills.gd` (49 assertions).
+- **Cleanup from the same review**: vocations are English-only and no longer promise swords,
+  shields, bows or three non-existent trees; the card shows a real skill affinity. The spec-only
+  mushrooms (`glowcap`, `emberstem`, `venomveil`, `sunheart`, `blightroot`, `geodecap`) are retired
+  from `docs/MVP_SPEC.md` in favour of the eleven shipped species. Forest layers no longer carry
+  level ranges; depth is position-gated, not level-gated.
 
 ## The town hub (done)
 - **Mycoria** — walled settlement, the spawn area, plot row just outside the north gate.

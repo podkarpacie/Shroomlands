@@ -108,6 +108,7 @@ func collect_state() -> Dictionary:
 		"stamina": 100.0,
 		"gold": Game.gold,
 		"discovered_mushrooms": Game.discovered_mushrooms.duplicate(),
+		"skills": Game.skills_snapshot(),
 		"vocation": String(Game.chosen_vocation),
 		"area": Game.area_path,
 		"forest_layer": Game.forest_layer,
@@ -145,6 +146,7 @@ func apply_state(data: Dictionary) -> void:
 
 	Game.gold = maxi(_as_int(data.get("gold"), Game.gold), 0)
 	EventBus.gold_changed.emit(Game.gold)
+	Game.apply_skills(data.get("skills"))
 
 	var discovered: Variant = data.get("discovered_mushrooms")
 	if discovered is Dictionary:

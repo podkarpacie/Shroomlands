@@ -55,11 +55,15 @@ func _process(delta: float) -> void:
 		_cancel()
 		return
 	_elapsed += delta
-	if _elapsed >= search_seconds:
+	if _elapsed >= search_seconds * Game.survival_search_scale():
 		_complete()
 
 
 func _complete() -> void:
+	if _searcher != null and _searcher.is_multiplayer_authority():
+		# The searcher levels Survival; the server's copy of a client body does
+		# not, so exactly one peer is paid.
+		Game.add_skill_xp(&"survival", 10)
 	if Network.mode == Network.CLIENT:
 		# The server owns the contents and the opened state.
 		searching = false

@@ -13,9 +13,19 @@ const PLOT_EXPIRY_DAYS := 3
 ## Expedition goal: loot value needed to "make quota" on a layer.
 const RUN_BASE_QUOTA := 40
 const RUN_QUOTA_PER_LAYER := 20
+## Action skills (RuneScape-style): xp comes from doing, each level costs more.
+const SKILL_MAX_LEVEL := 20
+const SKILL_XP_BASE := 60
+## Foraging thresholds that each add +1 mushroom to a harvest.
+const FORAGING_BONUS_LEVELS: Array[int] = [5, 10, 15]
+## A chosen vocation grants +25% skill xp in its affinity skill.
+const VOCATION_SKILL_BONUS := 0.25
 
 var gold: int = STARTING_GOLD
 var discovered_mushrooms: Dictionary = {}
+## Action skills: `{id: {level, xp}}`, persisted with the save and owned by the
+## local peer (each player levels their own character).
+var skills: Dictionary = {}
 var chosen_vocation: StringName = &""
 var current_biome: StringName = &"verdant_bloom"
 ## 1-5 while a Layered Forest area is active, 0 in town / the Verdant Bloom.
@@ -40,6 +50,7 @@ var last_run: Dictionary = {}
 
 
 func _ready() -> void:
+	_ensure_skills()
 	# Network reporting hooks. Gold, discoveries and the vocation are only known
 	# to the owner, so a session reports every change to `Main`, which routes it
 	# to the server's roster. Offline the handler returns before doing anything.
@@ -110,6 +121,8 @@ func finish_run() -> Dictionary:
 	}
 	if bonus > 0:
 		add_gold(bonus)
+	# Extracting is Survival practice, quota or not.
+	add_skill_xp(&"survival", 15 if met else 6)
 	last_run = summary
 	EventBus.run_finished.emit(summary)
 	return summary
@@ -122,6 +135,8 @@ func _on_mushroom_gathered(id: String, count: int) -> void:
 	var rarity := str(Lore.get_mushroom(id).get("rarity", ""))
 	var per_pick := maxi(1, Lore.mushroom_value(rarity) / 5)
 	add_xp(per_pick * count)
+	# Foraging levels from foraging, not from the character XP funnel.
+	add_skill_xp(&"foraging", maxi(1, Lore.mushroom_value(rarity) / 10) * count)
 
 
 ## XP needed to advance from `level` to `level + 1`; monotonic by construction.
@@ -165,6 +180,127 @@ func add_xp(amount: int) -> void:
 		pending_xp += amount
 
 
+## --- Action skills -------------------------------------------------------
+
+
+func _ensure_skills() -> void:
+	for id: String in Lore.SKILLS:
+		var raw: Variant = skills.get(id)
+		if raw is Dictionary:
+			var level := clampi(int((raw as Dictionary).get("level", 1)), 1, SKILL_MAX_LEVEL)
+			var xp := maxi(int((raw as Dictionary).get("xp", 0)), 0)
+			if level >= SKILL_MAX_LEVEL:
+				xp = 0
+			else:
+				xp = mini(xp, skill_xp_to_level(level) - 1)
+			skills[id] = {"level": level, "xp": xp}
+		else:
+			skills[id] = {"level": 1, "xp": 0}
+
+
+func skill_xp_to_level(level: int) -> int:
+	return SKILL_XP_BASE * clampi(level, 1, SKILL_MAX_LEVEL)
+
+
+func skill_level(id: String) -> int:
+	_ensure_skills()
+	return int((skills.get(id, {}) as Dictionary).get("level", 1))
+
+
+func skill_xp(id: String) -> int:
+	_ensure_skills()
+	return int((skills.get(id, {}) as Dictionary).get("xp", 0))
+
+
+## The skill a chosen vocation leans on, or "" before the choice.
+func vocation_affinity() -> String:
+	if chosen_vocation == &"":
+		return ""
+	var vocation: Dictionary = Lore.VOCATIONS.get(String(chosen_vocation), {})
+	return str(vocation.get("affinity", ""))
+
+
+## Grants xp and returns how many levels were gained. A maxed skill stops
+## collecting xp instead of overflowing a bar it can never fill.
+func add_skill_xp(id: StringName, amount: int) -> int:
+	var key := String(id)
+	if amount <= 0 or not Lore.SKILLS.has(key):
+		return 0
+	if key == vocation_affinity():
+		amount = maxi(amount + 1, int(round(float(amount) * (1.0 + VOCATION_SKILL_BONUS))))
+	_ensure_skills()
+	var entry: Dictionary = skills[key]
+	var level := int(entry.get("level", 1))
+	if level >= SKILL_MAX_LEVEL:
+		return 0
+	entry["xp"] = int(entry.get("xp", 0)) + amount
+	var gained := 0
+	while level < SKILL_MAX_LEVEL and int(entry["xp"]) >= skill_xp_to_level(level):
+		entry["xp"] = int(entry["xp"]) - skill_xp_to_level(level)
+		level += 1
+		gained += 1
+		EventBus.skill_level_up.emit(StringName(key), level)
+	if level >= SKILL_MAX_LEVEL:
+		entry["xp"] = 0
+	entry["level"] = level
+	EventBus.skill_changed.emit(
+		StringName(key), level, int(entry["xp"]), skill_xp_to_level(level)
+	)
+	return gained
+
+
+func skills_snapshot() -> Dictionary:
+	_ensure_skills()
+	return skills.duplicate(true)
+
+
+## Restores a saved skill block, ignoring unknown ids and out-of-range values.
+func apply_skills(data: Variant) -> void:
+	skills.clear()
+	_ensure_skills()
+	if not (data is Dictionary):
+		return
+	for id: String in Lore.SKILLS:
+		var raw: Variant = (data as Dictionary).get(id)
+		if not (raw is Dictionary):
+			continue
+		var level := clampi(int((raw as Dictionary).get("level", 1)), 1, SKILL_MAX_LEVEL)
+		var xp := maxi(int((raw as Dictionary).get("xp", 0)), 0)
+		if level >= SKILL_MAX_LEVEL:
+			xp = 0
+		else:
+			xp = mini(xp, skill_xp_to_level(level) - 1)
+		skills[id] = {"level": level, "xp": xp}
+
+
+## +1 mushroom per harvest for every foraging threshold reached.
+func foraging_bonus() -> int:
+	var level := skill_level("foraging")
+	var bonus := 0
+	for threshold: int in FORAGING_BONUS_LEVELS:
+		if level >= threshold:
+			bonus += 1
+	return bonus
+
+
+## Brew fees get 1 g cheaper per alchemy level, never free.
+func alchemy_fee(base: int) -> int:
+	return maxi(1, base - (skill_level("alchemy") - 1))
+
+
+func combat_skill_scale() -> float:
+	return 1.0 + 0.02 * float(skill_level("combat") - 1)
+
+
+func survival_lamp_scale() -> float:
+	return 1.0 + 0.05 * float(skill_level("survival") - 1)
+
+
+## Search time multiplier, floored so a maxed search is still a real hold.
+func survival_search_scale() -> float:
+	return maxf(0.6, 1.0 - 0.02 * float(skill_level("survival") - 1))
+
+
 ## Only at VOCATION_UNLOCK_LEVEL, only once, and only for a known vocation id.
 func set_vocation(id: String) -> bool:
 	if id.is_empty() or not Lore.VOCATIONS.has(id):
@@ -203,6 +339,8 @@ func get_local_player() -> Node:
 func reset_session() -> void:
 	gold = STARTING_GOLD
 	discovered_mushrooms.clear()
+	skills.clear()
+	_ensure_skills()
 	chosen_vocation = &""
 	current_biome = &"verdant_bloom"
 	forest_layer = 0

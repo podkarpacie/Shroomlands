@@ -67,6 +67,8 @@ func harvest() -> void:
 	if not is_available():
 		return
 	last_yield = _rng.randi_range(maxi(yield_min, 1), maxi(yield_max, yield_min))
+	# Foraging levels add whole mushrooms, so the numbers stay readable.
+	last_yield += Game.foraging_bonus()
 	var id := str(mushroom_id)
 	Game.discover_mushroom(id)
 	EventBus.mushroom_gathered.emit(id, last_yield)

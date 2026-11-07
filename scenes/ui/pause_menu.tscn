@@ -87,6 +87,11 @@ custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Players"
 
+[node name="SkillsButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Skills"
+
 [node name="QuitToMenuButton" type="Button" parent="Root/Center/Card/Margin/Content/Actions"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
@@ -221,5 +226,18 @@ layout_mode = 2
 text = "Players"
 
 [node name="PlayersList" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/PlayersSection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillsSection" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillsTitle" type="Label" parent="Root/Center/Card/Margin/Content/Sections/SkillsSection"]
+layout_mode = 2
+text = "Skills"
+
+[node name="SkillsList" type="VBoxContainer" parent="Root/Center/Card/Margin/Content/Sections/SkillsSection"]
 layout_mode = 2
 theme_override_constants/separation = 6

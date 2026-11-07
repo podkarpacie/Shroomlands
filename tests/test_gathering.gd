@@ -127,6 +127,9 @@ func _run() -> void:
 		last_yield >= int(node.get(&"yield_min")) and last_yield <= int(node.get(&"yield_max"))
 	)
 	_check("inventory gained exactly the yield (%d)" % gained, gained == last_yield)
+	var game_node := root.get_node_or_null("Game")
+	_check("gathering pays foraging xp (%d)" % int(game_node.call(&"skill_xp", "foraging")),
+		int(game_node.call(&"skill_xp", "foraging")) > 0)
 	_check(
 		"progress total matches harvest_seconds (%.2f)" % harvest_seconds,
 		progress_totals.has(harvest_seconds)

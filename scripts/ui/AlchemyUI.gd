@@ -86,7 +86,7 @@ func brew(mushroom_id: String) -> bool:
 		_set_status("%s has no recipe." % Lore.item_display_name(mushroom_id), UITheme.DANGEROUS)
 		return false
 	var potion_id := str(brew_recipe.get("potion", ""))
-	var fee := int(brew_recipe.get("fee", 0))
+	var fee := Game.alchemy_fee(int(brew_recipe.get("fee", 0)))
 	if potion_id.is_empty() or not Lore.is_potion(potion_id):
 		_set_status("That recipe is incomplete.", UITheme.DANGEROUS)
 		return false
@@ -127,6 +127,7 @@ func brew(mushroom_id: String) -> bool:
 		_queue_refresh()
 		return false
 	_play_click()
+	Game.add_skill_xp(&"alchemy", 8)
 	_set_status(
 		"Brewed %s for %d g." % [Lore.item_display_name(potion_id), fee]
 	)
@@ -137,7 +138,7 @@ func brew(mushroom_id: String) -> bool:
 func _build_row(mushroom_id: String, mushroom: Dictionary, count: int) -> void:
 	var rarity := Lore.item_rarity(mushroom_id)
 	var potion_id := str((mushroom.get("brew", {}) as Dictionary).get("potion", ""))
-	var fee := int((mushroom.get("brew", {}) as Dictionary).get("fee", 0))
+	var fee := Game.alchemy_fee(int((mushroom.get("brew", {}) as Dictionary).get("fee", 0)))
 	var gate := _gate(potion_id)
 	var row := add_row()
 	add_label(row, Lore.item_display_name(mushroom_id), 14, Lore.rarity_color(rarity))

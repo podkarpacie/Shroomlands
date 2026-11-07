@@ -110,22 +110,18 @@ func _run() -> void:
 	_check("the knight card has a body", body != null)
 	if body != null:
 		_check("the card shows the English name (Knight)", _text_of(body, "Name") == "Knight")
-		_check("the card shows the Polish name (Rycerz)", _text_of(body, "Polish") == "Rycerz")
 		_check(
 			"the card shows the role (%s)" % _text_of(body, "Role"),
-			_text_of(body, "Role").contains("Tank")
+			_text_of(body, "Role").contains("Front line")
 		)
 		_check(
-			"the card shows the Polish description",
-			_text_of(body, "Description").contains("grzybni")
+			"the card description is English (%s)" % _text_of(body, "Description"),
+			_text_of(body, "Description").contains("mycelium club")
+				and not _text_of(body, "Description").contains("grzybni")
 		)
 		_check(
-			"the card shows the three skill trees as chips",
-			body.get_node_or_null("Trees") != null and body.get_node("Trees").get_child_count() == 3
-		)
-		_check(
-			"the card shows the primary stat (%s)" % _text_of(body, "PrimaryStat"),
-			_text_of(body, "PrimaryStat").contains("vitality")
+			"the card shows a real skill affinity (%s)" % _text_of(body, "Affinity"),
+			_text_of(body, "Affinity").contains("Combat")
 		)
 
 	_ui.call(&"select_vocation", "knight")

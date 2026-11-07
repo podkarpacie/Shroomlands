@@ -75,12 +75,6 @@ func _initialize() -> void:
 		var number := int(layer.get("id", 0))
 		_check("layer '%s' has an id 1..5 (%d)" % [key, number], number >= 1 and number <= 5)
 		_check("layer '%s' has a name" % key, not str(layer.get("name", "")).is_empty())
-		var level_range: Variant = layer.get("level_range")
-		_check(
-			"layer '%s' level_range is [min, max]" % key,
-			level_range is Array and (level_range as Array).size() == 2
-				and int(level_range[0]) < int(level_range[1])
-		)
 		_check("layer '%s' has a danger note" % key, not str(layer.get("danger", "")).is_empty())
 		var species: Variant = layer.get("species")
 		_check("layer '%s' lists species" % key, species is Array and not (species as Array).is_empty())
@@ -111,15 +105,15 @@ func _initialize() -> void:
 
 	for id: String in lore.VOCATIONS:
 		var vocation: Dictionary = lore.VOCATIONS[id]
-		var trees: Variant = vocation.get("trees")
-		_check("%s has exactly 3 trees" % id, trees is Array and (trees as Array).size() == 3)
-		_check("%s has a primary_stat" % id, not str(vocation.get("primary_stat", "")).is_empty())
+		var affinity := str(vocation.get("affinity", ""))
+		_check("%s has an English description" % id,
+			not str(vocation.get("description", "")).is_empty()
+				and not str(vocation.get("description", "")).contains("ą"))
+		_check("%s has a known skill affinity (%s)" % [id, affinity],
+			lore.SKILLS.has(affinity))
 
 	for id: String in lore.BIOMES:
 		var biome: Dictionary = lore.BIOMES[id]
-		var level_range: Variant = biome.get("level_range")
-		var range_ok := level_range is Array and (level_range as Array).size() == 2
-		_check("%s level_range is [min, max] with min < max" % id, range_ok and int(level_range[0]) < int(level_range[1]))
 		_check("%s danger is 1..9" % id, int(biome.get("danger", 0)) >= 1 and int(biome.get("danger", 0)) <= 9)
 
 	for id: String in lore.MUSHROOMS:
